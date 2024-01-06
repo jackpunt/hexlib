@@ -1,10 +1,22 @@
 {
-  "name": "hexlib",
+  "name": "@thegraid/hexlib",
   "version": "1.0.0",
   "description": "library for hex-based games",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "newlib": "npm i ../../ts/createjs-lib/thegraid-easeljs-lib-*.tgz ; rm -rf .angular/cache",
+    "note:": "remember to rm -rf .angular/cache when [re-]installing a tgz",
+    "tgz": "rm -rf *.tgz; npm pack",
+    "pub": "npm run build; npm version ${1:-patch}; npm publish --access public",
+    "testEdit": "test/testEditBox.sh",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -f dist/*",
+    "build": "npm run clean; npm run tsc; date",
+    "tsc": "tsc"
   },
   "repository": {
     "type": "git",
@@ -19,5 +31,15 @@
   "bugs": {
     "url": "https://github.com/jackpunt/hexlib/issues"
   },
-  "homepage": "https://github.com/jackpunt/hexlib#readme"
+  "homepage": "https://github.com/jackpunt/hexlib#readme",
+  "dependencies": {
+    "@thegraid/common-lib": "^1.3.40",
+    "@thegraid/easeljs-lib": "^1.3.8",
+    "json5": "^2.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.11",
+    "@types/wicg-file-system-access": "^2020.9.8",
+    "typescript": "~4.9.4"
+  }
 }
