@@ -52,7 +52,7 @@ export class PlayerPanel extends NamedContainer {
   }
 
   get objects() {
-    const player = this.player, index = player.index, panel = this;
+    const player = this.player, index = player.index, panel: PlayerPanel = this;
     const table  = this.table, gamePlay = this.player.gamePlay;
     return { panel, player, index, table, gamePlay }
   }

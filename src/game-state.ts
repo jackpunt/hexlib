@@ -3,7 +3,7 @@ import { C, stime } from "@thegraid/common-lib";
 import type { GamePlay } from "./game-play";
 
 
-interface Phase {
+export interface Phase {
   Aname?: string,
   start(...args: any[]): void; // what to do in this phase
   done?: (...args: any[]) => void;          // for async; when done clicked: proceed

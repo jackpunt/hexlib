@@ -49,13 +49,22 @@ export class GameSetup {
    * @param canvasId supply undefined for 'headless' Stage
    */
   constructor(canvasId: string, public qParams: Params = []) {
+    this.initialize(canvasId);
+    this.loadImagesThenStartup(qParams);
+  }
+
+  initialize(canvasId: string) {
     stime.fmt = "MM-DD kk:mm:ss.SSSL"
     this.stage = makeStage(canvasId, false);
     this.stage.snapToPixel = TP.snapToPixel;
     this.setupToParseState();                 // restart when/if 'SetState' button is clicked
     this.setupToReadFileState();              // restart when/if 'LoadFile' button is clicked
+  }
+
+  loadImagesThenStartup(qParams: Params = []) {
     Tile.loader.loadImages(() => this.startup(qParams));
   }
+
   /** set from qParams['n'] */
   nPlayers = 2;
   makeNplayers(gamePlay: GamePlay) {

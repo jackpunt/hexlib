@@ -3,7 +3,7 @@ import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape,
 import { NamedContainer, NamedObject, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
 import type { GameState } from "./game-state";
-import { Hex, Hex2, HexMap, IHex } from "./hex";
+import { Hex, Hex2, HexMap, IHex, RecycleHex } from "./hex";
 import { XYWH } from "./hex-intfs";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
@@ -420,7 +420,7 @@ export class Table extends EventDispatcher  {
     const image = new Tile(name).addImageBitmap(name); // ignore Tile, get image.
     image.y = -TP.hexRad / 2; // recenter
 
-    const rHex = this.newHex2(row, col, name, Hex2);
+    const rHex = this.newHex2(row, col, name, RecycleHex);
     this.setToRowCol(rHex.cont, row, col);
     rHex.rcText.visible = rHex.distText.visible = false;
     rHex.setHexColor(C.WHITE);
