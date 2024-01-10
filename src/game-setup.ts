@@ -1,3 +1,4 @@
+import { Constructor } from "@thegraid/common-lib";
 import { C, DropdownChoice, DropdownItem, DropdownStyle, ParamGUI, ParamItem, blinkAndThen, makeStage, stime } from "@thegraid/easeljs-lib";
 import { Container, Stage } from "@thegraid/easeljs-module";
 import { parse as JSON5_parse } from 'json5';
@@ -11,6 +12,7 @@ import { LogReader, LogWriter } from "./stream-writer";
 import { Table } from "./table";
 import { TP } from "./table-params";
 import { Tile } from "./tile";
+import { Hex, Hex2, HexMap } from "./hex";
 
 /** OR: import { Params } from "@angular/router"; */
 declare type Params = {
@@ -40,6 +42,7 @@ class MultiChoice extends DropdownChoice {
 /** initialize & reset & startup the application/game. */
 export class GameSetup {
   stage: Stage;
+  hexMap: HexMap<Hex>;
   gamePlay: GamePlay
   paramGUIs: ParamGUI[]
   netGUI: ParamGUI // paramGUIs[2]
@@ -49,11 +52,12 @@ export class GameSetup {
    * @param canvasId supply undefined for 'headless' Stage
    */
   constructor(canvasId: string, public qParams: Params = []) {
-    this.initialize(canvasId);
+    this.initialize(canvasId, qParams);
     this.loadImagesThenStartup(qParams);
   }
 
-  initialize(canvasId: string) {
+  /** one-time, invoked from Constructor(canvasId) */
+  initialize(canvasId: string, qParams: Params = []) {
     stime.fmt = "MM-DD kk:mm:ss.SSSL"
     this.stage = makeStage(canvasId, false);
     this.stage.snapToPixel = TP.snapToPixel;
@@ -169,6 +173,7 @@ export class GameSetup {
    */
   startup(qParams: Params = this.qParams) {
     this.nPlayers = Math.min(TP.maxPlayers, qParams?.['n'] ? Number.parseInt(qParams?.['n']) : 2);
+    this.hexMap = new HexMap<Hex>(TP.hexRad, true, Hex2 as Constructor<Hex>)
     this.startScenario({turn: 0, Aname: 'defaultScenario'});
   }
 
@@ -178,7 +183,6 @@ export class GameSetup {
     Meeple.allMeeples = [];
     Player.allPlayers = [];
     const table = new Table(this.stage)        // EventDispatcher, ScaleCont, GUI-Player
-
     // Inject Table into GamePlay & make allPlayers:
     const gamePlay = new GamePlay(scenario, table, this) // hexMap, players, fillBag, gStats, mouse/keyboard->GamePlay
     this.gamePlay = gamePlay;

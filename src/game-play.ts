@@ -75,6 +75,7 @@ export class GamePlay0 {
 
   /** GamePlay0 - supply GodNames for each: new Player(...). */
   constructor(public gameSetup: GameSetup) {
+    this.hexMap = gameSetup.hexMap;
     this.hexMap.Aname = `mainMap`;
     //this.hexMap.makeAllDistricts(); // For 'headless'; re-created by Table, after addToMapCont()
   }
