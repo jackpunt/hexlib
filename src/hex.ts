@@ -1,4 +1,4 @@
-import { C, Constructor, F, RC, S } from "@thegraid/easeljs-lib";
+import { C, CenterText, Constructor, F, RC, S } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Graphics, Point, Text } from "@thegraid/easeljs-module";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
 import type { Meeple } from "./meeple";
@@ -270,13 +270,14 @@ export class Hex2 extends Hex1 {
     map?.mapCont.hexCont.addChild(this.cont);
     this.hexShape.name = this.Aname;
     const nf = (n: number) => `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`;
-    const rc = `${nf(row)},${nf(col)}`, tdy = -25;
-    const rct = this.rcText = new Text(rc, F.fontSpec(26), 'white'); // radius/2 ?
-    rct.textAlign = 'center'; rct.y = tdy; // based on fontSize? & radius
+    const rc = `${nf(row)},${nf(col)}`, rcf = 26 * TP.hexRad / 60;
+    const rct = this.rcText = new CenterText(rc, F.fontSpec(rcf), 'white');
+    rct.y -= rcf / 2; // raise it up
     this.cont.addChild(rct);
 
-    this.distText = new Text(``, F.fontSpec(20));
-    this.distText.textAlign = 'center'; this.distText.y = tdy + 46 // yc + 26+20
+    const dtf = 20 * TP.hexRad / 60;
+    this.distText = new CenterText(``, F.fontSpec(dtf));
+    this.distText.y += dtf;   // push it down
     this.cont.addChild(this.distText);
     this.legalMark.setOnHex(this);
     this.showText(true); // & this.cache()
@@ -295,7 +296,7 @@ export class Hex2 extends Hex1 {
     this.legalMark.visible = v;
   }
 
-  private initCont(row: number, col: number) {
+  protected initCont(row: number, col: number) {
     const cont = this.cont;
     const { x, y, w, h } = this.xywh(this.radius, TP.useEwTopo, row, col); // include margin space between hexes
     cont.x = x;
