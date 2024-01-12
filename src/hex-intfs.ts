@@ -57,10 +57,10 @@ export namespace H {
   export function nsTopo(rc: RC): TopoNS { return (rc.col % 2 == 0) ? H.nsEvenCol : H.nsOddCol };
   export function ewTopo(rc: RC): TopoEW { return (rc.row % 2 == 0) ? H.ewEvenRow : H.ewOddRow };
 
-  /** includes E & W, suitable for EwTopo */
-  export const ewDirs: EwDir[] = [NE, E, SE, SW, W, NW]; // directions for EwTOPO
-  /** includes N & S, suitable for NsTopo */
-  export const nsDirs: NsDir[] = [N, EN, ES, S, WS, WN]; // directions for NsTOPO
+  /** includes E & W, suitable for ewTopo */
+  export const ewDirs: EwDir[] = [NE, E, SE, SW, W, NW]; // directions in TopoEW: EwDir
+  /** includes N & S, suitable for nsTopo */
+  export const nsDirs: NsDir[] = [N, EN, ES, S, WS, WN]; // directions in TopoNS: NsDir
   /** all hexDirs */
   export const hexDirs: HexDir[] = (H.ewDirs as HexDir[]).concat(H.nsDirs); // standard direction signifiers () ClockWise
 

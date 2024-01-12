@@ -1,3 +1,4 @@
+import { XY } from '@thegraid/common-lib';
 import { C, CenterText, Constructor, F, RC, S } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Graphics, Point, Text } from "@thegraid/easeljs-module";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
@@ -211,12 +212,12 @@ export class Hex2 extends Hex1 {
   get mapCont() { return this.map.mapCont; }
   get markCont() { return this.mapCont.markCont; }
 
-  get x() { return this.cont.x}
-  set x(v: number) { this.cont.x = v}
-  get y() { return this.cont.y}
-  set y(v: number) { this.cont.y = v}
-  get scaleX() { return this.cont.scaleX}
-  get scaleY() { return this.cont.scaleY}
+  get x() { return this.cont.x }
+  set x(v: number) { this.cont.x = v }
+  get y() { return this.cont.y }
+  set y(v: number) { this.cont.y = v }
+  get scaleX() { return this.cont.scaleX }
+  get scaleY() { return this.cont.scaleY }
 
   // if override set, then must override get!
   override get district() { return this._district }
@@ -259,10 +260,9 @@ export class Hex2 extends Hex1 {
   /**
    * add Hex2 to map?.mapCont.hexCont; not in map.hexAry!
    * Hex2.cont contains:
-   * - polyStar Shape of radius @ (XY=0,0)
-   * - stoneIdText (user settable stoneIdText.text)
-   * - rcText (r,c)
-   * - distText (d)
+   * - hexShape: polyStar Shape of radius @ (XY=0,0)
+   * - rcText: '(r,c)' slightly above center, WHITE
+   * - distText: initially distText.text = `${district}` slightly below center, BLACK
    */
   constructor(map: HexMap<Hex2>, row: number, col: number, name?: string) {
     super(map, row, col, name);
@@ -346,10 +346,16 @@ export class Hex2 extends Hex1 {
     let a = a2 * H.degToRadians
     return new Point(this.x + Math.sin(a) * h, this.y - Math.cos(a) * h)
   }
-  /** location of edge point in dir; in parent coordinates. */
-  edgePoint(dir: HexDir) {
-    let a = H.ewDirRot[dir as EwDir] * H.degToRadians, h = this.radius * H.sqrt3_2
-    return new Point(this.x + Math.sin(a) * h, this.y - Math.cos(a) * h)
+  /** Location of edge point in dir; in parent coordinates.
+   * @param dir indicates direction to edge
+   * @param rad [1] per-unit distance from center: 0 --> center, 1 --> exactly on edge, 1+ --> outside hex
+   * @param point [new Point()] set location-x,y in point and return it.
+   */
+  edgePoint(dir: HexDir, rad = 1, point: XY = new Point()) {
+    const a = H.nsDirRot[dir as NsDir] * H.degToRadians, h = rad * this.radius * H.sqrt3_2;
+    point.x = this.hexShape.x + Math.sin(a) * h;
+    point.y = this.hexShape.y - Math.cos(a) * h;
+    return point as Point;
   }
 }
 
@@ -413,6 +419,7 @@ export class MapCont extends Container {
 
   /** add all the layers of Containers. */
   addContainers() {
+    this.removeAllChildren();
     MapCont.cNames.forEach(cname => {
       const cont = new Container();
       (cont as NamedObject).Aname = cont.name = cname;
@@ -682,7 +689,9 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return HexMap.distColor.find(ci => !adjColor.includes(ci)) ?? 'white'; // or undefined or ...
   }
   /**
-   * rings of Hex with EwTopo; HexShape(tilt = 'NE')
+   * Make one meta-hex district.
+   *
+   * rings of this.hexC with topo derived from Hex.topo (TP.useEwTopo)
    * @param nh order of inner-hex: number hexes on side of meta-hex
    * @param district identifying number of this district
    * @param mr make new district on meta-row
@@ -705,20 +714,20 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
       ic += Math.floor((mr - rp) / 2)       // 2-metaRow means +1 col
       return ic
     }
-    const row0 = irow(mr, mc), col0 = icol(mr, mc, row0);
-    const hexAry: T[] & { Mr?: number, Mc?: number } = Array<T>();
+    const hexAry: T[] & { Mr?: number, Mc?: number } = [];
     hexAry['Mr'] = mr; hexAry['Mc'] = mc;
-    const hex = this.addHex(row0, col0, district);
-    hexAry.push(hex) // The *center* hex
-    let rc: RC = { row: row0, col: col0 } // == {hex.row, hex.col}
+
+    const row0 = irow(mr, mc), col0 = icol(mr, mc, row0);
+    hexAry.push(this.addHex(row0, col0, district));  // make centerHex of metaHex
     //console.groupCollapsed(`makelDistrict [mr: ${mr}, mc: ${mc}] hex0= ${hex.Aname}:${district}-${dcolor}`)
     //console.log(`.makeDistrict: [mr: ${mr}, mc: ${mc}] hex0= ${hex.Aname}`, hex)
-    const dirs = this.linkDirs;     // HexDirs of the extant Topo.
-    const startDir = dirs.includes('W') ? 'W' : 'WS'; // 'W' or 'WN'
+
+    let rc: RC = { row: row0, col: col0 };
     for (let ring = 1; ring < nh; ring++) {
-      rc = this.nextRowCol(rc, startDir); // step West to start a ring
-      // place 'ring' hexes along each axis-line:
-      dirs.forEach(dir => rc = this.newHexesOnLine(ring, rc, dir, district, hexAry))
+      rc = this.ringWalk(ring, (rc, dir) => {
+        // place 'ring' hexes along each axis-line:
+        return this.newHexesOnLine(ring, rc, dir, district, hexAry)
+      })
     }
     //console.groupEnd()
     this.setDistrictColor(hexAry, district);
@@ -734,21 +743,63 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
 
   /**
+   * Select RC location of each Hex on a line, and eval f(rc) => Hex.
    *
+   * Not constrained by existance of Hex, generates a series of RC coordinates.
+   *
+   * Can be used to construct a Hex at selected RC location.
+   *
+   * @param n number of Hex locations to select
+   * @param rc {row, col} of selected location
+   * @param dir from rc, move by dir to next location
+   * @param f do 'whatever'; must return the given RC [or other RC seed for nextRowCol()!]
+   * @returns RC of n+1-th Hex on the line (where you typically change to next dir)
+   */
+  forRCsOnLine(n: number, rc: RC, dir: HexDir, f: (rc: RC) => RC): RC {
+    for (let i = 0; i < n; i++) {
+      rc = this.nextRowCol(f(rc), dir);
+    }
+    return rc;
+  }
+
+  /**
+   * Used to create rings of new Hex: this.addHex(row, col, district)
    * @param n number of Hex to create
-   * @param hex start with a Hex to the West of this Hex
-   * @param dir after first Hex move this Dir for each other hex
-   * @param district
+   * @param rc create first Hex in given RC location
+   * @param dir after first Hex move dir for each next Hex
+   * @param district supplied to addHex()
    * @param hexAry push created Hex(s) on this array
-   * @returns RC of next Hex to create (==? RC of original hex)
+   * @returns RC of next Hex location on line (typically use next direction and continue...)
    */
   newHexesOnLine(n: number, rc: RC, dir: HexDir, district: number, hexAry: Hex[]): RC {
-    let hex: Hex
-    for (let i = 0; i < n; i++) {
-      hexAry.push(hex = this.addHex(rc.row, rc.col, district))
-      rc = this.nextRowCol(hex, dir)
-    }
-    return rc
+    let hex: Hex;
+    return this.forRCsOnLine(n, rc, dir, (rc: RC) => {
+      hexAry.push(hex = this.addHex(rc.row, rc.col, district));
+      return rc;
+    })
+  }
+
+  /**
+   * Apply f(rc, dir) to each of 'n' RCs on nth ring.
+   * Step from centerHex by dirs[4], do a line for each dir in dirs.
+   *
+   * - if topoEW: step to W; make lines going NE, E, SE, SW, W, NW
+   * - if topoNS: step to WS; make lines going N, EN, ES, S, WS, WN
+   * @param n ring number
+   * @param f (RC, dir) => void
+   * @param dirs [this.linkDirs] each topo dirs in [clockwise] order.
+   * @return the *next* RC on the final line (so can easily spiral)
+   */
+  ringWalk(n: number, f: (rc: RC, dir: HexDir) => void, dirs = this.linkDirs) {
+    const startHex = this.centerHex.nextHex(dirs[4], n) as Hex;
+    let rc = { row: startHex.row, col: startHex.col };
+    dirs.forEach(dir => {
+      rc = this.forRCsOnLine(n, rc, dir, (rc) => {
+        f(rc, dir);
+        return rc;
+      });
+    });
+    return rc;
   }
 
 }

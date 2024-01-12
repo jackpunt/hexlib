@@ -4,6 +4,8 @@ import { Container, Stage } from "@thegraid/easeljs-module";
 import { parse as JSON5_parse } from 'json5';
 import { EBC, PidChoice } from "./choosers";
 import { GamePlay, NamedContainer } from "./game-play";
+import { Hex, Hex2, HexMap } from "./hex";
+import { AliasLoader } from "./image-loader";
 import { Meeple } from "./meeple";
 import { Player } from "./player";
 import { ScenarioParser, SetupElt } from "./scenario-parser";
@@ -12,7 +14,6 @@ import { LogReader, LogWriter } from "./stream-writer";
 import { Table } from "./table";
 import { TP } from "./table-params";
 import { Tile } from "./tile";
-import { Hex, Hex2, HexMap } from "./hex";
 
 /** OR: import { Params } from "@angular/router"; */
 declare type Params = {
@@ -41,6 +42,7 @@ class MultiChoice extends DropdownChoice {
 
 /** initialize & reset & startup the application/game. */
 export class GameSetup {
+
   stage: Stage;
   hexMap: HexMap<Hex>;
   gamePlay: GamePlay
@@ -66,7 +68,7 @@ export class GameSetup {
   }
 
   loadImagesThenStartup(qParams: Params = []) {
-    Tile.loader.loadImages(() => this.startup(qParams));
+    AliasLoader.loader.loadImages(() => this.startup(qParams));
   }
 
   /** set from qParams['n'] */

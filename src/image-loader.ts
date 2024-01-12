@@ -74,3 +74,45 @@ export class ImageLoader {
   imagePromises: Promise<HTMLImageElement>[];
   imageMapPromise: Promise<Map<string, HTMLImageElement>>
 }
+
+
+export class AliasLoader {
+  static loader: AliasLoader = new AliasLoader();
+  // Uname = ['Univ0', 'Univ1']; // from citymap
+  constructor(fnames: string[] = [], aliases: { [key: string]: string } = {}) {
+    this.fnames = fnames;
+    this.aliases = aliases;
+  }
+
+  /**
+   * Map key name to actual file name, so imageArgs.fnames can be more stable.
+   *
+   * fnames: this.fromAlias(['name1', 'name2', ...])
+   *
+   * 'name1' can be actual filename, or an alias.
+   */
+  aliases: { [key: string]: string } = { Monument1: 'arc_de_triomphe3', Monument2: 'Statue-of-liberty' }
+
+  /**
+   * filenames, sans directory and extension (which are supplied from imageArgs)
+   */
+  fnames: string[] = ['Recycle'];
+  fromAlias(names: string[]) {
+    return names.map(name => this.aliases[name] ?? name);
+  }
+  imageArgs = {
+    root: 'assets/images/',
+    fnames: this.fromAlias(this.fnames),
+    ext: 'png',
+  };
+
+  imageLoader: ImageLoader;
+  /** use ImageLoader to load images, THEN invoke callback. */
+  loadImages(cb?: (imap?: Map<string, HTMLImageElement>) => void) {
+    this.imageLoader = new ImageLoader(this.imageArgs, (imap) => cb?.(imap));
+  }
+  getImage(name: string) {
+    return this.imageLoader.imap.get(this.aliases[name] ?? name);
+  }
+}
+

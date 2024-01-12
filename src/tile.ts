@@ -1,42 +1,19 @@
 import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
+import { CenterText } from "@thegraid/easeljs-lib";
 import { Bitmap, Container, MouseEvent, Text } from "@thegraid/easeljs-module";
 import type { GamePlay } from "./game-play";
 import { Hex1, Hex2 } from "./hex";
-import { ImageLoader } from "./image-loader";
+import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
 import { C1, HexShape, PaintableShape, TileShape } from "./shapes";
 import type { DragContext, Dragable, Table } from "./table";
 import { PlayerColor, TP } from "./table-params";
 import { TileSource } from "./tile-source";
-import { CenterText } from "@thegraid/easeljs-lib";
 
-
-class TileLoader {
-  Uname = ['Univ0', 'Univ1']; // from citymap
-  aliases: { [key: string]: string } = { Monument1: 'arc_de_triomphe3', Monument2: 'Statue-of-liberty' }
-  fromAlias(names: string[]) {
-    return names.map(name => this.aliases[name] ?? name);
-  }
-  imageArgs = {
-    root: 'assets/images/',
-    fnames: this.fromAlias(['Recycle']),
-    ext: 'png',
-  };
-
-  imageLoader: ImageLoader;
-  /** use ImageLoader to load images, THEN invoke callback. */
-  loadImages(cb?: () => void) {
-    this.imageLoader = new ImageLoader(this.imageArgs, (imap) => cb?.());
-  }
-  getImage(name: string) {
-    return this.imageLoader.imap.get(this.aliases[name] ?? name);
-  }
-}
 
 /** Someday refactor: all the cardboard bits (Tiles, Meeples & Coins) */
 class Tile0 extends Container {
   static gamePlay: GamePlay;
-  static loader = new TileLoader();
   // constructor() { super(); }
 
   public gamePlay = Tile.gamePlay;
@@ -46,7 +23,7 @@ class Tile0 extends Container {
 
   /** name in set of filenames loaded in GameSetup */
   addImageBitmap(name: string, at = this.numChildren - 1) {
-    const img = Tile0.loader.getImage(name) as HTMLImageElement, bm = new Bitmap(img);
+    const img = AliasLoader.loader.getImage(name) as HTMLImageElement, bm = new Bitmap(img);
     const width = TP.hexRad, scale = width / Math.max(img.height, img.width);
     bm.scaleX = bm.scaleY = scale;
     const sw = img.width * scale, sh = img.height * scale;
