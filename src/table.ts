@@ -418,7 +418,7 @@ export class Table extends EventDispatcher  {
   makeRecycleHex(row = TP.nHexes + 3.2, col = 0) {
     const name = 'Recycle'
     const image = new Tile(name).addImageBitmap(name); // ignore Tile, get image.
-    image.y = -TP.hexRad / 2; // recenter
+    image.y = 0;              // recenter (undo text offset)
 
     const rHex = this.newHex2(row, col, name, RecycleHex);
     this.setToRowCol(rHex.cont, row, col);
