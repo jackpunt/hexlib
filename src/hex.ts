@@ -81,7 +81,11 @@ export class Hex {
   }
   get xywh0() { return this.xywh(); } // so can see xywh from debugger
 
-  readonly Aname: string
+  // _Aname: string;
+  // get Aname() { return this._Aname; }
+  // protected set Aname (name: string) { this._Aname = name; }
+  Aname: string;
+
   /** reduce to serializable IHex (removes map, inf, links, etc) */
   get iHex(): IHex { return { Aname: this.Aname, row: this.row, col: this.col } }
   protected nf(n: number) { return `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`; }

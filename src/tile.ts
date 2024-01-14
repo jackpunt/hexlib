@@ -21,17 +21,21 @@ class Tile0 extends Container {
   get pColor() { return this.player?.color }
   get recycleVerb(): string { return 'demolished'; }
 
-  /** name in set of filenames loaded in GameSetup */
-  addImageBitmap(name: string, at = this.numChildren - 1) {
-    const img = AliasLoader.loader.getImage(name) as HTMLImageElement, bm = new Bitmap(img);
-    const width = TP.hexRad, scale = width / Math.max(img.height, img.width);
-    bm.scaleX = bm.scaleY = scale;
-    const sw = img.width * scale, sh = img.height * scale;
-    bm.x = -sw / 2;
-    bm.y = -sh / 2;
+  /**
+   * this.addChildAt(new Bitmap(loader.getImage(name)), at);
+   *
+   * image is scaled to fit given size.
+   * centered above Tile.textSize
+   * @param name from AliasLoader.loader.imap.keys();
+   * @param at [numChildern - 1]
+   * @param size [TP.hexRad] bitmap.scale = size / max(img.width, img.height)
+   * @return new Bitmap() containing the named image (no image if name was not loaded)
+   */
+  addImageBitmap(name: string, at = this.numChildren - 1, size = TP.hexRad) {
+    const bm = AliasLoader.loader.getBitmap(name);
     bm.y -= Tile.textSize / 2;
     this.addChildAt(bm, at);
-    return bm;
+    return bm;      // bm.image undefined if image not loaded!
   }
 
   get radius() { return TP.hexRad };
@@ -62,7 +66,7 @@ class Tile0 extends Container {
  */
 export class Tile extends Tile0 implements Dragable {
   static allTiles: Tile[] = [];
-  static textSize = TP.hexRad / 3;
+  static textSize = 20 * TP.hexRad / 60;
   // static source: any[] = [];
 
   static makeSource0<T extends Tile, TS extends TileSource<T>>(

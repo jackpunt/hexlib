@@ -1,5 +1,7 @@
 import { S, stime } from "@thegraid/common-lib";
+import { Bitmap } from "@thegraid/easeljs-module";
 import { NamedObject } from "./game-play";
+import { TP } from "./table-params";
 
 /** Simple async Image loader [from ImageReveal.loadImage()]
  *
@@ -80,8 +82,8 @@ export class AliasLoader {
   static loader: AliasLoader = new AliasLoader();
   // Uname = ['Univ0', 'Univ1']; // from citymap
   constructor(fnames: string[] = [], aliases: { [key: string]: string } = {}) {
-    this.fnames = fnames;
     this.aliases = aliases;
+    this.fnames = fnames;
   }
 
   /**
@@ -91,18 +93,24 @@ export class AliasLoader {
    *
    * 'name1' can be actual filename, or an alias.
    */
-  aliases: { [key: string]: string } = { Monument1: 'arc_de_triomphe3', Monument2: 'Statue-of-liberty' }
+  aliases: { [key: string]: string } = { }
 
   /**
    * filenames, sans directory and extension (which are supplied from imageArgs)
    */
-  fnames: string[] = ['Recycle'];
+  set fnames(fnames: string[]) {
+    this.imageArgs.fnames = this.fromAlias(fnames);
+  };
+  get fnames() {
+    return this.imageArgs.fnames;
+  }
+
   fromAlias(names: string[]) {
     return names.map(name => this.aliases[name] ?? name);
   }
   imageArgs = {
     root: 'assets/images/',
-    fnames: this.fromAlias(this.fnames),
+    fnames: [] as string[],
     ext: 'png',
   };
 
@@ -111,8 +119,41 @@ export class AliasLoader {
   loadImages(cb?: (imap?: Map<string, HTMLImageElement>) => void) {
     this.imageLoader = new ImageLoader(this.imageArgs, (imap) => cb?.(imap));
   }
+
+  /** lookup image form ImageLoader imap, using aliases[name] ?? name. */
   getImage(name: string) {
     return this.imageLoader.imap.get(this.aliases[name] ?? name);
+  }
+
+  /**
+   * new Bitmap(this.getImage(name));
+   *
+   * image is scaled to fit given size.
+   *
+   * @param name from this.imap.keys();
+   * @param size [TP.hexRad] bitmap.scale = size / max(img.width, img.height)
+   * @param offsetReg [true] regX/Y = (w/2, h/2) so image is centered with XY = (0, 0);
+   * - else regX/Y = (0, 0) and XY = (-w/2, -h/2)
+   * @return new Bitmap() containing the named image (no image if name was not loaded)
+   */
+  getBitmap(name: string, size = TP.hexRad, offsetReg = true ) {
+    const img = this.getImage(name) as HTMLImageElement;
+    const bm = new Bitmap(img);
+    if (img) {
+      const { width, height } = img;
+      const scale = size / Math.max(height, width);
+      bm.scaleX = bm.scaleY = scale;
+      if (offsetReg) {
+        // offset using regX, regY so it is rotates around center of image:
+        bm.regX = .5 * width;
+        bm.regY = .5 * height;
+      } else {
+        // simple offset to center image: [legacy]
+        bm.x = -.5 * width * scale;
+        bm.y = -.5 * height * scale;
+      }
+    }
+    return bm
   }
 }
 
