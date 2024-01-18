@@ -1,4 +1,4 @@
-import { AT, C, CenterText, Constructor, Dragger, DragInfo, F, KeyBinder, S, ScaleableContainer, stime, XY } from "@thegraid/easeljs-lib";
+import { AT, C, CenterText, Constructor, Dragger, DragInfo, DropdownStyle, F, KeyBinder, ParamGUI, ParamItem, S, ScaleableContainer, stime, XY } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { NamedContainer, NamedObject, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
@@ -11,6 +11,7 @@ import { CircleShape, HexShape, RectShape, UtilButton } from "./shapes";
 import { PlayerColor, playerColor0, playerColor1, TP } from "./table-params";
 import { Tile } from "./tile";
 import { TileSource } from "./tile-source";
+import { PidChoice, EBC } from "./choosers";
 //import { TablePlanner } from "./planner";
 
 function firstChar(s: string, uc = true) { return uc ? s.substring(0, 1).toUpperCase() : s.substring(0, 1) };
@@ -111,6 +112,9 @@ export class Table extends EventDispatcher  {
   stage: Stage;
   bgRect: Shape
   hexMap: HexMap<Hex2>; // from gamePlay.hexMap
+
+  paramGUIs: ParamGUI[];
+  netGUI: ParamGUI; // paramGUIs[2]
 
   undoCont: Container = new NamedContainer('undoCont');
   undoShape: Shape = new Shape();
@@ -278,7 +282,7 @@ export class Table extends EventDispatcher  {
    * @param w0 pad width (* colw);
    * @param h0 pad height (* rowh)
    * @param dh
-   * @returns
+   * @returns XYWH of a rectangle around mapCont hexMap
    */
   bgXYWH(x0 = -1, y0 = .5, w0 = 10, h0 = 1, dw = 0, dh = 0) {
     const hexMap = this.hexMap;
@@ -290,13 +294,12 @@ export class Table extends EventDispatcher  {
     // background sized for hexMap:
     const { width, height } = hexCont.getBounds();
     const { dxdc, dydr } = hexMap.xywh;
-    const xywh: XYWH = { x: x0 * dxdc, y: y0 * dydr, w: width + w0 * dxdc, h: height + h0 * dydr }
+    const { x, y, w, h } = { x: x0 * dxdc, y: y0 * dydr, w: width + w0 * dxdc, h: height + h0 * dydr }
     // align center of mapCont(0,0) == hexMap(center) with center of background
-    mapCont.x = xywh.x + (xywh.w) / 2;
-    mapCont.y = xywh.y + (xywh.h) / 2;
-    xywh.w += dw * dxdc;
-    xywh.h += dh * dydr;
-    return xywh;
+    mapCont.x = x + w / 2;
+    mapCont.y = y + h / 2;
+    // THEN: extend bgRect by (dw, dh):
+    return { x, y, w: w + dw * dxdc, h: h + dh * dydr };
   }
 
   layoutTable(gamePlay: GamePlay) {
@@ -344,6 +347,34 @@ export class Table extends EventDispatcher  {
   layoutTable2() {
 
   }
+
+  makeGUIs(table: Table) {
+    const scaleCont = table.scaleCont, scale = TP.hexRad / 60, cx = -200, cy = 250, d = 5;
+    // this.makeParamGUI(table.scaleCont, -400, 250);
+    const gpanel = (makeGUI: (cont: Container) => ParamGUI, name: string, cx: number, cy: number, scale = 1) => {
+      const guiC = new NamedContainer(name, cx * scale, cy * scale);
+      // const map = table.hexMap.mapCont.parent;
+      scaleCont.addChildAt(guiC);
+      guiC.scaleX = guiC.scaleY = scale;
+      const gui = makeGUI.call(this, guiC);      // @[0, 0]
+      guiC.x -= (gui.linew + d) * scale;
+      const bgr = new RectShape({ x: -d, y: -d, w: gui.linew + 2 * d, h: gui.ymax + 2 * d }, 'rgb(200,200,200,.5)', '');
+      guiC.addChildAt(bgr, 0);
+      table.dragger.makeDragable(guiC);
+      return gui;
+    }
+    let ymax = 0;
+    const gui3 = gpanel(this.makeNetworkGUI, 'NetGUI', cx, cy + ymax, scale);
+    ymax += gui3.ymax + 20;
+    const gui1 = gpanel(this.makeParamGUI, 'ParamGUI', cx, cy + ymax, scale);
+    ymax += gui1.ymax + 20;
+    const gui2 = gpanel(this.makeParamGUI2, 'AI_GUI', cx, cy + ymax, scale);
+    ymax += gui2.ymax + 20;
+    scaleCont.addChild(gui2.parent, gui1.parent, gui3.parent); // lower y values ABOVE to dropdown is not obscured
+    // TODO: dropdown to use given 'top' container!
+    gui1.stage.update();
+  }
+
   get panelHeight() { return (2 * TP.nHexes - 1) / 3 - .2; }
   // col==0 is on left edge of hexMap; The *center* hex is col == (nHexes-1)
   panelLoc(pIndex: number, np = Math.min(Player.allPlayers.length, 6), r0 = this.hexMap.centerHex.row, dr = this.panelHeight + .2) {
@@ -366,6 +397,7 @@ export class Table extends EventDispatcher  {
       const [row, col, dir] = this.panelLoc(pIndex);
       this.allPlayerPanels[pIndex] = player.panel = new PlayerPanel(this, player, high, wide, row - high / 2, col - wide / 2, dir);
       player.makePlayerBits();
+      this.setPlayerScore(player, 0);
     });
   }
 
@@ -429,12 +461,83 @@ export class Table extends EventDispatcher  {
     return rHex;
   }
 
+  /** Params that affect the rules of the game & board
+   *
+   * ParamGUI   --> board & rules [under stats panel]
+   * ParamGUI2  --> AI Player     [left of ParamGUI]
+   * NetworkGUI --> network       [below ParamGUI2]
+   */
+  makeParamGUI(parent: Container, x = 0, y = 0) {
+    const gui = new ParamGUI(TP, { textAlign: 'right'});
+    const gamePlay = this.gamePlay.gameSetup;
+    gui.makeParamSpec('hexRad', [30, 60, 90, 120], { fontColor: 'red'}); TP.hexRad;
+    gui.makeParamSpec('nHexes', [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], { fontColor: 'red' }); TP.nHexes;
+    gui.makeParamSpec('mHexes', [1, 2, 3], { fontColor: 'red' }); TP.mHexes;
+    gui.spec("hexRad").onChange = (item: ParamItem) => { gamePlay.restart({ hexRad: item.value }) }
+    gui.spec("nHexes").onChange = (item: ParamItem) => { gamePlay.restart({ nh: item.value }) }
+    gui.spec("mHexes").onChange = (item: ParamItem) => { gamePlay.restart({ mh: item.value }) }
+
+    parent.addChild(gui)
+    gui.x = x // (3*cw+1*ch+6*m) + max(line.width) - (max(choser.width) + 20)
+    gui.y = y
+    gui.makeLines();
+    return gui
+  }
+
+  /** configures the AI player */
+  makeParamGUI2(parent: Container, x = 0, y = 0) {
+    const gui = new ParamGUI(TP, { textAlign: 'center' })
+    gui.makeParamSpec("log", [-1, 0, 1, 2], { style: { textAlign: 'right' } }); TP.log
+    gui.makeParamSpec("maxPlys", [1, 2, 3, 4, 5, 6, 7, 8], { fontColor: "blue" }); TP.maxPlys
+    gui.makeParamSpec("maxBreadth", [5, 6, 7, 8, 9, 10], { fontColor: "blue" }); TP.maxBreadth
+    parent.addChild(gui)
+    gui.x = x; gui.y = y
+    gui.makeLines()
+    gui.stage.update()
+    return gui
+  }
+
+  netColor: string = "rgba(160,160,160, .8)"
+  netStyle: DropdownStyle = { textAlign: 'right' };
+  /** controls multiplayer network participation */
+  makeNetworkGUI(parent: Container, x = 0, y = 0) {
+    const gui = this.netGUI = new ParamGUI(TP, this.netStyle)
+    gui.makeParamSpec("Network", [" ", "new", "join", "no", "ref", "cnx"], { fontColor: "red" })
+    gui.makeParamSpec("PlayerId", ["     ", 0, 1, 2, 3, "ref"], { chooser: PidChoice, fontColor: "red" })
+    gui.makeParamSpec("networkGroup", [TP.networkGroup], { chooser: EBC, name: 'gid', fontColor: C.GREEN, style: { textColor: C.BLACK } }); TP.networkGroup
+
+    gui.spec("Network").onChange = (item: ParamItem) => {
+      if (['new', 'join', 'ref'].includes(item.value)) {
+        const group = (gui.findLine('networkGroup').chooser as EBC).editBox.innerText
+        // this.gamePlay.closeNetwork()
+        // this.gamePlay.network(item.value, gui, group)
+      }
+      // if (item.value === "no") this.gamePlay.closeNetwork()     // provoked by ckey
+    }
+    (this.stage.canvas as HTMLCanvasElement)?.parentElement?.addEventListener('paste', (ev) => {
+      const text = ev.clipboardData?.getData('Text');
+      ;(gui.findLine('networkGroup').chooser as EBC).setValue(text)
+    });
+    this.showNetworkGroup()
+    parent.addChild(gui)
+    gui.makeLines()
+    gui.x = x; gui.y = y;
+    parent.stage.update()
+    return gui
+  }
+
+  showNetworkGroup(group_name = TP.networkGroup) {
+    (document.getElementById('group_name') as HTMLInputElement).innerText = group_name;
+    const line = this.netGUI.findLine("networkGroup"), chooser = line?.chooser;
+    chooser?.setValue(group_name, chooser.items[0], undefined);
+  }
 
   doneButton: UtilButton;
   doneClicked = (evt?: any) => {
     if (this.doneButton) this.doneButton.visible = false;
     this.gamePlay.phaseDone();   // <--- main doneButton does not supply 'panel'
   }
+
   addDoneButton(actionCont: Container, rh: number) {
     const w = 90, h = 56;
     const doneButton = this.doneButton = new UtilButton('lightgreen', 'Done', 36, C.black);
@@ -456,13 +559,16 @@ export class Table extends EventDispatcher  {
     return actionCont;
   }
 
+  /** show player player score on table */
   setPlayerScore(plyr: Player, score: number, rank?: number) {
   }
+
+  /** update table when a new Game is started. */
   startGame(gameState: Scenario) {
     // All Tiles (& Meeple) are Dragable:
     Tile.allTiles.forEach(tile => {
       this.makeDragable(tile);
-    })
+    });
 
     // this.stage.enableMouseOver(10);
     this.scaleCont.addChild(this.overlayCont); // now at top of the list.
@@ -616,12 +722,9 @@ export class Table extends EventDispatcher  {
   }
 
   logCurPlayer(plyr: Player) {
-    const history = this.gamePlay.history
     const tn = this.gamePlay.turnNumber
-    const lm = history[0]
-    const prev = lm ? `${lm.Aname}${lm.ind}#${tn-1}` : ""
     const robo = plyr.useRobo ? AT.ansiText(['red','bold'],"robo") : "----";
-    const info = { turn: tn, plyr: plyr.Aname, prev, gamePlay: this.gamePlay, curPlayer: plyr }
+    const info = { turn: tn, plyr: plyr.Aname, gamePlay: this.gamePlay, curPlayer: plyr }
     console.log(stime(this, `.logCurPlayer --${robo}--`), info);
     this.logTurn(`//${tn}: ${plyr.Aname}`);
   }

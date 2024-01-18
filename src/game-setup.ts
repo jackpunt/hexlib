@@ -45,9 +45,8 @@ export class GameSetup {
 
   stage: Stage;
   hexMap: HexMap<Hex>;
-  gamePlay: GamePlay
-  paramGUIs: ParamGUI[]
-  netGUI: ParamGUI // paramGUIs[2]
+  gamePlay: GamePlay;
+  table: Table;        // here so GameSetup can override type? all uses are from GamePlay.table;
 
   /**
    * ngAfterViewInit --> start here!
@@ -88,10 +87,10 @@ export class GameSetup {
   set netState(val: string) {
     this._netState = (val == "cnx") ? this._netState : val || " "
     this.gamePlay.ll(2) && console.log(stime(this, `.netState('${val}')->'${this._netState}'`))
-    this.netGUI?.selectValue("Network", val)
+    this.table.netGUI?.selectValue("Network", val)
   }
   get netState() { return this._netState }
-  set playerId(val: string) { this.netGUI?.selectValue("PlayerId", val || "     ") }
+  set playerId(val: string) { this.table.netGUI?.selectValue("PlayerId", val || "     ") }
 
   logTime_js: string;
   readonly logWriter = this.makeLogWriter();
@@ -174,25 +173,40 @@ export class GameSetup {
    * @param qParams from URL
    */
   startup(qParams: Params = this.qParams) {
-    this.nPlayers = Math.min(TP.maxPlayers, qParams?.['n'] ? Number.parseInt(qParams?.['n']) : 2);
-    this.hexMap = new HexMap<Hex>(TP.hexRad, true, Hex2 as Constructor<Hex>)
-    this.startScenario({turn: 0, Aname: 'defaultScenario'});
-  }
-
-  /** scenario.turn indicate a FULL/SAVED scenario */
-  startScenario(scenario: Scenario) {
     Tile.allTiles = [];
     Meeple.allMeeples = [];
     Player.allPlayers = [];
-    const table = new Table(this.stage)        // EventDispatcher, ScaleCont, GUI-Player
-    // Inject Table into GamePlay & make allPlayers:
-    const gamePlay = new GamePlay(scenario, table, this) // hexMap, players, fillBag, gStats, mouse/keyboard->GamePlay
+
+    this.nPlayers = Math.min(TP.maxPlayers, qParams?.['n'] ? Number.parseInt(qParams?.['n']) : 2);
+    this.hexMap = new HexMap<Hex>(TP.hexRad, true, Hex2 as Constructor<Hex>)
+    this.table = new Table(this.stage);        // EventDispatcher, ScaleCont, GUI-Player
+    const scenario = this.initialScenario();
+    // Inject Table into GamePlay;
+    // GameState, mouse/keyboard->GamePlay,
+    const gamePlay = new GamePlay(this, scenario);
     this.gamePlay = gamePlay;
+
+    this.startScenario(scenario);
+  }
+
+  initialScenario(qParams: Params = this.qParams) {
+    return { turn: 0, Aname: 'defaultScenario' };
+  }
+
+  /** scenario.turn indicate a FULL/SAVED scenario
+   *
+   * - makeNplayers()
+   * - layoutTable()
+   * - setPlayerScore()
+   * - parseScenario()
+   * - makeGUIs() ? --> move to layoutTable?
+   */
+  startScenario(scenario: Scenario) {
+    const gamePlay = this.gamePlay, table = this.table;
     this.makeNplayers(gamePlay);     // Players have: civics & meeples & TownSpec
 
     // Inject GamePlay to Table; all the GUI components, makeAllDistricts(), addTerrain, initialRegions
     table.layoutTable(gamePlay);     // mutual injection & make all panelForPlayer
-    gamePlay.forEachPlayer(p => table.setPlayerScore(p, 0));
 
     this.gamePlay.turnNumber = -1;   // in prep for setNextPlayer or parseScenario
     // Place Pieces and Figures on map:
@@ -201,40 +215,15 @@ export class GameSetup {
 
     gamePlay.forEachPlayer(p => p.newGame(gamePlay))        // make Planner *after* table & gamePlay are setup
     this.restartable = false;
-    this.makeGUIs(table);
+    this.table.makeGUIs(table);
     this.restartable = true;   // *after* makeLines has stablilized selectValue
     table.startGame(scenario); // parseScenario; allTiles.makeDragable(); setNextPlayer();
-    return gamePlay
+    return gamePlay;
   }
 
-  makeGUIs(table: Table) {
-    const scaleCont = table.scaleCont, scale = TP.hexRad / 60, cx = -200, cy = 250, d = 5;
-    // this.makeParamGUI(table.scaleCont, -400, 250);
-    const gpanel = (makeGUI: (cont: Container) => ParamGUI, name: string, cx: number, cy: number, scale = 1) => {
-      const guiC = new NamedContainer(name, cx * scale, cy * scale);
-      // const map = table.hexMap.mapCont.parent;
-      scaleCont.addChildAt(guiC);
-      guiC.scaleX = guiC.scaleY = scale;
-      const gui = makeGUI.call(this, guiC);      // @[0, 0]
-      guiC.x -= (gui.linew + d) * scale;
-      const bgr = new RectShape({ x: -d, y: -d, w: gui.linew + 2 * d, h: gui.ymax + 2 * d }, 'rgb(200,200,200,.5)', '');
-      guiC.addChildAt(bgr, 0);
-      table.dragger.makeDragable(guiC);
-      return gui;
-    }
-    let ymax = 0;
-    const gui3 = gpanel(this.makeNetworkGUI, 'NetGUI', cx, cy + ymax, scale);
-    ymax += gui3.ymax + 20;
-    const gui1 = gpanel(this.makeParamGUI, 'ParamGUI', cx, cy + ymax, scale);
-    ymax += gui1.ymax + 20;
-    const gui2 = gpanel(this.makeParamGUI2, 'AI_GUI', cx, cy + ymax, scale);
-    ymax += gui2.ymax + 20;
-    scaleCont.addChild(gui2.parent, gui1.parent, gui3.parent); // lower y values ABOVE to dropdown is not obscured
-    // TODO: dropdown to use given 'top' container!
-    gui1.stage.update();
-  }
 
   scenarioParser: ScenarioParser;
+  /** parse given Scenario, with hexMap & gamePlay -> gameState */
   parseScenenario(scenario: SetupElt) {
     const hexMap = this.gamePlay.hexMap;
     const scenarioParser = this.scenarioParser = new ScenarioParser(hexMap, this.gamePlay);
@@ -242,70 +231,4 @@ export class GameSetup {
     scenarioParser.parseScenario(scenario);
   }
 
-  /** affects the rules of the game & board
-   *
-   * ParamGUI   --> board & rules [under stats panel]
-   * ParamGUI2  --> AI Player     [left of ParamGUI]
-   * NetworkGUI --> network       [below ParamGUI2]
-   */
-  makeParamGUI(parent: Container, x = 0, y = 0) {
-    const gui = new ParamGUI(TP, { textAlign: 'right'});
-    gui.makeParamSpec('hexRad', [30, 60, 90, 120], { fontColor: 'red'}); TP.hexRad;
-    gui.makeParamSpec('nHexes', [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], { fontColor: 'red' }); TP.nHexes;
-    gui.makeParamSpec('mHexes', [1, 2, 3], { fontColor: 'red' }); TP.mHexes;
-    gui.spec("hexRad").onChange = (item: ParamItem) => { this.restart({ hexRad: item.value }) }
-    gui.spec("nHexes").onChange = (item: ParamItem) => { this.restart({ nh: item.value }) }
-    gui.spec("mHexes").onChange = (item: ParamItem) => { this.restart({ mh: item.value }) }
-
-    parent.addChild(gui)
-    gui.x = x // (3*cw+1*ch+6*m) + max(line.width) - (max(choser.width) + 20)
-    gui.y = y
-    gui.makeLines();
-    return gui
-  }
-  /** configures the AI player */
-  makeParamGUI2(parent: Container, x = 0, y = 0) {
-    const gui = new ParamGUI(TP, { textAlign: 'center' })
-    gui.makeParamSpec("log", [-1, 0, 1, 2], { style: { textAlign: 'right' } }); TP.log
-    gui.makeParamSpec("maxPlys", [1, 2, 3, 4, 5, 6, 7, 8], { fontColor: "blue" }); TP.maxPlys
-    gui.makeParamSpec("maxBreadth", [5, 6, 7, 8, 9, 10], { fontColor: "blue" }); TP.maxBreadth
-    parent.addChild(gui)
-    gui.x = x; gui.y = y
-    gui.makeLines()
-    gui.stage.update()
-    return gui
-  }
-  netColor: string = "rgba(160,160,160, .8)"
-  netStyle: DropdownStyle = { textAlign: 'right' };
-  /** controls multiplayer network participation */
-  makeNetworkGUI(parent: Container, x = 0, y = 0) {
-    const gui = this.netGUI = new ParamGUI(TP, this.netStyle)
-    gui.makeParamSpec("Network", [" ", "new", "join", "no", "ref", "cnx"], { fontColor: "red" })
-    gui.makeParamSpec("PlayerId", ["     ", 0, 1, 2, 3, "ref"], { chooser: PidChoice, fontColor: "red" })
-    gui.makeParamSpec("networkGroup", [TP.networkGroup], { chooser: EBC, name: 'gid', fontColor: C.GREEN, style: { textColor: C.BLACK } }); TP.networkGroup
-
-    gui.spec("Network").onChange = (item: ParamItem) => {
-      if (['new', 'join', 'ref'].includes(item.value)) {
-        const group = (gui.findLine('networkGroup').chooser as EBC).editBox.innerText
-        // this.gamePlay.closeNetwork()
-        // this.gamePlay.network(item.value, gui, group)
-      }
-      // if (item.value === "no") this.gamePlay.closeNetwork()     // provoked by ckey
-    }
-    (this.stage.canvas as HTMLCanvasElement)?.parentElement?.addEventListener('paste', (ev) => {
-      const text = ev.clipboardData?.getData('Text');
-      ;(gui.findLine('networkGroup').chooser as EBC).setValue(text)
-    });
-    this.showNetworkGroup()
-    parent.addChild(gui)
-    gui.makeLines()
-    gui.x = x; gui.y = y;
-    parent.stage.update()
-    return gui
-  }
-  showNetworkGroup(group_name = TP.networkGroup) {
-    (document.getElementById('group_name') as HTMLInputElement).innerText = group_name
-    const line = this.netGUI.findLine("networkGroup"), chooser = line?.chooser
-    chooser?.setValue(group_name, chooser.items[0], undefined);
-  }
 }

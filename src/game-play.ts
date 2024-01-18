@@ -61,9 +61,11 @@ export class GamePlay0 {
   get allPlayers() { return Player.allPlayers; }
   get allTiles() { return Tile.allTiles; }
 
-  readonly hexMap = new HexMap<Hex>(TP.hexRad, true, Hex2 as Constructor<Hex>); // create base map; no districts until Table.layoutTable!
-  readonly history: Move[] = []          // sequence of Move that bring board to its state
+  readonly hexMap: HexMap<Hex>;          // created by GameSetup; no districts until Table.layoutTable!
   readonly redoMoves: { hex: Hex | IHex }[] = []
+  // 2 models: move-by-move undo/redo OR write scenario-state to file and reload
+  // [or keep 'state' in-memory and reload from there]
+  // hexline originally did undo/redo; ankh writes/reads Scenario object log_date_time.json
 
   logWriterLine0() {
     const setup = this.gameSetup, thus = this as any as GamePlay, turn = thus.turnNumber;
@@ -76,8 +78,6 @@ export class GamePlay0 {
   /** GamePlay0 - supply GodNames for each: new Player(...). */
   constructor(public gameSetup: GameSetup) {
     this.hexMap = gameSetup.hexMap;
-    this.hexMap.Aname = `mainMap`;
-    //this.hexMap.makeAllDistricts(); // For 'headless'; re-created by Table, after addToMapCont()
   }
 
   turnNumber: number = 0    // = history.lenth + 1 [by this.setNextPlayer]
@@ -200,10 +200,10 @@ export class GamePlay0 {
 export class GamePlay extends GamePlay0 {
   readonly table: Table   // access to GUI (drag/drop) methods.
   /** GamePlay is the GUI-augmented extension of GamePlay0; uses Table */
-  constructor(scenario: Scenario, table: Table, gameSetup: GameSetup) {
+  constructor(gameSetup: GameSetup, scenario: Scenario) {
     super(gameSetup);            // hexMap, history, gStats...
     Tile.gamePlay = this; // table
-    this.table = table;
+    this.table = gameSetup.table;
     if (this.table.stage.canvas) this.bindKeys();
   }
 

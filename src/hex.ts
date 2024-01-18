@@ -431,6 +431,24 @@ export class MapCont extends Container {
       this.addChild(cont);
     })
   }
+
+  /**
+   * Set hexCont(x,y) so hexMap.getBounds() is centered around mapCont(0,0);
+   *
+   * [So hexCont.centerHex is at mapCont(0,0)]
+   *
+   * Move ALL children of mapCont to have that same (x,y) alignment.
+   * @param hexCont use getBounds() of given Container to compute alignment.
+   */
+  centerContainers(hexCont = this.hexCont) {
+    const hexRect = hexCont.getBounds(); // based on aggregate of Hex2.cont.cache(bounds);
+    const { x, y, width, height } = hexRect;
+    const x0 = x + width / 2, y0 = y + height / 2;
+    MapCont.cNames.forEach(cname => {
+      const cont = this[cname];
+      cont.x = -x0; cont.y = -y0
+    })
+  }
 }
 
 export interface HexM<T extends Hex> {
@@ -496,7 +514,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   readonly metaMap = Array<Array<T>>()           // hex0 (center Hex) of each MetaHex, has metaLinks to others.
 
   mark: HexMark | undefined                        // a cached DisplayObject, used by showMark
-  Aname: string = '';
+  Aname: string = 'mainMap';
 
   /**
    * HexMap: TP.nRows X TP.nCols hexes.
@@ -665,20 +683,9 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     this._nh = nh;
     this._mh = mh;
     const hexAry = this.makeDistrict(nh, 0, mh, 0);    // nh hexes on outer ring; single meta-hex
-    this.mapCont.hexCont && this.centerOnContainer();
+    this.mapCont.hexCont && this.mapCont.centerContainers();
     this.hexAry = hexAry;
     return hexAry;
-  }
-  centerOnContainer() {
-    let mapCont = this.mapCont;
-    let hexRect = mapCont.hexCont.getBounds(); // based on aggregate of Hex2.cont.cache(bounds);
-    const { x, y, width, height } = hexRect;
-    let x0 = x + width / 2, y0 = y + height / 2;
-    MapCont.cNames.forEach(cname => {
-      const cont = mapCont[cname];
-      cont.x = -x0; cont.y = -y0
-    })
-    // mapCont.x = x0; mapCont.y = y0;
   }
 
   pickColor(hexAry: Hex2[]): string {
@@ -692,6 +699,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     })
     return HexMap.distColor.find(ci => !adjColor.includes(ci)) ?? 'white'; // or undefined or ...
   }
+
   /**
    * Make one meta-hex district.
    *
@@ -737,6 +745,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     this.setDistrictColor(hexAry, district);
     return hexAry
   }
+
   setDistrictColor(hexAry: T[], district = 0) {
   this.district[district] = hexAry;
     if (hexAry[0] instanceof Hex2) {
@@ -744,6 +753,47 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
       const dcolor = district == 0 ? HexMap.distColor[0] : this.pickColor(hex2Ary)
       hex2Ary.forEach(hex => hex.setHexColor(dcolor)) // makeDistrict: dcolor=lightgrey
     }
+  }
+
+  /**
+   * Make rectangle of hexes (marked with district) created with this.hexC
+   *
+   * rnd == 1 looks best when nc is odd;
+   * @param nr height
+   * @param nc width [nr + 1]
+   * @param district district [0]
+   * @param rnd 0: all, 1: rm end of row 0 (& half of last row!)
+   * @parma half [(rnd === 1) || (nc % 2 === 1)] force/deny final half-row
+   * @param hexAry array in which to push the created Hexes [Array()<T>]
+   * @returns hexAry with the created Hexes pushed (row major)
+   */
+  makeRect(nr: number, nc = nr + 1, rnd = 1, half = (rnd === 1) || (nc % 2 === 1), hexAry: T[] = []): T[] {
+    const hexAryNR = [] as any as (T[] & { Nr: number, Nc: number });
+    hexAryNR['Nr'] = nr; hexAryNR['Nc'] = nc;         // for debugger
+    const district = 0;
+    // nr = 9; nc = 11; rnd = 1; half = (rnd === 1) || (nc % 2 === 1);
+    const ncOdd = (nc % 2) === 0;
+    const c00 = (rnd === 0) ? 0 : 1;
+    const nc0 = (rnd === 0) ? 0 : nc - (ncOdd ? 1 : 2 * c00);
+    this.addRowOfHex(nc0, 0, c00, district, hexAry);
+    for (let row = 1; row < nr - 1; row++) {
+      this.addRowOfHex(nc, row, 0, district, hexAry);
+    }
+    const cf0 = (rnd === 0) ? 0 : 2;
+    const ncf = nc - ((rnd === 0) ? 0 : 3);
+    const di = (half) ? 2 : 1;
+    this.addRowOfHex(ncf, nr - 1, cf0, district, hexAry, di);
+    this.setDistrictColor(hexAry, district);
+    this.hexAry = hexAry;
+    return hexAry;
+  }
+
+  /** create horizontal row using addHex(row, col++, district) */
+  addRowOfHex(n: number, row: number, col: number, district: number, hexAry: Hex[], di = 1): RC {
+    for (let i = 0; i < n; i += di) {
+      hexAry.push(this.addHex(row, col + i, district))
+    }
+    return { row, col };
   }
 
   /**
