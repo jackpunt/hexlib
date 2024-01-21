@@ -17,7 +17,7 @@ export function buildURL(scheme = 'wss', host = TP.ghost, domain = TP.gdomain, p
 }
 export class TP {
   static colorScheme = playerColorRecordF(n => n);
-  static useEwTopo = true;  // spiral districts require useEwTopo === true
+  static useEwTopo = true;
   static cacheTiles = 2;
   static snapToPixel = true;
   static textLogLines = 13;

@@ -115,6 +115,8 @@ export class Table extends EventDispatcher  {
 
   paramGUIs: ParamGUI[];
   netGUI: ParamGUI; // paramGUIs[2]
+  /** initial visibility for toggleText */
+  initialVis = false;
 
   undoCont: Container = new NamedContainer('undoCont');
   undoShape: Shape = new Shape();
@@ -307,7 +309,7 @@ export class Table extends EventDispatcher  {
     const hexMap = this.hexMap = gamePlay.hexMap as any as HexMap<Hex2>; //  as AnkhMap<AnkhHex>
     hexMap.addToMapCont();                   // addToMapCont; make AnkhHex
     hexMap.makeAllDistricts();               //
-    this.gamePlay.recycleHex = this.makeRecycleHex(TP.nHexes + 3.2);
+    // this.gamePlay.recycleHex = this.makeRecycleHex(TP.nHexes + 3.2);
 
     const xywh = this.bgXYWH();              // override bgXYHW() to supply default/arg values
     const hexCont = this.hexMap.mapCont.hexCont, hexp = this.scaleCont;
@@ -320,8 +322,7 @@ export class Table extends EventDispatcher  {
 
     this.setupUndoButtons(55, 60, 45, xywh) // & enableHexInspector()
 
-    const initialVis = false;
-    this.stage.on('drawend', () => setTimeout(() => this.toggleText(initialVis), 10), this, true );
+    this.stage.on('drawend', () => setTimeout(() => this.toggleText(this.initialVis), 10), this, true );
     this.hexMap.update();
     // position turnLog & textLog
     {
@@ -660,12 +661,11 @@ export class Table extends EventDispatcher  {
         }
       };
       tile.markLegal(this, countLegalHexes, ctx);           // delegate to check each potential target
-      this.gamePlay.recycleHex.isLegal = tile.isLegalRecycle(ctx); // do not increment ctx.nLegal!
       tile.moveTo(undefined); // notify source Hex, so it can scale; also triggers nextUnit !!
       this.hexMap.update();
       if (ctx.nLegal === 0) {
         tile.noLegal();
-        if (!this.gamePlay.recycleHex.isLegal) {
+        if (!this.gamePlay.recycleHex?.isLegal) {
           this.stopDragging(); // actually, maybe let it drag, so we can see beneath...
         }
       }
@@ -681,7 +681,7 @@ export class Table extends EventDispatcher  {
     const tile = dobj as Tile;
     tile.dropFunc0(hex as Hex2, this.dragContext);
     tile.markLegal(this); // hex => hex.isLegal = false;
-    this.gamePlay.recycleHex.isLegal = false;
+    // this.gamePlay.recycleHex.isLegal = false;
     this.dragContext.lastShift = undefined;
     this.dragContext.tile = undefined; // mark not dragging
   }
@@ -713,7 +713,7 @@ export class Table extends EventDispatcher  {
    * @param target the DisplayObject being dragged
    * @param xy offset from target to mouse pointer
    */
-  dragTarget(target = this.gamePlay.recycleHex.tile as DisplayObject, xy: XY = { x: TP.hexRad / 2, y: TP.hexRad / 2 }) {
+  dragTarget(target = this.gamePlay.recycleHex?.tile as DisplayObject, xy: XY = { x: TP.hexRad / 2, y: TP.hexRad / 2 }) {
     if (this.isDragging()) {
       this.stopDragging(this.dragContext.targetHex) // drop and make move
     } else if (target) {

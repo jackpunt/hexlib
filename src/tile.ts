@@ -268,7 +268,12 @@ export class Tile extends Tile0 implements Dragable {
   /** state of shiftKey has changed during drag */
   dragShift(shiftKey: boolean | undefined, ctx: DragContext) { }
 
-  markLegal(table: Table, setLegal = (hex: Hex2) => { hex.isLegal = false; }, ctx?: DragContext) {
+  /** with recycleHex: override with:
+   *
+   * - this.gamePlay.recycleHex.isLegal = this.isLegalRecycle(ctx); // do not increment ctx.nLegal!
+   * - OR! class RecycleHex override markLegal to handle this!
+   */
+  markLegal(table: Table, setLegal = (hex: Hex2) => { hex.isLegal = false; }, ctx: DragContext = table.dragContext) {
     table.newHexes.forEach(setLegal);
     table.hexMap.forEachHex(setLegal);
   }

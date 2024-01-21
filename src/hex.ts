@@ -161,9 +161,10 @@ export class Hex {
     this.linkDirs.forEach((dir: HexDir) => this.hexesInDir(dir).filter(hex => !!hex).map(hex => func(hex, dir, this)));
   }
 
-  nextHex(ds: HexDir, ns: number = 1) {
+  /** from this Hex, follow links[ds], ns times. */
+  nextHex(dir: HexDir, ns: number = 1) {
     let hex: Hex | undefined = this;
-    while (!!(hex = hex.links[ds]) && --ns > 0) {  }
+    while (!!(hex = hex.links[dir]) && --ns > 0) {  }
     return hex;
   }
   /** return last Hex on axis in given direction */
@@ -499,11 +500,17 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   private maxCol?: number = undefined               // used by rcLinear
   private minRow?: number = undefined               // to find centerHex
   private maxRow?: number = undefined               // to find centerHex
-  get centerHex() {
-    let cr = Math.floor(((this.maxRow ?? 0) + (this.minRow ?? 0)) / 2)
-    let cc = Math.floor(((this.minCol ?? 0) + (this.maxCol ?? 0)) / 2);
-    return this[cr][cc]; // as Hex2; as T;
+  get centerRC() {
+    const row = Math.floor(((this.maxRow ?? 0) + (this.minRow ?? 0)) / 2);
+    const col = Math.floor(((this.minCol ?? 0) + (this.maxCol ?? 0)) / 2);
+    return {row, col}
   }
+
+  get centerHex() {
+    const { row, col } = this.centerRC;
+    return this[row][col]; // as Hex2; as T;
+  }
+
   // when called, maxRow, etc are defined...
   get nRowCol() { return [(this.maxRow ?? 0) - (this.minRow ?? 0), (this.maxCol ?? 0) - (this.minCol ?? 0)] }
   getCornerHex(dn: HexDir) {
@@ -629,11 +636,13 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return TP.useEwTopo ? H.ewDirs : H.nsDirs;
   }
 
+  /** return a new RC; does not mutate the given RC.
+   * @return RC of adjacent Hex in given direction for given topo.
+   */
   nextRowCol(rc: RC, dir: HexDir, nt: Topo = this.topo(rc)): RC {
     const ntdir = (nt as TopoNS)[dir as NsDir];
     const { dr, dc } = ntdir; // OR (nt as TopoEW[dir as EwDir]) OR simply: nt[dir]
-    let row = rc.row + dr, col = rc.col + dc;
-    return { row, col }
+    return { row: rc.row + dr, col: rc.col + dc };
   }
 
   /** link hex to/from each extant neighor */
@@ -674,20 +683,117 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   get nh() { return this._nh }
   get mh() { return this._mh }
 
+  /** final; set size one time, then it is readonly. */
+  setSize(nh = TP.nHexes, mh = TP.mHexes) {
+    this._nh = nh;
+    this._mh = mh;
+  }
+
+  /** utility for makeAllDistricts; make hex0 at RC */
+  calculateRC0(): RC {
+    // suitable for makeMetaHexes
+    const offs = Math.ceil(this.nh + this.mh * 1.25);
+    return { row: offs, col: offs } // row,col to be non-negative
+  }
+
   /**
-   *
+   * Wrapper for makeAllHexes;
+   * setSize, calculateRC0, makeAllHexes, set this.hexAry, centerContainers()
    * @param nh number of hexes on on edge of metaHex
    * @param mh order of metaHexes (greater than 0);
    */
   makeAllDistricts(nh = TP.nHexes, mh = TP.mHexes) {
-    this._nh = nh;
-    this._mh = mh;
-    const hexAry = this.makeDistrict(nh, 0, mh, 0);    // nh hexes on outer ring; single meta-hex
+    this.setSize(nh, mh);
+    const rc0 = this.calculateRC0();
+    const hexAry = this.hexAry = this.makeAllHexes(nh, 0, rc0);    // nh hexes on outer ring; single meta-hex
     this.mapCont.hexCont && this.mapCont.centerContainers();
-    this.hexAry = hexAry;
     return hexAry;
   }
 
+  /**
+   * overridable action for makeAllDistricts;
+   *
+   * Base implementation invokes makeMetaDistrict(nh, mh, rc0)
+   * @param nh
+   * @param mh
+   * @param rc0
+   * @return hexAry of the created hexes, becomes hexMap.hexAry
+   */
+  makeAllHexes(nh = TP.nHexes, mh = TP.mHexes, rc0: RC) {
+    return this.makeMetaHexRings(nh, mh, rc0);
+  }
+
+  /**
+   * Make the center district, then make (mh-1) rings other meta-hex districts.
+   * @param nh order [number of 'rings'] of meta-hexes (2 or 3 for this game) [TP.mHexes]
+   * @param mh size ['rings' in each meta-hex] of meta-hex (1..6) [TP.nHexes]
+   * @param rc0 location of initial, central Hex
+   * @return
+   */
+  makeMetaHexRings(nh = TP.nHexes, mh = TP.mHexes, rc0: RC) {
+    const dL = nh, dS = (nh - 1), dirs = this.linkDirs;
+    const nextMetaRC = (rc: RC, nd: number): RC => {
+      const dirL = dirs[nd], dirS = dirs[(nd + 5) % 6]; // ring starts at 'dist' from center
+      rc = this.forRCsOnLine(dL, rc, dirL); // step (WS) by dist
+      rc = this.forRCsOnLine(dS, rc, dirS); // step (S) to center of 0-th metaHex
+      return rc;
+    }
+    // do metaRing = 0, district 0:
+    let district = 0, rc = rc0;
+    const hexAry = this.makeMetaHex(nh, district++, rc); // Central District [0]
+
+    for (let metaRing = 1; metaRing < mh; metaRing++) {
+      rc = nextMetaRC(rc, 4); // step in dirs[4] to initial rc (W or WS of previous rc)
+      // from rc, for each dir, step dir to center of next metaHex.
+      dirs.forEach((dirL, nd) => {
+        for (let nhc = 1; nhc <= metaRing; nhc++) {
+          rc = nextMetaRC(rc, nd);
+          const hexAry2 = this.makeMetaHex(nh, district++, rc);
+          hexAry.concat(...hexAry2);
+        }
+      })
+    }
+    return hexAry;
+  }
+
+  /**
+   * Make a single metaHex (district) of order nh, at hex[mr, mc]
+   *
+   * addHex for center and each of nh rings.
+   * @param nh order of the metaHex/district
+   * @param district identifying number of district
+   * @param rc location of center Hex
+   * @return array containing all the added Hexes
+   */
+  makeMetaHex(nh: number, district: number,  rc: RC): T[] {
+    const hexAry = Array<Hex>();
+    hexAry.push(this.addHex(rc.row, rc.col, district)) // The *center* hex of district
+    for (let ring = 1; ring < nh; ring++) {
+      rc = this.nextRowCol(rc, this.linkDirs[4]);
+      // place 'ring' of hexes, addHex along each line:
+      rc = this.ringWalk(rc, ring, this.linkDirs, (rc, dir) => {
+        hexAry.push(this.addHex(rc.row, rc.col, district));
+        return this.nextRowCol(rc, dir);
+      });
+    }
+    this.setDistrictAndPaint(hexAry as T[], district);
+    return hexAry as T[];
+  }
+
+  /**
+   * pickColor and paint all Hexes in hex2Ary
+   *
+   * Optional special color for center hex of each district
+   * @param hex2Aray a Hex2[] of hexes to be colored by pickColor(hexAry)
+   * @param district if district == 0, paint with special distColor[0]
+   * @param cColor color for center hex, else use dcolor from pickColor(hex2Ary)
+   */
+  paintDistrict(hex2Ary: Hex2[], district = 0, cColor?: string) {
+    let dcolor = (district == 0) ? HexMap.distColor[0] : this.pickColor(hex2Ary)
+    hex2Ary.forEach((hex, n) => hex.setHexColor((n == 0) ? cColor ?? dcolor : dcolor));
+  }
+
+  /** find color not used by hex adjacent to given hexAry */
   pickColor(hexAry: Hex2[]): string {
     let hex = hexAry[0]
     let adjColor: string[] = [HexMap.distColor[0]] // colors not to use
@@ -700,68 +806,26 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return HexMap.distColor.find(ci => !adjColor.includes(ci)) ?? 'white'; // or undefined or ...
   }
 
-  /**
-   * Make one meta-hex district.
+
+  /** record hexAry in this.district[district];
    *
-   * rings of this.hexC with topo derived from Hex.topo (TP.useEwTopo)
-   * @param nh order of inner-hex: number hexes on side of meta-hex
-   * @param district identifying number of this district
-   * @param mr make new district on meta-row
-   * @param mc make new district on meta-col
+   * paint each Hex using paintDistrict.
    */
-  makeDistrict(nh: number, district: number, mr: number, mc: number): T[] {
-    const mcp = Math.abs(mc % 2), mrp = Math.abs(mr % 2), dia = 2 * nh - 1;
-    // irow-icol define topology of MetaHex composed of HexDistrict
-    // TODO: generalize using this.topo to compute offsets!
-    const irow = (mr: number, mc: number) => {
-      let ir = mr * dia - nh * (mcp + 1) + 1
-      ir -= Math.floor((mc) / 2)              // - half a row for each metaCol
-      return ir
-    }
-    const icol = (mr: number, mc: number, row: number) => {
-      let np = Math.abs(nh % 2), rp = Math.abs(row % 2)
-      let ic = Math.floor(mc * ((nh * 3 - 1) / 2))
-      ic += (nh - 1)                        // from left edge to center
-      ic -= Math.floor((mc + (2 - np)) / 4) // 4-metaCol means 2-rows, mean 1-col
-      ic += Math.floor((mr - rp) / 2)       // 2-metaRow means +1 col
-      return ic
-    }
-    const hexAry: T[] & { Mr?: number, Mc?: number } = [];
-    hexAry['Mr'] = mr; hexAry['Mc'] = mc;
-
-    const row0 = irow(mr, mc), col0 = icol(mr, mc, row0);
-    hexAry.push(this.addHex(row0, col0, district));  // make centerHex of metaHex
-    //console.groupCollapsed(`makelDistrict [mr: ${mr}, mc: ${mc}] hex0= ${hex.Aname}:${district}-${dcolor}`)
-    //console.log(`.makeDistrict: [mr: ${mr}, mc: ${mc}] hex0= ${hex.Aname}`, hex)
-
-    let rc: RC = { row: row0, col: col0 };
-    for (let ring = 1; ring < nh; ring++) {
-      rc = this.ringWalk(ring, (rc, dir) => {
-        // place 'ring' hexes along each axis-line:
-        return this.newHexesOnLine(ring, rc, dir, district, hexAry)
-      })
-    }
-    //console.groupEnd()
-    this.setDistrictColor(hexAry, district);
-    return hexAry
-  }
-
-  setDistrictColor(hexAry: T[], district = 0) {
-  this.district[district] = hexAry;
+  setDistrictAndPaint(hexAry: T[], district = 0) {
+    this.district[district] = hexAry;
     if (hexAry[0] instanceof Hex2) {
-      const hex2Ary = hexAry as any as Hex2[];
-      const dcolor = district == 0 ? HexMap.distColor[0] : this.pickColor(hex2Ary)
-      hex2Ary.forEach(hex => hex.setHexColor(dcolor)) // makeDistrict: dcolor=lightgrey
+      this.paintDistrict(hexAry as any as Hex2[], district);
     }
   }
 
   /**
-   * Make rectangle of hexes (marked with district) created with this.hexC
+   * Make rectangle of hexes created with this.hexC.
+   *
+   * Note: district = 0; hexAry.forEach() to set alternate district.
    *
    * rnd == 1 looks best when nc is odd;
    * @param nr height
    * @param nc width [nr + 1]
-   * @param district district [0]
    * @param rnd 0: all, 1: rm end of row 0 (& half of last row!)
    * @parma half [(rnd === 1) || (nc % 2 === 1)] force/deny final half-row
    * @param hexAry array in which to push the created Hexes [Array()<T>]
@@ -775,25 +839,31 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     const ncOdd = (nc % 2) === 0;
     const c00 = (rnd === 0) ? 0 : 1;
     const nc0 = (rnd === 0) ? 0 : nc - (ncOdd ? 1 : 2 * c00);
-    this.addRowOfHex(nc0, 0, c00, district, hexAry);
+    this.addLineOfHex(nc0, 0, c00, district, hexAry);
     for (let row = 1; row < nr - 1; row++) {
-      this.addRowOfHex(nc, row, 0, district, hexAry);
+      this.addLineOfHex(nc, row, 0, district, hexAry);
     }
     const cf0 = (rnd === 0) ? 0 : 2;
     const ncf = nc - ((rnd === 0) ? 0 : 3);
-    const di = (half) ? 2 : 1;
-    this.addRowOfHex(ncf, nr - 1, cf0, district, hexAry, di);
-    this.setDistrictColor(hexAry, district);
-    this.hexAry = hexAry;
+    const dc = (half) ? 2 : 1;
+    this.addLineOfHex(ncf, nr - 1, cf0, district, hexAry, dc);
+    this.setDistrictAndPaint(hexAry, district);
     return hexAry;
   }
 
-  /** create horizontal row using addHex(row, col++, district) */
-  addRowOfHex(n: number, row: number, col: number, district: number, hexAry: Hex[], di = 1): RC {
-    for (let i = 0; i < n; i += di) {
-      hexAry.push(this.addHex(row, col + i, district))
+  /**
+   * create horizontal row using hexAry.push(addHex(row, col++dc, district))
+   * @param maxc max col to use (esp when dc > 1)
+   * @param row
+   * @param col
+   * @param district
+   * @param hexAry
+   * @param dc delta to column [1]
+   */
+  addLineOfHex(maxc: number, row: number, col: number, district: number, hexAry: Hex[], dc = 1) {
+    for (let i = 0; i < maxc; i += dc) {
+      hexAry.push(this.addHex(row, col + i, district));
     }
-    return { row, col };
   }
 
   /**
@@ -806,52 +876,32 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param n number of Hex locations to select
    * @param rc {row, col} of selected location
    * @param dir from rc, move by dir to next location
-   * @param f do 'whatever'; must return the given RC [or other RC seed for nextRowCol()!]
-   * @returns RC of n+1-th Hex on the line (where you typically change to next dir)
+   * @param f do 'whatever' based on RC
+   * @returns nextRowCol(rc, dir) from the last rc of the line.
    */
-  forRCsOnLine(n: number, rc: RC, dir: HexDir, f: (rc: RC) => RC): RC {
+  forRCsOnLine(n: number, rc: RC, dir: HexDir, f = (rc: RC) => {}) {
     for (let i = 0; i < n; i++) {
-      rc = this.nextRowCol(f(rc), dir);
+      f(rc);
+      rc = this.nextRowCol(rc, dir);
     }
     return rc;
   }
 
   /**
-   * Used to create rings of new Hex: this.addHex(row, col, district)
-   * @param n number of Hex to create
-   * @param rc create first Hex in given RC location
-   * @param dir after first Hex move dir for each next Hex
-   * @param district supplied to addHex()
-   * @param hexAry push created Hex(s) on this array
-   * @returns RC of next Hex location on line (typically use next direction and continue...)
-   */
-  newHexesOnLine(n: number, rc: RC, dir: HexDir, district: number, hexAry: Hex[]): RC {
-    let hex: Hex;
-    return this.forRCsOnLine(n, rc, dir, (rc: RC) => {
-      hexAry.push(hex = this.addHex(rc.row, rc.col, district));
-      return rc;
-    })
-  }
-
-  /**
-   * Apply f(rc, dir) to each of 'n' RCs on nth ring.
+   * Apply f(rc, dir) to each of 'n' lines of RCs on nth ring.
    * Step from centerHex by dirs[4], do a line for each dir in dirs.
    *
    * - if topoEW: step to W; make lines going NE, E, SE, SW, W, NW
    * - if topoNS: step to WS; make lines going N, EN, ES, S, WS, WN
-   * @param n ring number
-   * @param f (RC, dir) => void
+   * @param rc start of first line (heading dirs[0])
+   * @param n ring number; number of hexes per line
    * @param dirs [this.linkDirs] each topo dirs in [clockwise] order.
+   * @param f (RC, dir) => void
    * @return the *next* RC on the final line (so can easily spiral)
    */
-  ringWalk(n: number, f: (rc: RC, dir: HexDir) => void, dirs = this.linkDirs) {
-    const startHex = this.centerHex.nextHex(dirs[4], n) as Hex;
-    let rc = { row: startHex.row, col: startHex.col };
+  ringWalk(rc: RC, n: number, dirs = this.linkDirs, f: (rc: RC, dir: HexDir) => void) {
     dirs.forEach(dir => {
-      rc = this.forRCsOnLine(n, rc, dir, (rc) => {
-        f(rc, dir);
-        return rc;
-      });
+      rc = this.forRCsOnLine(n, rc, dir, (rc) => f(rc, dir));
     });
     return rc;
   }

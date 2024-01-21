@@ -163,7 +163,10 @@ export class GamePlay0 {
   }
 
   /**
-   * Move tile to hex (or recycle), updating influence.
+   * Move tile to hex (or recycle).
+   *
+   * - hexline/anhk would check recycleHex; (see placeEither2)
+   * - hexline would then update influence;
    *
    * Tile.dropFunc() -> Tile.placeTile() -> gp.placeEither()
    * @param tile ignore if undefined
@@ -171,10 +174,16 @@ export class GamePlay0 {
    * @param payCost commit and verify payment
    */
   placeEither(tile: Tile, toHex: Hex1 | undefined, payCost?: boolean) {
+    tile?.moveTo(toHex);  // placeEither(tile, hex) --> moveTo(hex)
+  }
+
+  // advise or overload placeEither to look for RecycleHex...
+  placeEither2(tile: Tile, toHex: Hex1 | undefined, payCost?: boolean) {
     if (!tile) return;
     const fromHex = tile.fromHex;
     if (toHex !== fromHex) this.logText(`${tile} -> ${toHex}`, `gamePlay.placeEither`)
-    tile.moveTo(toHex);  // placeEither(tile, hex) --> moveTo(hex)
+    // super.placeEither(tile, toHex, payCost);
+    this.placeEither(tile, toHex, payCost);
     if (toHex === this.recycleHex) {
       this.logText(`Recycle ${tile} from ${fromHex?.Aname || '?'}`, `gamePlay.placeEither`)
       this.recycleTile(tile);    // Score capture; log; return to homeHex
