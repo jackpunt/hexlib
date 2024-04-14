@@ -3,7 +3,7 @@ import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape,
 import { NamedContainer, NamedObject, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
 import type { GameState } from "./game-state";
-import { Hex, Hex2, HexMap, IHex, RecycleHex } from "./hex";
+import { Hex, Hex2, HexMap, IdHex, RecycleHex } from "./hex";
 import { XYWH } from "./hex-intfs";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
@@ -18,8 +18,6 @@ function firstChar(s: string, uc = true) { return uc ? s.substring(0, 1).toUpper
 
 export type EventName = 'Claim' | 'Split' | 'Conflict' | 'merge' | 'redzone';
 export interface ActionButton extends Container { isEvent: boolean, pid: number, rollover?: ((b: ActionButton, over: boolean) => void) }
-interface EventIcon extends Container { eventName: EventName, pid: number; special: 'merge' | 'redzone' }
-interface ScoreMark extends RectShape { score: number, rank: number }
 
 export interface Dragable {
   dragFunc0(hex: Hex2, ctx: DragContext): void;
@@ -97,14 +95,15 @@ class TextLog extends NamedContainer {
 }
 
 /** layout display components, setup callbacks to GamePlay */
-export class Table extends EventDispatcher  {
+export class Table {
   static table: Table
   static stageTable(obj: DisplayObject) {
     return (obj.stage as StageTable).table
   }
 
+  disp: EventDispatcher;
   namedOn(Aname: string, type: string, listener: (eventObj: Object) => boolean, scope?: Object, once?: boolean, data?: any, useCapture = false) {
-    const list2 = this.on(type, listener, scope, once, data, useCapture) as NamedObject;
+    const list2 = this.disp.on(type, listener, scope, once, data, useCapture) as NamedObject;
     list2.Aname = Aname;
   }
 
@@ -131,7 +130,9 @@ export class Table extends EventDispatcher  {
 
   overlayCont = new Container();
   constructor(stage: Stage) {
-    super();
+    // super();
+    EventDispatcher.initialize(this);
+    this.disp = (this as any as EventDispatcher);
     this.overlayCont.name = 'overlay';
     // backpointer so Containers can find their Table (& curMark)
     Table.table = (stage as StageTable).table = this;
@@ -335,7 +336,7 @@ export class Table extends EventDispatcher  {
       parent.stage.update()
     }
 
-    this.namedOn("playerMoveEvent",S.add, this.gamePlay.playerMoveEvent, this.gamePlay)
+    this.namedOn("playerMoveEvent", S.add, this.gamePlay.playerMoveEvent, this.gamePlay)
   }
 
   // col locations, left-right mirrored:
@@ -749,10 +750,10 @@ export class Table extends EventDispatcher  {
    *
    * New: let Ship (Drag & Drop) do this.
    */
-  doTableMove(ihex: IHex) {
+  doTableMove(ihex: IdHex) {
   }
   /** All moves (GUI & player) feed through this: */
-  moveStoneToHex(ihex: IHex, sc: PlayerColor) {
+  moveStoneToHex(ihex: IdHex, sc: PlayerColor) {
     // let hex = Hex.ofMap(ihex, this.hexMap)
     // this.hexMap.showMark(hex)
     // this.dispatchEvent(new HexEvent(S.add, hex, sc)) // -> GamePlay.playerMoveEvent(hex, sc)

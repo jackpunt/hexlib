@@ -1,9 +1,9 @@
-import { Constructor, json } from "@thegraid/common-lib";
+import { json } from "@thegraid/common-lib";
 import { KeyBinder, S, Undo, blinkAndThen, stime } from "@thegraid/easeljs-lib";
 import { Container } from "@thegraid/easeljs-module";
 import type { GameSetup, Scenario } from "./game-setup";
 import { GameState } from "./game-state";
-import { Hex, Hex1, Hex2, HexMap, IHex } from "./hex";
+import { Hex, Hex1, HexMap, IdHex } from "./hex";
 import { Meeple } from "./meeple";
 import { Planner } from "./plan-proxy";
 import { Player } from "./player";
@@ -23,7 +23,9 @@ export class NamedContainer extends Container implements NamedObject {
 }
 
 class HexEvent {}
-class Move{
+
+/** moves also identified by IHex | Hex, indicating where stone was placed. */
+class Move {
   Aname: string = "";
   ind: number = 0;
   board: any = {};
@@ -31,6 +33,7 @@ class Move{
 
 /** Implement game, enforce the rules, manage GameStats & hexMap; no GUI/Table required.
  *
+ * From HexTowns: https://docs.google.com/document/d/1CzI70mpnrnBlvHHgcQowulyS-WOJTF06mFv1G2uu5CI/edit
  * Actions are:
  * - Reserve: place one Tile from auction to Player reserve
  * - Recruit: place a Builder/Leader (in Civic);
@@ -62,7 +65,7 @@ export class GamePlay0 {
   get allTiles() { return Tile.allTiles; }
 
   readonly hexMap: HexMap<Hex>;          // created by GameSetup; no districts until Table.layoutTable!
-  readonly redoMoves: { hex: Hex | IHex }[] = []
+  readonly redoMoves: { hex: Hex | IdHex }[] = []
   // 2 models: move-by-move undo/redo OR write scenario-state to file and reload
   // [or keep 'state' in-memory and reload from there]
   // hexline originally did undo/redo; ankh writes/reads Scenario object log_date_time.json
@@ -447,7 +450,7 @@ export class GamePlay extends GamePlay0 {
     this.showRedoMark()
     this.hexMap.update()
   }
-  showRedoMark(hex: IHex | Hex = this.redoMoves[0]?.hex) {
+  showRedoMark(hex: IdHex | Hex = this.redoMoves[0]?.hex) {
     if (!!hex) { // unless Skip or Resign...
       this.hexMap.showMark((hex instanceof Hex) ? hex : Hex.ofMap(hex, this.hexMap))
     }

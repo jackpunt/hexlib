@@ -10,12 +10,13 @@ import { NamedObject } from "./game-play";
 
 export const S_Resign = 'Hex@Resign'
 export const S_Skip = 'Hex@skip '
-export type IHex = { Aname: string, row: number, col: number }
+/** serializable Hex ID; identify a Hex by {row, col}, used in Move? see also: RC */
+export type IdHex = { Aname: string, row: number, col: number }
 
 export type HexConstructor<T extends Hex> = new (map: HexMap<T>, row: number, col: number, name?: string) => T;
 // Note: graphics.drawPolyStar(x,y,radius, sides, pointSize, angle) will do a regular polygon
 
-type LINKS<T extends Hex> = { [key in HexDir]?: T }
+export type LINKS<T extends Hex> = { [key in HexDir]?: T }
 //type DCR    = { [key in "dc" | "dr"]: number }  // Delta for Col & Row
 type DCR = { dc: number, dr: number };
 type TopoEW = { [key in EwDir]: DCR }
@@ -26,7 +27,7 @@ export type HSC = { hex: Hex, sc: PlayerColor, Aname: string }
 export function newHSC(hex: Hex, sc: PlayerColor, Aname = hex.Aname) { return { Aname, hex, sc } }
 
 /** to recognize this class in hexUnderPoint and obtain the associated Hex2. */
-class HexCont extends Container {
+export class HexCont extends Container {
   constructor(public hex2: Hex2) {
     super()
   }
@@ -37,7 +38,7 @@ class HexCont extends Container {
  */
 export class Hex {
   /** return indicated Hex from otherMap */
-  static ofMap(ihex: IHex, otherMap: HexMap<Hex>) {
+  static ofMap(ihex: IdHex, otherMap: HexMap<Hex>) {
     try {
       return otherMap[ihex.row][ihex.col]
     } catch (err) {
@@ -48,7 +49,7 @@ export class Hex {
   static aname(row: number, col: number) {
     return (row >= 0) ? `Hex@[${row},${col}]` : col == -1 ? S_Skip : S_Resign
   }
-  constructor(map: HexMap<Hex>, row: number, col: number, name = Hex.aname(row, col)) {
+  constructor(map: HexM<Hex>, row: number, col: number, name = Hex.aname(row, col)) {
     this.Aname = name
     this.map = map
     this.row = row
@@ -87,7 +88,7 @@ export class Hex {
   Aname: string;
 
   /** reduce to serializable IHex (removes map, inf, links, etc) */
-  get iHex(): IHex { return { Aname: this.Aname, row: this.row, col: this.col } }
+  get iHex(): IdHex { return { Aname: this.Aname, row: this.row, col: this.col } }
   protected nf(n: number) { return `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`; }
   /** [row,col] OR special name */
   get rcs(): string { return (this.row >= 0) ? `[${this.nf(this.row)},${this.nf(this.col)}]` : this.Aname.substring(4)}
@@ -110,15 +111,16 @@ export class Hex {
   get isLegal() { return this._isLegal; }
   set isLegal(v: boolean) { this._isLegal = v; }
 
-  readonly map: HexMap<Hex>;  // Note: this.parent == this.map.hexCont [cached] TODO: typify ??
+  readonly map: HexM<Hex>;  // Note: this.parent == this.map.hexCont [cached] TODO: typify ??
   readonly row: number;
   readonly col: number;
   /** Link to neighbor in each H.dirs direction [NE, E, SE, SW, W, NW] */
   readonly links: LINKS<this> = {}
+  metaLinks: LINKS<this>;     // defined only for the center Hex of a metaHex
 
   get linkDirs() { return Object.keys(this.links) as HexDir[];}
 
-  /** colorScheme(playerColor)@rcs */
+  /** Hex(playerColor)@rcs */
   toString() {
     return `Hex@${this.rcs}` // hex.toString => Hex@[r,c] | Hex@Skip , Hex@Resign
   }
@@ -198,13 +200,13 @@ export class Hex1 extends Hex {
 
   get occupied(): [Tile | undefined, Meeple | undefined] | undefined { return (this.tile || this.meep) ? [this.tile, this.meep] : undefined; }
 
-  /** colorScheme(playerColor)@rcs */
-  override toString(sc = this.tile?.player?.color || this.meep?.player?.color) {
-    return `${sc ?? 'Empty'}@${this.rcs}` // hex.toString => COLOR@[r,c] | COLOR@Skip , COLOR@Resign
+  /** COLOR@[r,c]; COLOR = this.(tile??meep).player.color ?? Empty */
+  override toString(color = (this.tile ?? this.meep)?.player?.color ?? 'Empty') {
+    return `${color}@${this.rcs}` // hex.toString => COLOR@[r,c] | COLOR@Skip , COLOR@Resign
   }
-  /** hex.rcspString => COLOR@[ r, c] | 'COLOR@Skip   ' , 'COLOR@Resign ' */
-  override rcspString(sc = this.tile?.player?.color || this.meep?.player?.color) {
-    return `${sc ?? 'Empty'}@${this.rcsp}`
+  /** COLOR@[ r, c] or COLOR@Name */
+  override rcspString(color = (this.tile ?? this.meep)?.player?.color ?? 'Empty') {
+    return `${color}@${this.rcsp}`
   }
 }
 
@@ -235,7 +237,7 @@ export class Hex2 extends Hex1 {
   rcText: Text      // shown on this.cont
 
   setUnit(unit: Tile, meep = false) {
-    const cont: Container = this.map.mapCont.tileCont, x = this.x, y = this.y;
+    const cont: Container = this.mapCont.tileCont, x = this.x, y = this.y;
     let k = true;     // debug double tile
     const this_unit = (meep ? this.meep : this.tile)
     if (unit !== undefined && this_unit !== undefined && !(meep && this_unit.recycleVerb === 'demolished')) {
@@ -269,7 +271,7 @@ export class Hex2 extends Hex1 {
    * - rcText: '(r,c)' slightly above center, WHITE
    * - distText: initially distText.text = `${district}` slightly below center, BLACK
    */
-  constructor(map: HexMap<Hex2>, row: number, col: number, name?: string) {
+  constructor(map: HexM<Hex2>, row: number, col: number, name?: string) {
     super(map, row, col, name);
     this.initCont(row, col);
     map?.mapCont.hexCont.addChild(this.cont);
@@ -289,7 +291,7 @@ export class Hex2 extends Hex1 {
   }
 
   /** set visibility of rcText & distText */
-  showText(vis = this.rcText.visible) {
+  showText(vis = !this.rcText.visible) {
     this.rcText.visible = this.distText.visible = vis;
     this.cont.updateCache();
   }
@@ -314,7 +316,7 @@ export class Hex2 extends Hex1 {
   }
 
   makeHexShape(shape: Constructor<HexShape> = HexShape) {
-    const hs = new shape(this.radius, this.map.topoRot);
+    const hs = new shape(this.radius);
     this.cont.addChildAt(hs, 0);
     this.cont.hitArea = hs;
     hs.paint('grey');
@@ -366,69 +368,91 @@ export class Hex2 extends Hex1 {
 
 export class RecycleHex extends Hex2 { }
 
-/** for contrast paint it black AND white, leave a hole in the middle unpainted. */
+/**
+ * A HexShape/PaintableShape to indicate selected hex of HexMap.
+ *
+ * For contrast paint it (GREY,.3), leave a hole in the middle unpainted.
+ *
+ * @param radius of this HexShape
+ * @param radius0 of removed circle
+ * @param cm of HexShape/ring for mark ['rgba(127,127,127,.3)']
+ */
 export class HexMark extends HexShape {
-  hex: Hex2;
-  constructor(public hexMap: HexMap<Hex2>, radius: number, radius0: number = 0) {
+  hex?: Hex2;
+  constructor(radius: number, radius0 = 0, cm = 'rgba(127,127,127,.3)') {
     super(radius);
-    const mark = this;
-    const cm = "rgba(127,127,127,.3)";
-    mark.graphics.f(cm).dp(0, 0, this.radius, 6, 0, this.tilt);
-    mark.cache(-radius, -radius, 2 * radius, 2 * radius)
-    mark.graphics.c().f(C.BLACK).dc(0, 0, radius0)
-    mark.updateCache("destination-out")
-    mark.setHexBounds();
-    mark.mouseEnabled = false;
+    this.graphics.f(cm).dp(0, 0, this.radius, 6, 0, this.tilt);
+    this.cache(-radius, -radius, 2 * radius, 2 * radius)
+    this.graphics.c().f(C.BLACK).dc(0, 0, radius0)
+    this.updateCache("destination-out")
+    this.setHexBounds();      // bounds are based on readonly, should be const
+    this.mouseEnabled = false;
   }
-
-  override paint(color: string): Graphics {
-    this.setHexBounds();
-    return this.graphics;   // do not repaint.
-  }
+  // don't invoke Mark.paint(new_color); TODO: remove this override.
+  // override paint(color: string): Graphics {
+  //   this.setHexBounds();    // <--- likely redundant, see HexSHape
+  //   return this.graphics;   // do not repaint.
+  // }
 
   // Fail: markCont to be 'above' tileCont...
-  showOn(hex: Hex2) {
+  /**
+   * Show or hide mark on given hex; and hex.updateCache.
+   *
+   * (this.hex = hex) ? hex.cont.addChild(this.cont) : this.visible = false
+   */
+  showOn(hex: Hex2 | undefined) {
     // when mark is NOT showing, this.visible === false && this.hex === undefined.
     // when mark IS showing, this.visible === true && (this.hex instanceof Hex2)
     if (this.hex === hex) return;
-    if (this.hex) {
+    let ohex = this.hex, map = ohex?.map;
+    if (ohex) {
       this.visible = false;
-      if (!this.hex.cont.cacheID) debugger;
-      this.hex.cont.updateCache();
+      if (!ohex.cont.cacheID) debugger;
+      ohex.cont.updateCache();
+      map = ohex.map;
     }
-    this.hex = hex;
-    if (this.hex) {
+    if (hex) {
       this.visible = true;
       hex.cont.addChild(this);
       if (!hex.cont.cacheID) debugger;
       hex.cont.updateCache();
+      map = hex.map;
     }
-    this.hexMap.update();
+    this.hex = hex;
+    map?.update(); // remove old hex, add new hex
   }
 }
 
+type ContName = 'hexCont' | 'markCont';
+/** MapCont is an empty Container until .addContainers(cNames) */
 export class MapCont extends Container {
-  constructor(public hexMap: HexMap<Hex2>) {
+  constructor() {
     super()
     this.name = 'mapCont';
   }
-  static cNames = ['resaCont', 'hexCont', 'infCont', 'tileCont', 'markCont', 'capCont', 'counterCont', 'eventCont'] as const;
+
+  /** initial, default, readonly Container names, fields */
+  static cNames = ['resaCont', 'hexCont', 'tileCont', 'markCont', 'counterCont'] as const;
+  /** actual cNames being used for this MapCont, set in addContainers() */
+  private _cNames: string[] = MapCont.cNames.concat();
+  get cNames() { return this._cNames; }
   resaCont: Container    // playerPanels
   hexCont: Container     // hex shapes on bottom stats: addChild(dsText), parent.rotation
-  infCont: Container     // infMark below tileCont; Hex2.showInf
+  // infCont: Container  // infMark below tileCont; Hex2.showInf
   tileCont: Container    // Tiles & Meeples on Hex2/HexMap.
   markCont: Container    // showMark over Hex2; LegalMark
-  capCont: Container     // for tile.capMark
+  // capCont: Container  // for tile.capMark
   counterCont: Container // counters for AuctionCont
-  eventCont: Container   // the eventHex & and whatever Tile is on it...
+  // eventCont: Container// the eventHex & and whatever Tile is on it...
 
   /** add all the layers of Containers. */
-  addContainers() {
+  addContainers(cNames: readonly string[] = this.cNames) {
+    this._cNames = cNames.concat();
     this.removeAllChildren();
-    MapCont.cNames.forEach(cname => {
+    this.cNames.forEach(cname => {
       const cont = new Container();
       (cont as NamedObject).Aname = cont.name = cname;
-      this[cname] = cont;
+      this[cname as ContName] = cont;
       this.addChild(cont);
     })
   }
@@ -436,31 +460,32 @@ export class MapCont extends Container {
   /**
    * Set hexCont(x,y) so hexMap.getBounds() is centered around mapCont(0,0);
    *
-   * [So hexCont.centerHex is at mapCont(0,0)]
+   * [Generally, hexCont.centerHex is ~ mapCont(0,0)]
    *
-   * Move ALL children of mapCont to have that same (x,y) alignment.
-   * @param hexCont use getBounds() of given Container to compute alignment.
+   * Move ALL children of this MapCont to have that same (x,y) alignment.
+   * @param bounds [hexCont.getBounds()] align containers to center of given bounds.
    */
-  centerContainers(hexCont = this.hexCont) {
-    const hexRect = hexCont.getBounds(); // based on aggregate of Hex2.cont.cache(bounds);
-    const { x, y, width, height } = hexRect;
+  centerContainers(bounds = this.hexCont.getBounds()) {
+    // based on aggregate of all added Hex2.cont; == the .cache(bounds);
+    const { x, y, width, height } = bounds;
     const x0 = x + width / 2, y0 = y + height / 2;
-    MapCont.cNames.forEach(cname => {
-      const cont = this[cname];
+    this.cNames.forEach(cname => {
+      const cont = this[cname as ContName];
       cont.x = -x0; cont.y = -y0
     })
   }
 }
 
 export interface HexM<T extends Hex> {
+  allStones: HSC[]
   readonly district: T[][]        // all the Hex in a given district
   readonly mapCont: MapCont
   rcLinear(row: number, col: number): number
   forEachHex<K extends T>(fn: (hex: K) => void): void // stats forEachHex(incCounters(hex))
   update(): void
-  showMark(hex: T): void
-
+  showMark(hex?: T): void
 }
+
 /**
  * Collection of Hex *and* Graphics-Containers for Hex2
  * allStones: HSC[] and districts: Hex[]
@@ -477,11 +502,27 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   // A color for each District: 'rgb(198,198,198)'
   static readonly distColor = ['lightgrey',"limegreen","deepskyblue","rgb(255,165,0)","violet","rgb(250,80,80)","yellow"]
 
+  /**
+   * HexMap: TP.nRows X TP.nCols hexes.
+   *
+   * Basic map is non-GUI, addToMapCont uses Hex2 elements to enable GUI interaction.
+   * @param addToMapCont use Hex2 for Hex, make Containers: hexCont, infCont, markCont, stoneCont
+   * @param hexC Constructor<T> for the Hex elements (typed as HexConstructor<Hex> for Typescript...)
+   */
+  constructor(radius: number = TP.hexRad, addToMapCont = false,
+      public hexC: HexConstructor<Hex> = Hex,
+      public Aname: string = 'mainMap') //
+  {
+    super(); // Array<Array<Hex>>()
+    this.radius = radius;
+    if (addToMapCont) this.addToMapCont(this.hexC as Constructor<T>);
+  }
+
   get asHex2Map() { return this as any as HexMap<Hex2> }
   /** Each occupied Hex, with the occupying PlayerColor  */
   readonly district: Array<T[]> = []
   hexAry: T[];  // set by makeAllDistricts()
-  readonly mapCont: MapCont = new MapCont(this.asHex2Map);   // if/when using Hex2
+  readonly mapCont: MapCont = new MapCont();   // if/when using Hex2
 
   //
   //                         |    //                         |    //                         |
@@ -491,6 +532,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   //  -----------------------+    //  -----------------------+    //  -----------------------+
   //         sqrt3                //         sqrt3/2              //         1
   //
+  allStones: HSC[] = [];
 
   readonly radius = TP.hexRad
   /** return this.centerHex.xywh() for this.topo */
@@ -518,50 +560,29 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
   rcLinear(row: number, col: number): number { return col + row * (1 + (this.maxCol ?? 0) - (this.minCol ?? 0)) }
 
-  readonly metaMap = Array<Array<T>>()           // hex0 (center Hex) of each MetaHex, has metaLinks to others.
-
   mark: HexMark | undefined                        // a cached DisplayObject, used by showMark
-  Aname: string = 'mainMap';
-
-  /**
-   * HexMap: TP.nRows X TP.nCols hexes.
-   *
-   * Basic map is non-GUI, addToMapCont uses Hex2 elements to enable GUI interaction.
-   * @param addToMapCont use Hex2 for Hex, make Containers: hexCont, infCont, markCont, stoneCont
-   * @param hexC Constructor<T> for the Hex elements (typed as HexConstructor<Hex> for Typescript...)
-   */
-  constructor(radius: number = TP.hexRad, addToMapCont = false,
-      public hexC: HexConstructor<Hex> = Hex) //
-  {
-    super(); // Array<Array<Hex>>()
-    this.radius = radius;
-    if (addToMapCont) this.addToMapCont(this.hexC as Constructor<T>);
-  }
-
-  // the 'tilt' to apply to a HexShape to align with map.topo:
-  get topoRot() { return TP.useEwTopo ? 30 : 0 }
 
   makeMark() {
-    const mark = new HexMark(this.asHex2Map, this.radius, this.radius/2.5);
+    const mark = new HexMark(this.radius, this.radius/2.5);
     return mark;
   }
 
   /** create/attach Graphical components for HexMap */
-  addToMapCont(hexC?: Constructor<T>): this {
+  addToMapCont(hexC?: Constructor<T>, cNames?: readonly string[]): this {
     if (hexC) this.hexC = hexC;
+    this.mapCont.addContainers(cNames);
     this.mark = this.makeMark();
-    this.mapCont.addContainers();
-    return this
+    return this;
   }
 
-  /** ...stage.update() */
+  /** ...stage?.update() */
   update() {
-    this.mapCont.hexCont.updateCache()  // when toggleText: hexInspector
-    this.mapCont.hexCont.parent?.stage.update()
+    this.mapCont?.hexCont?.updateCache()  // when toggleText: hexInspector
+    this.mapCont?.stage?.update()
   }
 
   /** to build this HexMap: create Hex (or Hex2) and link it to neighbors. */
-  addHex(row: number, col: number, district: number, hexC = this.hexC as Constructor<T>): T {
+  addHex(row: number, col: number, district: number | undefined, hexC = <Constructor<T>> this.hexC): T {
     // If we have an on-screen Container, then use Hex2: (addToMapCont *before* makeAllDistricts)
     const hex = new hexC(this, row, col);
     hex.district = district // and set Hex2.districtText
@@ -645,6 +666,23 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return { row: rc.row + dr, col: rc.col + dc };
   }
 
+  readonly metaMap = Array<Array<T>>()           // hex0 (center Hex) of each MetaHex, has metaLinks to others.
+
+  addMetaHex(hex: T, mrc: RC) {
+    const metaMap = this.metaMap, { row: mr, col: mc } = mrc;
+    if (metaMap[mr] === undefined) metaMap[mr] = new Array<T>()
+    if (metaMap[mr][mc] === undefined) metaMap[mr][mc] = hex;
+    this.metaLink(hex, {row: mr, col: mc})
+  }
+
+  /** link metaHex on metaMap; maybe need ewTopo for nh==1 ?? */
+  metaLink(hex: T, rc: RC) {
+    // planner expects Dir1 & Dir2 in NsDir; nextMetaRC.mrc: NsDir
+    let nt = (this.nh == 0) ? H.ewTopo(rc) : H.nsTopo(rc); // always nsTopo!!
+    if (!hex.metaLinks) hex.metaLinks = {};
+    this.link(hex, rc, this.metaMap, nt, (hex) => hex.metaLinks)
+  }
+
   /** link hex to/from each extant neighor */
   link(hex: T, rc: RC = hex, map: T[][] = this, nt: Topo = this.topo(rc), lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
     const topoDirs = Object.keys(nt) as Array<HexDir>
@@ -692,7 +730,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   /** utility for makeAllDistricts; make hex0 at RC */
   calculateRC0(): RC {
     // suitable for makeMetaHexes
-    const offs = Math.ceil(this.nh + this.mh * 1.25);
+    const offs = Math.ceil(2 * this.nh * (this.mh - .5)); // row incr could be smaller for EwTopo
     return { row: offs, col: offs } // row,col to be non-negative
   }
 
@@ -705,7 +743,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   makeAllDistricts(nh = TP.nHexes, mh = TP.mHexes) {
     this.setSize(nh, mh);
     const rc0 = this.calculateRC0();
-    const hexAry = this.hexAry = this.makeAllHexes(nh, 0, rc0);    // nh hexes on outer ring; single meta-hex
+    const hexAry = this.hexAry = this.makeAllHexes(nh, mh, rc0);    // nh hexes on outer ring; single meta-hex
     this.mapCont.hexCont && this.mapCont.centerContainers();
     return hexAry;
   }
@@ -730,17 +768,18 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param rc0 location of initial, central Hex
    * @return
    */
-  makeMetaHexRings(nh = TP.nHexes, mh = TP.mHexes, rc0: RC) {
+  makeMetaHexRings(nh = TP.nHexes, mh = TP.mHexes, rc0: RC, mrc = { row: 0, col: 0 }) {
     const dL = nh, dS = (nh - 1), dirs = this.linkDirs;
     const nextMetaRC = (rc: RC, nd: number): RC => {
-      const dirL = dirs[nd], dirS = dirs[(nd + 5) % 6]; // ring starts at 'dist' from center
+      const dirL = dirs[nd], dirS = dirs[(nd + 5) % 6], metaD = H.nsDirs[(nd + 5) % 6];
       rc = this.forRCsOnLine(dL, rc, dirL); // step (WS) by dist
       rc = this.forRCsOnLine(dS, rc, dirS); // step (S) to center of 0-th metaHex
+      mrc = this.nextRowCol(mrc, metaD, H.nsTopo(mrc)); // metaMap uses nsTopo!
       return rc;
     }
     // do metaRing = 0, district 0:
     let district = 0, rc = rc0;
-    const hexAry = this.makeMetaHex(nh, district++, rc); // Central District [0]
+    let hexAry = this.makeMetaHex(nh, district++, rc, mrc); // Central District [0]
 
     for (let metaRing = 1; metaRing < mh; metaRing++) {
       rc = nextMetaRC(rc, 4); // step in dirs[4] to initial rc (W or WS of previous rc)
@@ -748,8 +787,8 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
       dirs.forEach((dirL, nd) => {
         for (let nhc = 1; nhc <= metaRing; nhc++) {
           rc = nextMetaRC(rc, nd);
-          const hexAry2 = this.makeMetaHex(nh, district++, rc);
-          hexAry.concat(...hexAry2);
+          const hexAry2 = this.makeMetaHex(nh, district++, rc, mrc);
+          hexAry = hexAry.concat(...hexAry2);
         }
       })
     }
@@ -765,9 +804,11 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param rc location of center Hex
    * @return array containing all the added Hexes
    */
-  makeMetaHex(nh: number, district: number,  rc: RC): T[] {
+  makeMetaHex(nh: number, district: number,  rc: RC, mrc: RC): T[] {
     const hexAry = Array<Hex>();
-    hexAry.push(this.addHex(rc.row, rc.col, district)) // The *center* hex of district
+    const hex = this.addHex(rc.row, rc.col, district);
+    hexAry.push(hex);              // The *center* hex of district
+    this.addMetaHex(hex, mrc);     // for hexline! (link centers of districts)
     for (let ring = 1; ring < nh; ring++) {
       rc = this.nextRowCol(rc, this.linkDirs[4]);
       // place 'ring' of hexes, addHex along each line:
@@ -896,7 +937,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param rc start of first line (heading dirs[0])
    * @param n ring number; number of hexes per line
    * @param dirs [this.linkDirs] each topo dirs in [clockwise] order.
-   * @param f (RC, dir) => void
+   * @param f (RC, dir) => void; run f(rc) then step to next RC
    * @return the *next* RC on the final line (so can easily spiral)
    */
   ringWalk(rc: RC, n: number, dirs = this.linkDirs, f: (rc: RC, dir: HexDir) => void) {
