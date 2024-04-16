@@ -281,12 +281,13 @@ export class Table {
   }
 
   /**
-   *
-   * @param x0 frame left (* colw); relative to scaleCont
-   * @param y0 frame top (* rowh); relative to scaleCont
-   * @param w0 pad width (* colw);
-   * @param h0 pad height (* rowh)
-   * @param dh
+   * all number in units of dxdc or dydr
+   * @param x0 frame left; relative to scaleCont
+   * @param y0 frame top; relative to scaleCont
+   * @param w0 pad width; width of bgRect, beyond hexCont, centered on hexCont
+   * @param h0 pad height; height of bgRect, beyond hexCont, centered on hexCont
+   * @param dw extend bgRect to the right, not centered
+   * @param dh extend bgRect to the bottom, not centered
    * @returns XYWH of a rectangle around mapCont hexMap
    */
   bgXYWH(x0 = -1, y0 = .5, w0 = 10, h0 = 1, dw = 0, dh = 0) {
@@ -383,25 +384,36 @@ export class Table {
   get panelHeight() { return (2 * TP.nHexes - 1) / 3 - .2; }
   get panelOffset() { return TP.nHexes + 2; }
 
-  // col==0 is on left edge of hexMap; The *center* hex is col == (nHexes-1)
-  panelLoc(pIndex: number, np = Math.min(Player.allPlayers.length, 6), r0 = this.hexMap.centerHex.row, dr = this.panelHeight + .2) {
-    const nh1 = this.hexMap.centerHex.col, coff = this.panelOffset;
-    const c0 = nh1 - coff, c1 = nh1 + coff;
+  /**
+   * six panel locations [row, col, dir][].
+   *
+   * col==0 is on left edge of hexMap; The *center* hex is col == (nHexes-1)
+   */
+  setPanelLocs() {
+    const r0 = this.hexMap.centerHex.row, dr = this.panelHeight + .2;
+    const cc = this.hexMap.centerHex.col, coff = this.panelOffset;
+    const c0 = cc - coff, c1 = cc + coff;
     const locs = [
       [r0 - dr, c0, +1], [r0, c0, +1], [r0 + dr, c0, +1],
       [r0 - dr, c1, -1], [r0, c1, -1], [r0 + dr, c1, -1]];
+    return locs;
+  }
+
+  /** select from setPanelLoc, based on pIndex from total np */
+  panelLoc(pIndex: number, np = Math.min(Player.allPlayers.length, 6), locs = this.setPanelLocs()) {
     const seq = [[], [0], [0, 3], [0, 3, 1], [0, 3, 4, 1], [0, 3, 4, 2, 1], [0, 3, 4, 5, 2, 1]];
     const seqn = seq[np], ndx = seqn[Math.min(pIndex, np - 1)];
     return locs[ndx];
   }
 
   readonly allPlayerPanels: PlayerPanel[] = [];
-  /** make player panels, placed at locations... */
+  /** make player panels, placed at panelLoc... */
   makePerPlayer() {
     this.allPlayerPanels.length = 0; // TODO: maybe deconstruct
     const high = this.panelHeight, wide = 4.5;
+    const np = Math.min(Player.allPlayers.length, 6), locs = this.setPanelLocs();
     Player.allPlayers.forEach((player, pIndex) => {
-      const [row, col, dir] = this.panelLoc(pIndex);
+      const [row, col, dir] = this.panelLoc(pIndex, np, locs);
       this.allPlayerPanels[pIndex] = player.panel = new PlayerPanel(this, player, high, wide, row - high / 2, col - wide / 2, dir);
       player.makePlayerBits();
       this.setPlayerScore(player, 0);
