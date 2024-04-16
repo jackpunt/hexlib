@@ -598,6 +598,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return hex
   }
 
+  /** find object under dragObj, using hexUnderPoint() */
   hexUnderObj(dragObj: DisplayObject, legalOnly = true ) {
     const pt = dragObj.parent.localToLocal(dragObj.x, dragObj.y, this.mapCont.markCont);
     return this.hexUnderPoint(pt.x, pt.y, legalOnly);
@@ -698,7 +699,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     });
   }
   /**
-   * The [Legal] Hex under the given x,y coordinates.
+   * The [Legal] Hex (LegalMark.hex2) under the given x,y coordinates.
    * If on the line, then the top (last drawn) Hex.
    * @param x in local coordinates of this HexMap.mapCont
    * @param y
@@ -721,7 +722,10 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   get nh() { return this._nh }
   get mh() { return this._mh }
 
-  /** final; set size one time, then it is readonly. */
+  /** final; set size of this HexMap; then it is readonly.
+   * @param nh size of district (size of each MetaHex) [TP.nHexes]
+   * @param mh order of MetaHex (number of MetaHex per side of map)  [TP.mHexes]
+   */
   setSize(nh = TP.nHexes, mh = TP.mHexes) {
     this._nh = nh;
     this._mh = mh;
@@ -802,13 +806,14 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param nh order of the metaHex/district
    * @param district identifying number of district
    * @param rc location of center Hex
+   * @param mrc location in meta hex array [undefined: no MetaHex links]
    * @return array containing all the added Hexes
    */
-  makeMetaHex(nh: number, district: number,  rc: RC, mrc: RC): T[] {
+  makeMetaHex(nh: number, district: number,  rc: RC, mrc?: RC): T[] {
     const hexAry = Array<Hex>();
     const hex = this.addHex(rc.row, rc.col, district);
     hexAry.push(hex);              // The *center* hex of district
-    this.addMetaHex(hex, mrc);     // for hexline! (link centers of districts)
+    if (mrc) this.addMetaHex(hex, mrc); // for hexline! (link centers of districts)
     for (let ring = 1; ring < nh; ring++) {
       rc = this.nextRowCol(rc, this.linkDirs[4]);
       // place 'ring' of hexes, addHex along each line:

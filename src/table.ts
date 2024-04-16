@@ -163,7 +163,7 @@ export class Table {
     const bgc = C.nameToRgbaString(TP.bgColor, .8);
     progressBg.graphics.f(bgc).r(-bgw / 2, y0, bgw, bgym - y0);
     undoC.addChildAt(progressBg, 0)
-    this.enableHexInspector(30)
+    this.enableHexInspector()
     this.dragger.makeDragable(undoC)
     if (true && xOffs > 0) return
 
@@ -197,6 +197,7 @@ export class Table {
   }
   enableHexInspector(qY = 52, cont = this.undoCont) {
     const qShape = new HexShape(TP.hexRad/3);
+    qShape.name = 'qShape';
     qShape.paint(C.BLACK);
     qShape.y = qY;  // size of 'skip' Triangles
     cont.addChild(qShape);
@@ -214,6 +215,7 @@ export class Table {
         console.log(`HexInspector:`, hex.Aname, info)
       })
     qShape.on(S.click, () => this.toggleText(), this); // toggle visible
+    return qShape;
   }
 
   downClick = false;
@@ -325,18 +327,19 @@ export class Table {
 
     this.stage.on('drawend', () => setTimeout(() => this.toggleText(this.initialVis), 10), this, true );
     this.hexMap.update();
-    // position turnLog & textLog
-    {
-      const parent = this.scaleCont, colx = -12;
-      this.setToRowCol(this.turnLog, 4, colx);
-      this.setToRowCol(this.textLog, 4, colx);
-      this.textLog.y += this.turnLog.height(Player.allPlayers.length + 1); // allow room for 1 line per player
-
-      parent.addChild(this.turnLog, this.textLog);
-      parent.stage.update()
-    }
+    this.layoutTurnlog();
 
     this.namedOn("playerMoveEvent", S.add, this.gamePlay.playerMoveEvent, this.gamePlay)
+  }
+
+  layoutTurnlog(rowy = 4, colx = -12) {
+    const parent = this.scaleCont;
+    this.setToRowCol(this.turnLog, rowy, colx);
+    this.setToRowCol(this.textLog, rowy, colx);
+    this.textLog.y += this.turnLog.height(Player.allPlayers.length + 1); // allow room for 1 line per player
+
+    parent.addChild(this.turnLog, this.textLog);
+    parent.stage.update();
   }
 
   // col locations, left-right mirrored:
@@ -378,9 +381,11 @@ export class Table {
   }
 
   get panelHeight() { return (2 * TP.nHexes - 1) / 3 - .2; }
+  get panelOffset() { return TP.nHexes + 2; }
+
   // col==0 is on left edge of hexMap; The *center* hex is col == (nHexes-1)
   panelLoc(pIndex: number, np = Math.min(Player.allPlayers.length, 6), r0 = this.hexMap.centerHex.row, dr = this.panelHeight + .2) {
-    const nh1 = this.hexMap.centerHex.col, coff = TP.nHexes + 2;
+    const nh1 = this.hexMap.centerHex.col, coff = this.panelOffset;
     const c0 = nh1 - coff, c1 = nh1 + coff;
     const locs = [
       [r0 - dr, c0, +1], [r0, c0, +1], [r0 + dr, c0, +1],
@@ -404,9 +409,8 @@ export class Table {
   }
 
   /** move cont to nominal [row, col] of hexCont */
-  setToRowCol(cont: Container, row = 0, col = 0) {
-    if (!cont.parent) this.scaleCont.addChild(cont);
-    const hexCont = this.hexMap.mapCont.hexCont;
+  setToRowCol(cont: Container, row = 0, col = 0, hexCont = this.hexMap.mapCont.hexCont) {
+    if (!cont.parent) this.scaleCont.addChild(cont); // localToLocal requires being on stage
     //if (cont.parent === hexCont) debugger;
     const hexC = this.hexMap.centerHex;
     const { x, y, dxdc, dydr } = hexC.xywh();
