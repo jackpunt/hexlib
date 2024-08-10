@@ -179,6 +179,12 @@ export class GameSetup {
     return state;
   }
 
+  /** compute nPlayers from qParams['n'] */
+  getNPlayers(qParams = this.qParams, nDef = 2) {
+    const n = qParams['n'];
+    return Math.min(TP.maxPlayers, n ? Number.parseInt(n) : nDef);
+  }
+
   /**
    * create a HexMap<Hex>; addToMapCont(); makeAllDistricts(); return
    *
@@ -190,8 +196,6 @@ export class GameSetup {
    * It is also copied from gamePlay to table.hexMap in Table.layoutTable()
    *
    * gamePlay.hexMap is used for most references [mostly hexMap.update()]
-   *
-   *
    */
   makeHexMap() {
     const hexMap = new HexMap<Hex>(TP.hexRad, true, Hex2 as Constructor<Hex>);
@@ -199,6 +203,19 @@ export class GameSetup {
     hexMap.addToMapCont(Hex2, cNames);       // addToMapCont(hexC, cNames)
     hexMap.makeAllDistricts();               // determines size for this.bgRect
     return hexMap;
+  }
+
+  /** EventDispatcher, ScaleCont, GUI-Player */
+  makeTable() {
+    return new Table(this.stage);
+  }
+
+  initialScenario(qParams: Params = this.qParams) {
+    return { turn: 0, Aname: 'defaultScenario' };
+  }
+
+  makeGamePlay(scenario: Scenario) {
+    return new GamePlay(this, scenario);
   }
 
   /**
@@ -210,20 +227,15 @@ export class GameSetup {
     Meeple.allMeeples = [];
     Player.allPlayers = [];
 
-    this.nPlayers = Math.min(TP.maxPlayers, qParams?.['n'] ? Number.parseInt(qParams?.['n']) : 2);
+    this.nPlayers = this.getNPlayers();
     this.hexMap = this.makeHexMap();           // only reference is in GamePlay constructor!
-    this.table = new Table(this.stage);        // EventDispatcher, ScaleCont, GUI-Player
+    this.table = this.makeTable();
     const scenario = this.initialScenario();
     // Inject Table into GamePlay;
     // GameState, mouse/keyboard->GamePlay,
-    const gamePlay = new GamePlay(this, scenario);
-    this.gamePlay = gamePlay;
+    this.gamePlay = this.makeGamePlay(scenario);
 
     this.startScenario(scenario);
-  }
-
-  initialScenario(qParams: Params = this.qParams) {
-    return { turn: 0, Aname: 'defaultScenario' };
   }
 
   /** scenario.turn indicate a FULL/SAVED scenario
