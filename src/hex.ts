@@ -207,8 +207,27 @@ export class Hex1 extends Hex {
   }
 }
 
-/** One Hex cell in the game, shown as a polyStar Shape */
-export class Hex2 extends Hex1 {
+/** Mixin hexlib/Hex2 with (LocalHex extends Hex1)
+ *
+ * class LocalHex extends Hex2Mixin(Hex1Lib) { ... }
+ */
+export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
+  return class Hex2Impl extends Base {
+    /**
+      * add Hex2 to map?.mapCont.hexCont; not in map.hexAry!
+      *
+      * Hex2.cont contains:
+      * - hexShape: polyStar Shape of radius @ (XY=0,0)
+      * - rcText: '(r,c)' slightly above center, WHITE
+      * - distText: initially distText.text = `${district}` slightly below center, BLACK
+      */
+    constructor(...args: any[]) {
+      const [map, row, col, name] = args;
+      super(map, row, col, name);  // invoke the given Base constructor: Hex2Lib
+      this.constructorCode(map, row, col, name);
+      return;         // breakpoint able
+    }
+
   /** Child of mapCont.hexCont: HexCont holds hexShape(color), rcText, distText, capMark */
   readonly cont: HexCont = new HexCont(this); // Hex IS-A Hex0, HAS-A HexCont Container
   readonly radius = TP.hexRad;                // determines width & height
@@ -260,18 +279,6 @@ export class Hex2 extends Hex1 {
 
   override get meep() { return super.meep; }
   override set meep(meep: Meeple | undefined) { this.setUnit(meep as Tile, true)}
-
-  /**
-   * add Hex2 to map?.mapCont.hexCont; not in map.hexAry!
-   * Hex2.cont contains:
-   * - hexShape: polyStar Shape of radius @ (XY=0,0)
-   * - rcText: '(r,c)' slightly above center, WHITE
-   * - distText: initially distText.text = `${district}` slightly below center, BLACK
-   */
-  constructor(map: HexM<Hex2>, row: number, col: number, name?: string) {
-    super(map, row, col, name);
-    this.constructorCode(map, row, col, name);
-  }
 
   constructorCode(map: HexM<Hex2>, row: number, col: number, name?: string) {
     this.initCont(row, col);
@@ -366,7 +373,11 @@ export class Hex2 extends Hex1 {
     point.y = this.hexShape.y - Math.cos(a) * h;
     return point as Point;
   }
+  }
 }
+
+/** One Hex cell in the game, shown as a polyStar Shape */
+export class Hex2 extends Hex2Mixin(Hex1) { }
 
 export class RecycleHex extends Hex2 { }
 
