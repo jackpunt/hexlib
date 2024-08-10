@@ -42,7 +42,7 @@ export class PaintableShape extends Shape implements Paintable {
   get g0() {
     return this._g0?.clone() ?? new Graphics(); // clone, so original is not mutated.
   }
-  /** previous/current Graphics that were rendered. (optimization... paint(color, true) to overrixe) */
+  /** previous/current Graphics that were rendered. (optimization... paint(color, true) to override) */
   cgfGraphics: Graphics; // points to this.graphics after cgf runs.
   /**
    *
@@ -119,7 +119,7 @@ export class EllipseShape extends PaintableShape {
    * @param rady radisu in y dir
    * retain g0, to use as baseline Graphics for each paint()
    */
-  constructor(public fillc = C.white, public radx = 30, public rady = 30, public strokec = C.black, g0?: Graphics) {
+  constructor(public fillc = C.white, public radx = TP.hexRad / 2, public rady = TP.hexRad / 2, public strokec = C.black, g0?: Graphics) {
     super((fillc) => this.cscgf(fillc), strokec, g0);
     this._cgf = this.cscgf; // overwrite to remove indirection...
     this.paint(fillc);
@@ -139,13 +139,13 @@ export class EllipseShape extends PaintableShape {
  * retain g0, to use as baseline Graphics for each paint()
  */
 export class CircleShape extends EllipseShape {
-  constructor(fillc = C.white, rad = 30, strokec = C.black, g0?: Graphics) {
+  constructor(fillc = C.white, rad = TP.hexRad / 2, strokec = C.black, g0?: Graphics) {
     super(fillc, rad, rad, strokec, g0);
   }
 }
 
 export class PolyShape extends PaintableShape {
-  constructor(public nsides = 4, public tilt = 0, public fillc = C.white, public rad = 30, public strokec = C.black, g0?: Graphics) {
+  constructor(public nsides = 4, public tilt = 0, public fillc = C.white, public rad = TP.hexRad / 2, public strokec = C.black, g0?: Graphics) {
     super((fillc) => this.pscgf(fillc), fillc, g0);
     this._cgf = this.pscgf;
     this.paint(fillc);
@@ -183,7 +183,7 @@ export class RectShape extends PaintableShape {
   rect: XYWH;
   rc: number = 0;
   constructor(
-    { x = 0, y = 0, w = 30, h = 30, r = 0 }: XYWH & { r?: number },
+    { x = 0, y = 0, w = TP.hexRad / 2, h = TP.hexRad / 2, r = 0 }: XYWH & { r?: number },
     public fillc = C.white,
     public strokec = C.black,
     g0?: Graphics,
@@ -197,13 +197,13 @@ export class RectShape extends PaintableShape {
   }
 
   rscgf(fillc: string, g = this.g0) {
-    const { x, y, w, h } = this.rect;
+    const { x, y, w, h } = this.rect, r = TP.hexRad / 2;
     (fillc ? g.f(fillc) : g.ef());
     (this.strokec ? g.s(this.strokec) : g.es());
     if (this.rc === 0) {
-      g.dr(x ?? 0, y ?? 0, w ?? 30, h ?? 30);
+      g.dr(x ?? 0, y ?? 0, w ?? r, h ?? r);
     } else {
-      g.rr(x ?? 0, y ?? 0, w ?? 30, h ?? 30, this.rc);
+      g.rr(x ?? 0, y ?? 0, w ?? r, h ?? r, this.rc);
     }
     return g;
   }
@@ -265,7 +265,7 @@ export class UtilButton extends Container implements Paintable {
     this.paint(undefined, true);
   }
 
-  constructor(color: string, text: string, public fontSize = 30, public textColor = C.black, cgf?: CGF) {
+  constructor(color: string, text: string, public fontSize = TP.hexRad / 2, public textColor = C.black, cgf?: CGF) {
     super();
     this.label = new CenterText(text, fontSize, textColor);
     this.shape = new PaintableShape(cgf ?? ((c) => this.ubcsf(c)));

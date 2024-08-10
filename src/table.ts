@@ -38,9 +38,9 @@ export interface DragContext {
   targetHex: Hex2;      // last isLegalTarget() or fromHex
   lastShift?: boolean;  // true if Shift key is down
   lastCtrl?: boolean;   // true if control key is down
-  info: MinDragInfo;    // we only use { first, event }
+  info: DragInfo;       // we only use { first, event }
   tile?: Tile;          // the DisplayObject being dragged
-  nLegal: number;      // number of legal drop tiles (excluding recycle)
+  nLegal: number;       // number of legal drop tiles (excluding recycle)
   gameState?: GameState;// gamePlay.gameState
   phase?: string;       // keysof GameState.states
 }
@@ -310,18 +310,20 @@ export class Table {
 
   layoutTable(gamePlay: GamePlay) {
     this.gamePlay = gamePlay;
-    const hexMap = this.hexMap = gamePlay.hexMap as any as HexMap<Hex2>; //  as AnkhMap<AnkhHex>
-    hexMap.addToMapCont();                   // addToMapCont; make AnkhHex
-    hexMap.makeAllDistricts();               //
-    // this.gamePlay.recycleHex = this.makeRecycleHex(TP.nHexes + 3.2);
+    const hexMap = this.hexMap = gamePlay.hexMap as any as HexMap<Hex2>;
 
     const xywh = this.bgXYWH();              // override bgXYHW() to supply default/arg values
-    const hexCont = this.hexMap.mapCont.hexCont, hexp = this.scaleCont;
+    const hexCont = hexMap.mapCont.hexCont, hexp = this.scaleCont;
     this.bgRect = this.setBackground(this.scaleCont, xywh); // bounded by xywh
     const { x, y, width, height } = hexCont.getBounds();
     hexCont.cache(x, y, width, height); // cache hexCont (bounded by bgr)
 
-    this.layoutTable2(); // supply args (mapCont?) if necessary; make overlays, score panel, extra tracks (auction...)
+    /**
+     * After setBackground() & hexCont.cache(); before makePerPlayer();
+     *
+     * Whatever: make overlays, score panel, extra tracks (auction...)
+     */
+    this.layoutTable2(); // supply args (mapCont?) if necessary;
     this.makePerPlayer();
 
     this.setupUndoButtons(55, 60, 45, xywh) // & enableHexInspector()
@@ -353,29 +355,34 @@ export class Table {
   layoutTable2() {
 
   }
-
-  makeGUIs(table: Table) {
-    const scaleCont = table.scaleCont, scale = TP.hexRad / 60, cx = -200, cy = 250, d = 5;
-    // this.makeParamGUI(table.scaleCont, -400, 250);
-    const gpanel = (makeGUI: (cont: Container) => ParamGUI, name: string, cx: number, cy: number, scale = 1) => {
-      const guiC = new NamedContainer(name, cx * scale, cy * scale);
-      // const map = table.hexMap.mapCont.parent;
-      scaleCont.addChildAt(guiC);
-      guiC.scaleX = guiC.scaleY = scale;
-      const gui = makeGUI.call(this, guiC);      // @[0, 0]
-      guiC.x -= (gui.linew + d) * scale;
-      const bgr = new RectShape({ x: -d, y: -d, w: gui.linew + 2 * d, h: gui.ymax + 2 * d }, 'rgb(200,200,200,.5)', '');
-      guiC.addChildAt(bgr, 0);
-      table.dragger.makeDragable(guiC);
-      return gui;
-    }
+  gpanel(makeGUI: (cont: Container) => ParamGUI, name: string, cx: number, cy: number, scale = 1, d = 5) {
+    const guiC = new NamedContainer(name, cx * scale, cy * scale);
+    // const map = table.hexMap.mapCont.parent;
+    this.scaleCont.addChildAt(guiC);
+    guiC.scaleX = guiC.scaleY = scale;
+    const gui = makeGUI.call(this, guiC);      // @[0, 0]
+    guiC.x -= (gui.linew + d) * scale;
+    const bgr = new RectShape({ x: -d, y: -d, w: gui.linew + 2 * d, h: gui.ymax + 2 * d }, 'rgb(200,200,200,.5)', '');
+    guiC.addChildAt(bgr, 0);
+    this.dragger.makeDragable(guiC);
+    return gui;
+  }
+  /**
+   * makeNetworkGUI(parent)
+   * makeParamGUI(parent)
+   * makeParamGUI2(parent)
+   * makeDragable()
+   * @param table
+   */
+  makeGUIs() {
+    const scaleCont = this.scaleCont, scale = TP.hexRad / 60, cx = -200, cy = 250, dy = 20;
     let ymax = 0;
-    const gui3 = gpanel(this.makeNetworkGUI, 'NetGUI', cx, cy + ymax, scale);
-    ymax += gui3.ymax + 20;
-    const gui1 = gpanel(this.makeParamGUI, 'ParamGUI', cx, cy + ymax, scale);
-    ymax += gui1.ymax + 20;
-    const gui2 = gpanel(this.makeParamGUI2, 'AI_GUI', cx, cy + ymax, scale);
-    ymax += gui2.ymax + 20;
+    const gui3 = this.gpanel(this.makeNetworkGUI, 'NetGUI', cx, cy + ymax, scale);
+    ymax += gui3.ymax + dy;
+    const gui1 = this.gpanel(this.makeParamGUI, 'ParamGUI', cx, cy + ymax, scale);
+    ymax += gui1.ymax + dy;
+    const gui2 = this.gpanel(this.makeParamGUI2, 'AI_GUI', cx, cy + ymax, scale);
+    ymax += gui2.ymax + dy;
     scaleCont.addChild(gui2.parent, gui1.parent, gui3.parent); // lower y values ABOVE to dropdown is not obscured
     // TODO: dropdown to use given 'top' container!
     gui1.stage.update();
@@ -412,7 +419,7 @@ export class Table {
     this.allPlayerPanels.length = 0; // TODO: maybe deconstruct
     const high = this.panelHeight, wide = 4.5;
     const np = Math.min(Player.allPlayers.length, 6), locs = this.setPanelLocs();
-    Player.allPlayers.forEach((player, pIndex) => {
+    this.gamePlay.forEachPlayer((player, pIndex) => {
       const [row, col, dir] = this.panelLoc(pIndex, np, locs);
       this.allPlayerPanels[pIndex] = player.panel = new PlayerPanel(this, player, high, wide, row - high / 2, col - wide / 2, dir);
       player.makePlayerBits();
@@ -582,7 +589,7 @@ export class Table {
   }
 
   /** update table when a new Game is started. */
-  startGame(gameState: Scenario) {
+  startGame(scenario: Scenario) {
     // All Tiles (& Meeple) are Dragable:
     Tile.allTiles.forEach(tile => {
       this.makeDragable(tile);
@@ -604,17 +611,17 @@ export class Table {
   }
 
   dragContext: DragContext;
-  dragFunc(tile: DisplayObject, info?: MinDragInfo) {
+  dragFunc(tile: DisplayObject, info?: DragInfo) {
     const hex = this.hexUnderObj(tile); // clickToDrag 'snaps' to non-original hex!
-    this.dragFunc0(tile as Tile, info as MinDragInfo, hex);
+    this.dragFunc0(tile as Tile, info, hex);
   }
 
   /** Table.dragFunc0 (Table.dragFunc to inject drag/start actions programatically)
    * @param tile is being dragged
-   * @param info { first: boolean, mouse: MouseEvent }
+   * @param info { first: boolean, event: MouseEvent }
    * @param hex the Hex that tile is currently over (may be undefined or off map)
    */
-  dragFunc0(tile: Tile, info: MinDragInfo, hex = this.hexUnderObj(tile)) {
+  dragFunc0(tile: Tile, info?: DragInfo, hex = this.hexUnderObj(tile)) {
     let ctx = this.dragContext;
     if (info?.first) {
       if (ctx?.tile) {
@@ -694,7 +701,7 @@ export class Table {
     tile?.dragShift(shiftKey, ctx);
   }
 
-  dropFunc(dobj: DisplayObject, info?: MinDragInfo, hex = this.hexUnderObj(dobj)) {
+  dropFunc(dobj: DisplayObject, info?: DragInfo, hex = this.hexUnderObj(dobj)) {
     const tile = dobj as Tile;
     tile.dropFunc0(hex as Hex2, this.dragContext);
     tile.markLegal(this); // hex => hex.isLegal = false;
@@ -706,7 +713,7 @@ export class Table {
   /** synthesize dragStart(tile), tile.dragFunc0(hex), dropFunc(tile);  */
   dragStartAndDrop(tile: Tile, toHex: Hex) {
     if (!tile) return; // C-q when no EventTile on eventHex
-    const info = { first: true }, hex = toHex as Hex2;
+    const hex = toHex as Hex2, info = { first: true } as DragInfo; // event: undefined
     this.dragFunc0(tile, info, tile.hex as Hex2);  // dragStart()
     tile.dragFunc0(hex, this.dragContext);
     this.dropFunc(tile, info, hex);

@@ -50,6 +50,7 @@ export class Player {
   get coins() { return this.coinCounter?.getValue(); }
   set coins(v: number) { this.coinCounter?.updateValue(v); }
 
+  /** @deprecated only works for 2-players */
   get otherPlayer() { return Player.allPlayers[1 - this.index] }
 
   planner?: IPlanner;

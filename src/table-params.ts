@@ -12,11 +12,56 @@ export type PlayerColorRecord<T> = Record<PlayerColor, T>
 export function playerColorRecord<T>(b: T, w: T, c: T): PlayerColorRecord<T> { return { b, w, c } };
 export function playerColorRecordF<T>(f: (sc: PlayerColor) => T) { return playerColorRecord(f(playerColor0), f(playerColor1), f(playerColor2)) }
 
-export function buildURL(scheme = 'wss', host = TP.ghost, domain = TP.gdomain, port = TP.gport, path = ''): string {
-  return `${scheme}://${host}.${domain}:${port}${path}`
-}
+// export function buildURL(scheme = 'wss', host = TP.ghost, domain = TP.gdomain, port = TP.gport, path = ''): string {
+//   return `${scheme}://${host}.${domain}:${port}${path}`
+// }
+
+/** OR: import { Params } from "@angular/router"; */
+declare type Params = Record<string, any>;
+
 export class TP {
-  static colorScheme = playerColorRecordF(n => n);
+  static buildURL(scheme = 'wss', host = TP.ghost, domain = TP.gdomain, port = TP.gport, path = ''): string {
+    return `${scheme}://${host}.${domain}:${port}${path}`
+  }
+  static staticFields(over = (TP as Params)) {
+    const basic_props = Object.getOwnPropertyNames(class { });// [length, prototype, name]
+    const static_props = Object.getOwnPropertyNames(over).filter(k => !basic_props.includes(k));
+    return static_props;
+  }
+  /** called by framework before TP is used; put your overrides here.
+   * @param qParams
+   * @param force true to apply exact value, if new key or new type.
+   */
+  static setParams(qParams: Params = {}, force = false, over = (TP as Params)) {
+    /** do not muck with standard basic properties of all/empty classes */
+    const static_props = TP.staticFields(over);
+    for (let [key, value] of Object.entries(qParams)) {
+      if (force || static_props.includes(key)) {
+        if (!force && (typeof value === 'string' && typeof over[key] === 'number')) {
+          value = Number.parseInt(value); // minimal effort to align types.
+        }
+        (TP as Params)[key] = value; // set a static value in base; DANGER! not typesafe!
+      }
+    }
+  }
+  /**
+   * After pushing all values from local subclass of TP into base TP,
+   * delete them, so there is only the one copy in original base class: TP (from hexlib)
+   * Local references should still get/set values in the base object.
+   *
+   * This way, tsc still sees local TP for type safety,
+   * but there is a single object for updates using Chooser.
+   *
+   * @param local the locally created subclass of TP with static fields
+   */
+  static eraseLocal(local: Params) {
+    const static_props = TP.staticFields(local);
+    static_props.forEach(key => delete local[key])
+    const new_props = TP.staticFields(local);
+    // assert new_props is empty!
+  }
+  /** the current map from PlayerColor to colorn */
+  static colorScheme = playerColorRecordF(n => n as string);
   static useEwTopo = true;
   static cacheTiles = 2;
   static snapToPixel = true;
@@ -44,7 +89,7 @@ export class TP {
   static ghost: string = 'game7'   // game-setup.network()
   static gdomain: string = 'thegraid.com'
   static gport: number = 8447
-  static networkUrl: string = 'wss://game7.thegraid.com:8447';  // URL to cgserver (wspbserver)
+  static networkUrl: string = TP.buildURL();  // URL to cgserver (wspbserver)
   static networkGroup: string = 'citymap:game1';
 
   static vpToWin: number = 20;

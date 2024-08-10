@@ -17,7 +17,7 @@ interface ConfirmCont extends Container {
 export class PlayerPanel extends NamedContainer {
 
   outline: RectShape;
-  get hexMap() { return this.table.gamePlay.hexMap }
+  get hexMap() { return this.table.gamePlay.hexMap } // dynamic lookup
 
   /**
    *

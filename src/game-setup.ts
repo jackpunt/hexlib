@@ -1,24 +1,20 @@
 import { Constructor } from "@thegraid/common-lib";
-import { C, DropdownChoice, DropdownItem, DropdownStyle, ParamGUI, ParamItem, blinkAndThen, makeStage, stime } from "@thegraid/easeljs-lib";
+import { DropdownChoice, DropdownItem, blinkAndThen, makeStage, stime } from "@thegraid/easeljs-lib";
 import { Container, Stage } from "@thegraid/easeljs-module";
 import { parse as JSON5_parse } from 'json5';
-import { EBC, PidChoice } from "./choosers";
-import { GamePlay, NamedContainer } from "./game-play";
-import { Hex, Hex2, HexMap } from "./hex";
+import { GamePlay } from "./game-play";
+import { Hex, Hex2, HexMap, MapCont } from "./hex";
 import { AliasLoader } from "./image-loader";
 import { Meeple } from "./meeple";
 import { Player } from "./player";
 import { ScenarioParser, SetupElt } from "./scenario-parser";
-import { RectShape } from "./shapes";
 import { LogReader, LogWriter } from "./stream-writer";
 import { Table } from "./table";
 import { TP } from "./table-params";
 import { Tile } from "./tile";
 
 /** OR: import { Params } from "@angular/router"; */
-declare type Params = {
-  [key: string]: any;
-};
+declare type Params = Record<string, any>;
 
 /** show " R" for " N" */
 stime.anno = (obj: string | { constructor: { name: string; }, stage?: Stage, table?: Table }) => {
@@ -51,23 +47,36 @@ export class GameSetup {
   /**
    * ngAfterViewInit --> start here!
    * @param canvasId supply undefined for 'headless' Stage
+   * @param qParams queryParams from stageComponent -> this.qParams;
    */
-  constructor(canvasId: string, public qParams: Params = []) {
-    this.initialize(canvasId, qParams);
+  constructor(canvasId: string, public qParams: Params = {}) {
+    this.initialize(canvasId);
     this.loadImagesThenStartup(qParams);
   }
 
   /** one-time, invoked from Constructor(canvasId) */
-  initialize(canvasId: string, qParams: Params = []) {
-    stime.fmt = "MM-DD kk:mm:ss.SSSL"
+  initialize(canvasId: string) {
+    stime.fmt = "MM-DD kk:mm:ss.SSSL";
     this.stage = makeStage(canvasId, false);
     this.stage.snapToPixel = TP.snapToPixel;
     this.setupToParseState();                 // restart when/if 'SetState' button is clicked
     this.setupToReadFileState();              // restart when/if 'LoadFile' button is clicked
   }
 
-  loadImagesThenStartup(qParams: Params = []) {
+
+  /** Label browser page. Typically: nPlayer=n, scenario from file. */
+  get pageLabel() {
+    const { n, file } = this.qParams;
+      const sep = (n !== undefined && file !== undefined) ? '&' : '';
+      return `${n ? ` n=${n}` : ''}${sep}${file ? `file=${file}` : ''}`;
+  }
+
+  loadImagesThenStartup(qParams: Params = this.qParams) {
     AliasLoader.loader.loadImages(() => this.startup(qParams));
+  }
+
+  makePlayer(ndx: number, gamePlay: GamePlay) {
+    new Player(ndx, gamePlay);
   }
 
   /** set from qParams['n'] */
@@ -77,7 +86,7 @@ export class GameSetup {
     const allPlayers = gamePlay.allPlayers;
     allPlayers.length = 0;
     for (let ndx = 0; ndx < this.nPlayers; ndx++) {
-      new Player(ndx, gamePlay); // make real Players...
+      this.makePlayer(ndx, gamePlay); // make real Players...
     }
     gamePlay.curPlayerNdx = 0; // gamePlay.setNextPlayer(0); ???
     gamePlay.curPlayer = allPlayers[gamePlay.curPlayerNdx];
@@ -101,7 +110,9 @@ export class GameSetup {
   }
 
   restartable = false;
-  /** C-s ==> kill game, start a new one, possibly with new dbp */
+  /** C-s ==> kill game, start a new one, possibly with new stateInfo
+   * @param stateInfo typically TP fields like {hexRad: 60, nHexes: 7, mHexes: 1}
+   */
   restart(stateInfo: any) {
     if (!this.restartable) return;
     let netState = this.netState
@@ -169,6 +180,28 @@ export class GameSetup {
   }
 
   /**
+   * create a HexMap<Hex>; addToMapCont(); makeAllDistricts(); return
+   *
+   * Invoked from GameSetup.startup()
+   *
+   * We create hexMap here, and store it in gameSetup,
+   * then copy it to this.gamePlay.hexMap in GamePlay.constructor.
+   *
+   * It is also copied from gamePlay to table.hexMap in Table.layoutTable()
+   *
+   * gamePlay.hexMap is used for most references [mostly hexMap.update()]
+   *
+   *
+   */
+  makeHexMap() {
+    const hexMap = new HexMap<Hex>(TP.hexRad, true, Hex2 as Constructor<Hex>);
+    const cNames = MapCont.cNames.concat() as string[]; // for example
+    hexMap.addToMapCont(Hex2, cNames);       // addToMapCont(hexC, cNames)
+    hexMap.makeAllDistricts();               // determines size for this.bgRect
+    return hexMap;
+  }
+
+  /**
    * Make new Table/layout & gamePlay/hexMap & Players.
    * @param qParams from URL
    */
@@ -178,7 +211,7 @@ export class GameSetup {
     Player.allPlayers = [];
 
     this.nPlayers = Math.min(TP.maxPlayers, qParams?.['n'] ? Number.parseInt(qParams?.['n']) : 2);
-    this.hexMap = new HexMap<Hex>(TP.hexRad, true, Hex2 as Constructor<Hex>)
+    this.hexMap = this.makeHexMap();           // only reference is in GamePlay constructor!
     this.table = new Table(this.stage);        // EventDispatcher, ScaleCont, GUI-Player
     const scenario = this.initialScenario();
     // Inject Table into GamePlay;
@@ -210,12 +243,12 @@ export class GameSetup {
 
     this.gamePlay.turnNumber = -1;   // in prep for setNextPlayer or parseScenario
     // Place Pieces and Figures on map:
-    this.parseScenenario(scenario); // may change gamePlay.turnNumber, gamePlay.phase (& conflictRegion)
+    this.parseScenario(scenario); // may change gamePlay.turnNumber, gamePlay.phase (& conflictRegion)
     this.gamePlay.logWriterLine0();
 
     gamePlay.forEachPlayer(p => p.newGame(gamePlay))        // make Planner *after* table & gamePlay are setup
     this.restartable = false;
-    this.table.makeGUIs(table);
+    this.table.makeGUIs();
     this.restartable = true;   // *after* makeLines has stablilized selectValue
     table.startGame(scenario); // parseScenario; allTiles.makeDragable(); setNextPlayer();
     return gamePlay;
@@ -223,8 +256,8 @@ export class GameSetup {
 
 
   scenarioParser: ScenarioParser;
-  /** parse given Scenario, with hexMap & gamePlay -> gameState */
-  parseScenenario(scenario: SetupElt) {
+  /** make new ScenarioParser to parse given Scenario (with hexMap & gamePlay) -> gameState */
+  parseScenario(scenario: SetupElt) {
     const hexMap = this.gamePlay.hexMap;
     const scenarioParser = this.scenarioParser = new ScenarioParser(hexMap, this.gamePlay);
     this.gamePlay.logWriter.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)

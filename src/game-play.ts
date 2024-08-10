@@ -93,7 +93,7 @@ export class GamePlay0 {
     return Player.allPlayers[nxt];
   }
 
-  forEachPlayer(f: (p:Player, index?: number, players?: Player[]) => void) {
+  forEachPlayer(f: (p: Player, index: number, players: Player[]) => void) {
     this.allPlayers.forEach((p, index, players) => f(p, index, players));
   }
 
@@ -327,7 +327,7 @@ export class GamePlay extends GamePlay0 {
     this.nstate = back ? Math.min(this.backStates.length - 1, this.nstate + 1) : Math.max(0, this.nstate - 1);
     const state = this.backStates[this.nstate];
     console.log(stime(this, `.pickState -------- #${this.nstate}:${this.backStates.length-1} turn=${state.turn}:`), state);
-    this.gameSetup.parseScenenario(state); // typically sets gamePlay.turnNumber
+    this.gameSetup.parseScenario(state); // typically sets gamePlay.turnNumber
     console.log(stime(this, `.pickState -------- #${this.nstate}:${this.backStates.length-1} turn=${state.turn}:`), state);
     this.setNextPlayer(this.turnNumber);
   }

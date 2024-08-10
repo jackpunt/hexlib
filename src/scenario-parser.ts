@@ -6,8 +6,6 @@ import { KeyBinder } from "@thegraid/easeljs-lib";
 import type { GamePlay } from "./game-play";
 import { Hex, Hex2, HexMap } from "./hex";
 
-export type MapXY = [x: number, y: number];
-
 export interface SetupElt {
   Aname?: string;        // {orig-scene}@{turn}
   turn?: number;         // default to 0; (or 1...)

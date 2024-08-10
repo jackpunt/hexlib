@@ -1,6 +1,6 @@
 import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
 import { CenterText } from "@thegraid/easeljs-lib";
-import { Bitmap, Container, MouseEvent, Text } from "@thegraid/easeljs-module";
+import { Container, MouseEvent, Text } from "@thegraid/easeljs-module";
 import type { GamePlay } from "./game-play";
 import { Hex1, Hex2 } from "./hex";
 import { AliasLoader } from "./image-loader";
@@ -43,7 +43,7 @@ class Tile0 extends Container {
 
   /** Default is TileShape; a HexShape with translucent disk.
    * add more graphics with paint(colorn)
-   * also: addBitmapImage()
+   * also: addImageBitmap() to add child image from AliasLoader
    */
   makeShape(): PaintableShape {
     return new TileShape(this.radius);
@@ -91,6 +91,7 @@ export class Tile extends Tile0 implements Dragable {
     source.nextUnit();  // unit.moveTo(source.hex)
     return source as TS;
   }
+  /** When Tile is associated with a TileSource. */
   source: TileSource<Tile>;
 
   // Tile
@@ -108,8 +109,9 @@ export class Tile extends Tile0 implements Dragable {
     const rad = this.radius;
     if (TP.cacheTiles > 0) this.cache(-rad, -rad, 2 * rad, 2 * rad, TP.cacheTiles);
     this.addChild(this.baseShape);
-    this.setPlayerAndPaint(player);
     this.nameText = this.addTextChild(rad / 2);
+    if (player !== undefined)
+      this.setPlayerAndPaint(player);  // dubious: subclasses are not yet constructed!
   }
 
   nameText: Text;

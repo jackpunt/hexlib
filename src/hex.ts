@@ -1,12 +1,12 @@
 import { XY } from '@thegraid/common-lib';
-import { C, CenterText, Constructor, F, RC, S } from "@thegraid/easeljs-lib";
-import { Container, DisplayObject, Graphics, Point, Text } from "@thegraid/easeljs-module";
+import { C, CenterText, Constructor, F, RC } from "@thegraid/easeljs-lib";
+import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
+import { NamedObject } from "./game-play";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
 import type { Meeple } from "./meeple";
 import { HexShape, LegalMark } from "./shapes";
-import { PlayerColor, TP } from "./table-params";
+import { TP } from "./table-params";
 import type { MapTile, Tile } from "./tile";
-import { NamedObject } from "./game-play";
 
 export const S_Resign = 'Hex@Resign'
 export const S_Skip = 'Hex@skip '
@@ -23,15 +23,13 @@ type TopoEW = { [key in EwDir]: DCR }
 type TopoNS = { [key in NsDir]: DCR }
 type Topo = TopoEW | TopoNS
 
-export type HSC = { hex: Hex, sc: PlayerColor, Aname: string }
-export function newHSC(hex: Hex, sc: PlayerColor, Aname = hex.Aname) { return { Aname, hex, sc } }
-
 /** to recognize this class in hexUnderPoint and obtain the associated Hex2. */
 export class HexCont extends Container {
   constructor(public hex2: Hex2) {
     super()
   }
 }
+function nf(n: number) { return `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`; }
 
 /** Base Hex, has no connection to graphics.
  * topological links to adjacent hex objects.
@@ -89,11 +87,10 @@ export class Hex {
 
   /** reduce to serializable IHex (removes map, inf, links, etc) */
   get iHex(): IdHex { return { Aname: this.Aname, row: this.row, col: this.col } }
-  protected nf(n: number) { return `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`; }
   /** [row,col] OR special name */
-  get rcs(): string { return (this.row >= 0) ? `[${this.nf(this.row)},${this.nf(this.col)}]` : this.Aname.substring(4)}
-  get rowsp() { return (this.nf(this.row ?? -1)).padStart(2) }
-  get colsp() { return (this.nf(this.col ?? -1)).padStart(2) } // col== -1 ? S_Skip; -2 ? S_Resign
+  get rcs(): string { return (this.row >= 0) ? `[${nf(this.row)},${nf(this.col)}]` : this.Aname.substring(4)}
+  get rowsp() { return (nf(this.row ?? -1)).padStart(2) }
+  get colsp() { return (nf(this.col ?? -1)).padStart(2) } // col== -1 ? S_Skip; -2 ? S_Resign
   /** [row,col] OR special name */
   get rcsp(): string { return (this.row >= 0) ? `[${this.rowsp},${this.colsp}]` : this.Aname.substring(4).padEnd(7)}
   /** compute ONCE, *after* HexMap is populated with all the Hex! */
@@ -273,6 +270,10 @@ export class Hex2 extends Hex1 {
    */
   constructor(map: HexM<Hex2>, row: number, col: number, name?: string) {
     super(map, row, col, name);
+    this.constructorCode(map, row, col, name);
+  }
+
+  constructorCode(map: HexM<Hex2>, row: number, col: number, name?: string) {
     this.initCont(row, col);
     map?.mapCont.hexCont.addChild(this.cont);
     this.hexShape.name = this.Aname;
@@ -303,7 +304,8 @@ export class Hex2 extends Hex1 {
     this.legalMark.visible = v;
   }
 
-  protected initCont(row: number, col: number) {
+  /** place this.cont; setBounds(); cont.cache() */
+  initCont(row: number, col: number) {
     const cont = this.cont;
     const { x, y, w, h } = this.xywh(this.radius, TP.useEwTopo, row, col); // include margin space between hexes
     cont.x = x;
@@ -431,7 +433,7 @@ export class MapCont extends Container {
     this.name = 'mapCont';
   }
 
-  /** initial, default, readonly Container names, fields */
+  /** initial, default, readonly Container names, fieldNames */
   static cNames = ['resaCont', 'hexCont', 'tileCont', 'markCont', 'counterCont'] as const;
   /** actual cNames being used for this MapCont, set in addContainers() */
   private _cNames: string[] = MapCont.cNames.concat();
@@ -445,7 +447,7 @@ export class MapCont extends Container {
   counterCont: Container // counters for AuctionCont
   // eventCont: Container// the eventHex & and whatever Tile is on it...
 
-  /** add all the layers of Containers. */
+  /** add all the layers of Containers. update this.cNames */
   addContainers(cNames: readonly string[] = this.cNames) {
     this._cNames = cNames.concat();
     this.removeAllChildren();
@@ -477,7 +479,6 @@ export class MapCont extends Container {
 }
 
 export interface HexM<T extends Hex> {
-  allStones: HSC[]
   readonly district: T[][]        // all the Hex in a given district
   readonly mapCont: MapCont
   rcLinear(row: number, col: number): number
@@ -488,12 +489,12 @@ export interface HexM<T extends Hex> {
 
 /**
  * Collection of Hex *and* Graphics-Containers for Hex2
- * allStones: HSC[] and districts: Hex[]
+ * districts: Hex[]
  *
  * HexMap[row][col]: Hex or Hex2 elements.
  * If mapCont is set, then populate with Hex2
  *
- * (TP.mh X TP.nh) hexes in districts; allStones: HSC[]
+ * (TP.mh X TP.nh) hexes in districts;
  *
  * With a Mark and off-map: skipHex & resignHex
  *
@@ -532,7 +533,6 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   //  -----------------------+    //  -----------------------+    //  -----------------------+
   //         sqrt3                //         sqrt3/2              //         1
   //
-  allStones: HSC[] = [];
 
   readonly radius = TP.hexRad
   /** return this.centerHex.xywh() for this.topo */
