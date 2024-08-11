@@ -264,7 +264,7 @@ export class Tile extends Tile0 implements Dragable {
   }
 
   cantBeMovedBy(player: Player, ctx: DragContext): string | boolean | undefined {
-    return (ctx?.lastShift || this.player === undefined || this.player === player) ? undefined : "Not your Tile";
+    return (ctx?.lastShift || this.player === undefined || this.player === player) ? undefined : 'Not your Tile';
   }
 
   /** override as necessary. */

@@ -224,9 +224,9 @@ export class TileShape extends HexShape {
     else this.updateCache();               // write curent graphics to cache
     const g = this.graphics;
     g.c().f(C.BLACK).dc(0, 0, r2);       // bits to remove
-    this.updateCache("destination-out"); // remove disk from solid hexagon
+    this.updateCache('destination-out'); // remove disk from solid hexagon
     g.c().f(colorn).dc(0, 0, r2);        // fill with translucent disk
-    this.updateCache("source-over");     // update with new disk
+    this.updateCache('source-over');     // update with new disk
     return g;
   }
 

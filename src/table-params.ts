@@ -12,10 +12,6 @@ export type PlayerColorRecord<T> = Record<PlayerColor, T>
 export function playerColorRecord<T>(b: T, w: T, c: T): PlayerColorRecord<T> { return { b, w, c } };
 export function playerColorRecordF<T>(f: (sc: PlayerColor) => T) { return playerColorRecord(f(playerColor0), f(playerColor1), f(playerColor2)) }
 
-// export function buildURL(scheme = 'wss', host = TP.ghost, domain = TP.gdomain, port = TP.gport, path = ''): string {
-//   return `${scheme}://${host}.${domain}:${port}${path}`
-// }
-
 /** OR: import { Params } from "@angular/router"; */
 declare type Params = Record<string, any>;
 
@@ -44,6 +40,7 @@ export class TP {
       }
     }
   }
+
   /**
    * After pushing all values from local subclass of TP into base TP,
    * delete them, so there is only the one copy in original base class: TP (from hexlib)
@@ -90,7 +87,7 @@ export class TP {
   static gdomain: string = 'thegraid.com'
   static gport: number = 8447
   static networkUrl: string = TP.buildURL();  // URL to cgserver (wspbserver)
-  static networkGroup: string = 'citymap:game1';
+  static networkGroup: string = 'title:game1';
 
   static vpToWin: number = 20;
   static roboDrawTile: number = 1.0 // Bias toward draw Tile

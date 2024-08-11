@@ -5,7 +5,7 @@ export interface ILogWriter {
   writeLine(text: string): void | Promise<void>
 }
 class FileBase {
-  constructor(public name = 'logFile', public buttonId = "fsOpenFileButton") {
+  constructor(public name = 'logFile', public buttonId = 'fsOpenFileButton') {
   }
   /** FileHandle obtained from FilePicker Button. */
   fileHandle: FileSystemFileHandle;
@@ -66,7 +66,7 @@ export class LogWriter extends FileBase implements ILogWriter {
    * @param atEnd insert at end-of-file; but remove before writeLine. [\n]
    * @param buttonId DOM id of button to click to bring up FilePicker
    */
-  constructor(name = 'logFile', public atZero = '', public atEnd = '\n', buttonId = "fsOpenFileButton") {
+  constructor(name = 'logFile', public atZero = '', public atEnd = '\n', buttonId = 'fsOpenFileButton') {
     super(name, buttonId)
     this.setButtonToSaveLog();
   }
@@ -165,7 +165,7 @@ export class LogWriter extends FileBase implements ILogWriter {
 }
 
 export class LogReader extends FileBase  {
-  constructor(name = 'logFile', buttonId = "fsReadFileButton") {
+  constructor(name = 'logFile', buttonId = 'fsReadFileButton') {
     super(name, buttonId)
   }
 

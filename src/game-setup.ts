@@ -16,10 +16,10 @@ import { Tile } from "./tile";
 /** OR: import { Params } from "@angular/router"; */
 declare type Params = Record<string, any>;
 
-/** show " R" for " N" */
+/** show ' R' for ' N' */
 stime.anno = (obj: string | { constructor: { name: string; }, stage?: Stage, table?: Table }) => {
   let stage = (typeof obj !== 'string') ? (obj?.stage || obj?.table?.stage) : undefined;
-  return !!stage ? (!!stage.canvas ? " C" : " R") : " -" as string;
+  return !!stage ? (!!stage.canvas ? ' C' : ' R') : ' -' as string;
 }
 
 export interface Scenario { turn: number, Aname: string };
@@ -56,7 +56,7 @@ export class GameSetup {
 
   /** one-time, invoked from Constructor(canvasId) */
   initialize(canvasId: string) {
-    stime.fmt = "MM-DD kk:mm:ss.SSSL";
+    stime.fmt = 'MM-DD kk:mm:ss.SSSL';
     this.stage = makeStage(canvasId, false);
     this.stage.snapToPixel = TP.snapToPixel;
     this.setupToParseState();                 // restart when/if 'SetState' button is clicked
@@ -92,14 +92,14 @@ export class GameSetup {
     gamePlay.curPlayer = allPlayers[gamePlay.curPlayerNdx];
   }
 
-  _netState = " " // or "yes" or "ref"
+  _netState = ' ' // or 'yes' or 'ref'
   set netState(val: string) {
-    this._netState = (val == "cnx") ? this._netState : val || " "
+    this._netState = (val == 'cnx') ? this._netState : val ?? ' '
     this.gamePlay.ll(2) && console.log(stime(this, `.netState('${val}')->'${this._netState}'`))
-    this.table.netGUI?.selectValue("Network", val)
+    this.table.netGUI?.selectValue('Network', val)
   }
   get netState() { return this._netState }
-  set playerId(val: string) { this.table.netGUI?.selectValue("PlayerId", val || "     ") }
+  set playerId(val: string) { this.table.netGUI?.selectValue('PlayerId', val ?? '     ') }
 
   logTime_js: string;
   readonly logWriter = this.makeLogWriter();
@@ -130,7 +130,7 @@ export class GameSetup {
     deContainer(this.stage);
     this.resetState(stateInfo);
     // next tick, new thread...
-    setTimeout(() => this.netState = netState, 100) // onChange-> ("new", "join", "ref") initiate a new connection
+    setTimeout(() => this.netState = netState, 100) // onChange-> ('new', 'join', 'ref') initiate a new connection
   }
 
   /** override: invoked by restart(); with stateInfo JSON5_parse(stateText) */

@@ -26,25 +26,13 @@ class HexEvent {}
 
 /** moves also identified by IHex | Hex, indicating where stone was placed. */
 class Move {
-  Aname: string = "";
+  Aname: string = '';
   ind: number = 0;
   board: any = {};
 }
 
-/** Implement game, enforce the rules, manage GameStats & hexMap; no GUI/Table required.
- *
- * From HexTowns: https://docs.google.com/document/d/1CzI70mpnrnBlvHHgcQowulyS-WOJTF06mFv1G2uu5CI/edit
- * Actions are:
- * - Reserve: place one Tile from auction to Player reserve
- * - Recruit: place a Builder/Leader (in Civic);
- *   do Build/Police action (requires 5 Econ)
- * - Build: move Master/Builders, build one Tile (from auction or reserve)
- * - Police: place one (in Station), move police (& leaders/builders), attack/capture;
- *   collatoral damge (3 Econ); dismiss Police
- * - Crime: place one on unoccupied hex adjacent to opponent Tile (requires 3 Econ)
- *   move Criminals, attack/capture;
- *   (Player keeps the captured Tile/Meeple; maybe earn VP if Crime Lord)
- * -
+/**
+ * Implement game, enforce the rules, manage GameState & hexMap; no GUI/Table required.
  */
 export class GamePlay0 {
   /** the latest GamePlay instance in this VM/context/process */
@@ -208,7 +196,12 @@ export class GamePlay0 {
   }
 }
 
-/** GamePlay with Table & GUI (KeyBinder, ParamGUI & Dragger) */
+/**
+ * GamePlay with Table & GUI (KeyBinder, ParamGUI & Dragger)
+ *
+ * TODO: probably need to make this a Mixin;
+ * so games can extend the non-GUI GamePlay0
+ */
 export class GamePlay extends GamePlay0 {
   readonly table: Table   // access to GUI (drag/drop) methods.
   /** GamePlay is the GUI-augmented extension of GamePlay0; uses Table */
@@ -471,7 +464,7 @@ export class GamePlay extends GamePlay0 {
     const backLog = this.logWriter.fileName ? '' : ' **';
     const logAt = `${logName}@${this.turnNumber}${backLog}`;
     this.logText(`&file=${logAt} ${this.curPlayer.Aname} ${stime.fs()}`, `GamePlay.setNextPlayer`);
-    ;(document.getElementById('readFileName') as HTMLTextAreaElement).value = logAt;
+    ; (document.getElementById('readFileName') as HTMLTextAreaElement).value = logAt;
     this.curPlayer.panel.showPlayer(true);
     this.paintForPlayer();
     this.updateCounters(); // beginning of round...

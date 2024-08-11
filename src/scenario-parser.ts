@@ -1,10 +1,10 @@
 
-// TODO: namespace or object for GameState names
-
 import { S, stime } from "@thegraid/common-lib";
 import { KeyBinder } from "@thegraid/easeljs-lib";
 import type { GamePlay } from "./game-play";
 import { Hex, HexMap, IHex2 } from "./hex";
+
+// TODO: namespace or object for GameState names ?
 
 export interface SetupElt {
   Aname?: string;        // {orig-scene}@{turn}
@@ -19,10 +19,10 @@ export type LogElts = [ StartElt, ...SetupElt[]];
 export class ScenarioParser {
 
   constructor(public map: HexMap<Hex>, public gamePlay: GamePlay) {
-
+    return;
   }
 
-  // coins, score, actions, events, AnkhPowers, Guardians in stable; specials for Amun, Bastet, Horus, ...
+  /** parse json to recreate all the needed bits (see Ankh.parseScenario). */
   parseScenario(setup: SetupElt) {
     if (!setup) return;
     // console.log(stime(this, `.parseScenario: curState =`), this.saveState(this.gamePlay, true)); // log current state for debug...

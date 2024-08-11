@@ -20,16 +20,16 @@ interface IPlannerMethods {
 
 class mockPlanner implements IPlanner {
   waitPaused(ident?: string): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.');
   }
   pause(): void {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.');
   }
   resume(): void {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.');
   }
   roboMove(run: boolean): void {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.');
   }
   terminate(): void {
     console.log(stime(this, `.terminate: TBD`))

@@ -26,7 +26,7 @@ export interface Dragable {
 
 /** to own file... */
 class TablePlanner {
-  constructor(gamePlay: GamePlay) {}
+  constructor(gamePlay: GamePlay) { }
 }
 interface StageTable extends Stage {
   table: Table;
@@ -204,7 +204,7 @@ export class Table {
     this.hexMap.update()
   }
   enableHexInspector(qY = 52, cont = this.undoCont) {
-    const qShape = new HexShape(TP.hexRad/3);
+    const qShape = new HexShape(TP.hexRad / 3);
     qShape.name = 'qShape';
     qShape.paint(C.BLACK);
     qShape.y = qY;  // size of 'skip' Triangles
@@ -242,10 +242,10 @@ export class Table {
     let table = this
     // c m v on buttons
     let makeButton = (dx: number, bc = TP.bgColor, tc = TP.bgColor, text: string, key = text) => {
-      let cont = new Container(); cont.name='aiControl'
+      let cont = new Container(); cont.name = 'aiControl'
       let circ = new Graphics().f(bc).drawCircle(0, 0, rad)
       let txt = new Text(text, F.fontSpec(rad), tc)
-      txt.y = - rad/2
+      txt.y = - rad / 2
       txt.textAlign = 'center'
       txt.mouseEnabled = false
       cont.x = dx
@@ -260,8 +260,8 @@ export class Table {
     let bc = makeButton(-dx, c0, c1, 'C', 'c')
     let bv = makeButton(dx, c1, c0, 'V', 'v')
     let bm = makeButton(0, cm, C.BLACK, 'M', 'm'); bm.y -= 10
-    let bn = makeButton(0, cm, C.BLACK, 'N', 'n'); bn.y += rad*2
-    let bs = makeButton(0, cm, C.BLACK, ' ', ' '); bs.y += rad*5
+    let bn = makeButton(0, cm, C.BLACK, 'N', 'n'); bn.y += rad * 2
+    let bs = makeButton(0, cm, C.BLACK, ' ', ' '); bs.y += rad * 5
     bpanel.addChild(bc)
     bpanel.addChild(bv)
     bpanel.addChild(bm)
@@ -341,7 +341,7 @@ export class Table {
 
     this.setupUndoButtons(55, 60, 45, xywh) // & enableHexInspector()
 
-    this.stage.on('drawend', () => setTimeout(() => this.toggleText(this.initialVis), 10), this, true );
+    this.stage.on('drawend', () => setTimeout(() => this.toggleText(this.initialVis), 10), this, true);
     this.hexMap.update();
     this.layoutTurnlog();
 
@@ -506,9 +506,9 @@ export class Table {
    * NetworkGUI --> network       [below ParamGUI2]
    */
   makeParamGUI(parent: Container, x = 0, y = 0) {
-    const gui = new ParamGUI(TP, { textAlign: 'right'});
+    const gui = new ParamGUI(TP, { textAlign: 'right' });
     const gamePlay = this.gamePlay.gameSetup;
-    gui.makeParamSpec('hexRad', [30, 60, 90, 120], { fontColor: 'red'}); TP.hexRad;
+    gui.makeParamSpec('hexRad', [30, 60, 90, 120], { fontColor: 'red' }); TP.hexRad;
     gui.makeParamSpec('nHexes', [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], { fontColor: 'red' }); TP.nHexes;
     gui.makeParamSpec('mHexes', [1, 2, 3], { fontColor: 'red' }); TP.mHexes;
     gui.spec("hexRad").onChange = (item: ParamItem) => { gamePlay.restart({ hexRad: item.value }) }
@@ -554,7 +554,7 @@ export class Table {
     }
     (this.stage.canvas as HTMLCanvasElement)?.parentElement?.addEventListener('paste', (ev) => {
       const text = ev.clipboardData?.getData('Text');
-      ;(gui.findLine('networkGroup').chooser as EBC).setValue(text)
+      ; (gui.findLine('networkGroup').chooser as EBC).setValue(text)
     });
     this.showNetworkGroup()
     parent.addChild(gui)
@@ -619,7 +619,7 @@ export class Table {
     dragger.clickToDrag(tile, true); // also enable clickToDrag;
   }
 
-  hexUnderObj(dragObj: DisplayObject, legalOnly = true ) {
+  hexUnderObj(dragObj: DisplayObject, legalOnly = true) {
     return this.hexMap.hexUnderObj(dragObj, legalOnly);
   }
 
@@ -651,7 +651,7 @@ export class Table {
         tile: tile,                  // ASSERT: hex === tile.hex
         targetHex: tile.fromHex,     // last isLegalTarget() or fromHex
         lastShift: event?.shiftKey,
-        lastCtrl:  event?.ctrlKey,
+        lastCtrl: event?.ctrlKey,
         info: info,
         nLegal: 0,
       }
@@ -764,7 +764,7 @@ export class Table {
 
   logCurPlayer(plyr: Player) {
     const tn = this.gamePlay.turnNumber
-    const robo = plyr.useRobo ? AT.ansiText(['red','bold'],"robo") : "----";
+    const robo = plyr.useRobo ? AT.ansiText(['red', 'bold'], "robo") : "----";
     const info = { turn: tn, plyr: plyr.Aname, gamePlay: this.gamePlay, curPlayer: plyr }
     console.log(stime(this, `.logCurPlayer --${robo}--`), info);
     this.logTurn(`//${tn}: ${plyr.Aname}`);
@@ -781,8 +781,8 @@ export class Table {
 
   _tablePlanner: TablePlanner
   get tablePlanner() {
-    return this._tablePlanner ||
-    (this._tablePlanner = new TablePlanner(this.gamePlay))
+    return this._tablePlanner ??
+      (this._tablePlanner = new TablePlanner(this.gamePlay))
   }
   /**
    * All manual moves feed through this (drop & redo)
@@ -805,7 +805,7 @@ export class Table {
   scaleUp(cont: Container, scale = this.upscale) {
     cont.scaleX = cont.scaleY = scale;
   }
-  scaleParams = { initScale: .125, scale0: .05, scaleMax: 4, steps: 30, zscale: .20,  };
+  scaleParams = { initScale: .125, scale0: .05, scaleMax: 4, steps: 30, zscale: .20, };
 
   readonly scaleCont: ScaleableContainer2;
   /** makeScaleableBack and setup scaleParams
@@ -822,9 +822,9 @@ export class Table {
     }
     if (bindKeys) {
       this.bindKeysToScale(scaleC, "a", 436, 2);
-      KeyBinder.keyBinder.setKey('Space',   { thisArg: this, func: () => this.dragTarget() });
-      KeyBinder.keyBinder.setKey('S-Space', { thisArg: this, func: () => this.dragTarget() });
-      KeyBinder.keyBinder.setKey('t', { thisArg: this, func: () => { this.toggleText(); } })
+      KeyBinder.keyBinder.setKey('Space', () => this.dragTarget());
+      KeyBinder.keyBinder.setKey('S-Space', () => this.dragTarget());
+      KeyBinder.keyBinder.setKey('t', () => this.toggleText());
     }
     return scaleC;
   }
@@ -891,13 +891,13 @@ export class Table {
     KeyBinder.keyBinder.setKey("a", { func: () => setScaleXY(nsA, apt) });
     KeyBinder.keyBinder.setKey("z", { func: () => setScaleXY(nsZ, zpt) });
     KeyBinder.keyBinder.setKey("x", { func: () => saveScaleZ() });
-    KeyBinder.keyBinder.setKey("p", { func: () => getOop(), thisArg: this});
+    KeyBinder.keyBinder.setKey("p", { func: () => getOop(), thisArg: this });
     KeyBinder.keyBinder.setKey('S-ArrowUp', { thisArg: this, func: this.zoom, argVal: 1.03 })
-    KeyBinder.keyBinder.setKey('S-ArrowDown', { thisArg: this, func: this.zoom, argVal: 1/1.03 })
-    KeyBinder.keyBinder.setKey('S-ArrowLeft', { thisArg: this, func: this.pan, argVal: {x: -10, y:0} })
-    KeyBinder.keyBinder.setKey('ArrowRight', { thisArg: this, func: this.pan, argVal: {x: 10, y: 0} })
-    KeyBinder.keyBinder.setKey('ArrowLeft', { thisArg: this, func: this.pan, argVal: {x: -10, y:0} })
-    KeyBinder.keyBinder.setKey('S-ArrowRight', { thisArg: this, func: this.pan, argVal: {x: 10, y: 0} })
+    KeyBinder.keyBinder.setKey('S-ArrowDown', { thisArg: this, func: this.zoom, argVal: 1 / 1.03 })
+    KeyBinder.keyBinder.setKey('S-ArrowLeft', { thisArg: this, func: this.pan, argVal: { x: -10, y: 0 } })
+    KeyBinder.keyBinder.setKey('ArrowRight', { thisArg: this, func: this.pan, argVal: { x: 10, y: 0 } })
+    KeyBinder.keyBinder.setKey('ArrowLeft', { thisArg: this, func: this.pan, argVal: { x: -10, y: 0 } })
+    KeyBinder.keyBinder.setKey('S-ArrowRight', { thisArg: this, func: this.pan, argVal: { x: 10, y: 0 } })
     KeyBinder.keyBinder.setKey('ArrowUp', { thisArg: this, func: this.pan, argVal: { x: 0, y: -10 } })
     KeyBinder.keyBinder.setKey('ArrowDown', { thisArg: this, func: this.pan, argVal: { x: 0, y: 10 } })
 
