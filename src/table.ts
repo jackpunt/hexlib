@@ -3,7 +3,7 @@ import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape,
 import { NamedContainer, NamedObject, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
 import type { GameState } from "./game-state";
-import { Hex, Hex2, HexMap, IdHex, RecycleHex } from "./hex";
+import { Hex, IHex2, HexMap, IdHex, RecycleHex } from "./hex";
 import { XYWH } from "./hex-intfs";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
@@ -20,8 +20,8 @@ export type EventName = 'Claim' | 'Split' | 'Conflict' | 'merge' | 'redzone';
 export interface ActionButton extends Container { isEvent: boolean, pid: number, rollover?: ((b: ActionButton, over: boolean) => void) }
 
 export interface Dragable {
-  dragFunc0(hex: Hex2, ctx: DragContext): void;
-  dropFunc0(hex: Hex2, ctx: DragContext): void;
+  dragFunc0(hex: IHex2, ctx: DragContext): void;
+  dropFunc0(hex: IHex2, ctx: DragContext): void;
 }
 
 /** to own file... */
@@ -35,7 +35,7 @@ interface StageTable extends Stage {
 type MinDragInfo = { first?: boolean, event?: MouseEvent };
 
 export interface DragContext {
-  targetHex: Hex2;      // last isLegalTarget() or fromHex
+  targetHex: IHex2;      // last isLegalTarget() or fromHex
   lastShift?: boolean;  // true if Shift key is down
   lastCtrl?: boolean;   // true if control key is down
   info: DragInfo;       // we only use { first, event }
@@ -94,7 +94,10 @@ class TextLog extends NamedContainer {
   }
 }
 
-/** layout display components, setup callbacks to GamePlay */
+/** layout display components, setup callbacks to GamePlay.
+ *
+ * uses a HexMap\<IHex2\>
+ */
 export class Table {
   static table: Table
   static stageTable(obj: DisplayObject) {
@@ -110,7 +113,7 @@ export class Table {
   gamePlay: GamePlay;
   stage: Stage;
   bgRect: Shape
-  hexMap: HexMap<Hex2>; // from gamePlay.hexMap
+  hexMap: HexMap<IHex2>; // from gamePlay.hexMap
 
   paramGUIs: ParamGUI[];
   netGUI: ParamGUI; // paramGUIs[2]
@@ -127,6 +130,11 @@ export class Table {
   winBack: Shape = new Shape(new Graphics().f(C.nameToRgbaString("lightgrey", .6)).r(-180, -5, 360, 130))
 
   dragger: Dragger
+  /**
+   * constructor for newHex2() off-map Hex.
+   *
+   * typically: this.hexC = this.hexMap.hexC as Constructor\<IHex2\> */
+  hexC: Constructor<IHex2>;
 
   overlayCont = new Container();
   constructor(stage: Stage) {
@@ -225,7 +233,7 @@ export class Table {
     if (this.downClick) return (this.downClick = false, undefined) // skip one 'click' when pressup/dropfunc
     if (vis === undefined) vis = this.isVisible = !this.isVisible;
     Tile.allTiles.forEach(tile => tile.textVis(vis));
-    this.hexMap.forEachHex<Hex2>(hex => hex.showText(vis))
+    this.hexMap.forEachHex<IHex2>(hex => hex.showText(vis))
     this.hexMap.update()               // after toggleText & updateCache()
     return undefined;
   }
@@ -263,8 +271,8 @@ export class Table {
   }
 
   /** all the non-map hexes created by newHex2 */
-  newHexes: Hex2[] = [];
-  newHex2(row = 0, col = 0, name: string, claz: Constructor<Hex2> = Hex2, sy = 0) {
+  newHexes: IHex2[] = [];
+  newHex2(row = 0, col = 0, name: string, claz: Constructor<IHex2> = this.hexC, sy = 0) {
     const hex = new claz(this.hexMap, row, col, name);
     hex.distText.text = name;
     if (row <= 0) {
@@ -274,7 +282,7 @@ export class Table {
     return hex
   }
 
-  noRowHex(name: string, crxy: { row: number, col: number }, claz?: Constructor<Hex2>) {
+  noRowHex(name: string, crxy: { row: number, col: number }, claz?: Constructor<IHex2>) {
     const { row, col } = crxy;
     const hex = this.newHex2(row, col, name, claz);
     return hex;
@@ -308,12 +316,17 @@ export class Table {
     return { x, y, w: w + dw * dxdc, h: h + dh * dydr };
   }
 
+  /**
+   * Inject gamePlay, gamePlay.hexMap and hexC; setBackground and cache; layoutTable2; makePerPlayer;
+   * setupUndoButtons; layoutTurnlog;
+   */
   layoutTable(gamePlay: GamePlay) {
     this.gamePlay = gamePlay;
-    const hexMap = this.hexMap = gamePlay.hexMap as any as HexMap<Hex2>;
+    this.hexMap = gamePlay.hexMap as any as HexMap<IHex2>;
+    this.hexC = this.hexMap.hexC as Constructor<IHex2>;
 
     const xywh = this.bgXYWH();              // override bgXYHW() to supply default/arg values
-    const hexCont = hexMap.mapCont.hexCont, hexp = this.scaleCont;
+    const hexCont = this.hexMap.mapCont.hexCont, hexp = this.scaleCont;
     this.bgRect = this.setBackground(this.scaleCont, xywh); // bounded by xywh
     const { x, y, width, height } = hexCont.getBounds();
     hexCont.cache(x, y, width, height); // cache hexCont (bounded by bgr)
@@ -431,17 +444,17 @@ export class Table {
   setToRowCol(cont: Container, row = 0, col = 0, hexCont = this.hexMap.mapCont.hexCont) {
     if (!cont.parent) this.scaleCont.addChild(cont); // localToLocal requires being on stage
     //if (cont.parent === hexCont) debugger;
-    const hexC = this.hexMap.centerHex;
-    const { x, y, dxdc, dydr } = hexC.xywh();
-    const xx = x + (col - hexC.col) * dxdc;
-    const yy = y + (row - hexC.row) * dydr;
+    const cHex = this.hexMap.centerHex;
+    const { x, y, dxdc, dydr } = cHex.xywh(cHex.radius);
+    const xx = x + (col - cHex.col) * dxdc;
+    const yy = y + (row - cHex.row) * dydr;
     hexCont.localToLocal(xx, yy, cont.parent, cont);
     if (cont.parent === hexCont) {
       cont.x = xx; cont.y = yy;
     }
   }
 
-  sourceOnHex(source: TileSource<Tile>, hex: Hex2) {
+  sourceOnHex(source: TileSource<Tile>, hex: IHex2) {
     if (source?.counter) source.counter.mouseEnabled = false;
     hex.legalMark.setOnHex(hex);
     hex.cont.visible = false;
@@ -472,12 +485,12 @@ export class Table {
     return button;
   }
 
-  makeRecycleHex(row = TP.nHexes + 3.2, col = 0) {
+  makeRecycleHex(row = TP.nHexes + 3.2, col = 0, claz = RecycleHex) {
     const name = 'Recycle'
     const image = new Tile(name).addImageBitmap(name); // ignore Tile, get image.
     image.y = 0;              // recenter (undo text offset)
 
-    const rHex = this.newHex2(row, col, name, RecycleHex);
+    const rHex = this.newHex2(row, col, name, claz);
     this.setToRowCol(rHex.cont, row, col);
     rHex.rcText.visible = rHex.distText.visible = false;
     rHex.setHexColor(C.WHITE);
@@ -633,7 +646,7 @@ export class Table {
         return;
       }
       const event = info.event?.nativeEvent;
-      tile.fromHex = tile.hex as Hex2;  // dragStart: set tile.fromHex when first move!
+      tile.fromHex = tile.hex as IHex2;  // dragStart: set tile.fromHex when first move!
       ctx = {
         tile: tile,                  // ASSERT: hex === tile.hex
         targetHex: tile.fromHex,     // last isLegalTarget() or fromHex
@@ -655,7 +668,7 @@ export class Table {
   }
 
   // invoke dragShift 'event' if shift state changes
-  checkShift(hex: Hex2 | undefined, ctx: DragContext) {
+  checkShift(hex: IHex2 | undefined, ctx: DragContext) {
     const nativeEvent = ctx.info.event?.nativeEvent
     ctx.lastCtrl = nativeEvent?.ctrlKey;
     // track shiftKey because we don't pass 'event' to isLegalTarget(hex)
@@ -678,7 +691,7 @@ export class Table {
       // mark legal targets for tile; SHIFT for all hexes, if payCost
       tile.dragStart(ctx); // prepare for isLegalTarget
 
-      const countLegalHexes = (hex: Hex2) => {
+      const countLegalHexes = (hex: IHex2) => {
         if (hex !== tile.hex && tile.isLegalTarget(hex, ctx)) {
           hex.isLegal = true;
           ctx.nLegal += 1;
@@ -701,9 +714,10 @@ export class Table {
     tile?.dragShift(shiftKey, ctx);
   }
 
+  /** Tile dropFunc */
   dropFunc(dobj: DisplayObject, info?: DragInfo, hex = this.hexUnderObj(dobj)) {
     const tile = dobj as Tile;
-    tile.dropFunc0(hex as Hex2, this.dragContext);
+    tile.dropFunc0(hex as IHex2, this.dragContext); // generally: hex == ctx.targetHex
     tile.markLegal(this); // hex => hex.isLegal = false;
     // this.gamePlay.recycleHex.isLegal = false;
     this.dragContext.lastShift = undefined;
@@ -713,15 +727,18 @@ export class Table {
   /** synthesize dragStart(tile), tile.dragFunc0(hex), dropFunc(tile);  */
   dragStartAndDrop(tile: Tile, toHex: Hex) {
     if (!tile) return; // C-q when no EventTile on eventHex
-    const hex = toHex as Hex2, info = { first: true } as DragInfo; // event: undefined
-    this.dragFunc0(tile, info, tile.hex as Hex2);  // dragStart()
+    const hex = toHex as IHex2, info = { first: true } as DragInfo; // event: undefined
+    this.dragFunc0(tile, info, tile.hex as IHex2);  // dragStart()
     tile.dragFunc0(hex, this.dragContext);
     this.dropFunc(tile, info, hex);
   }
 
   private isDragging() { return this.dragContext?.tile !== undefined; }
 
-  /** Force this.dragger to drop the current drag object on given target Hex */
+  /** Force this.dragger to drop the current drag object on given target Hex.
+   *
+   * without checking isLegalTarget();
+   */
   stopDragging(target = this.dragContext?.tile?.fromHex) {
     //console.log(stime(this, `.stopDragging: dragObj=`), this.dragger.dragCont.getChildAt(0), {noMove, isDragging: this.isDragging()})
     if (this.isDragging()) {

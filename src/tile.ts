@@ -2,7 +2,7 @@ import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
 import { CenterText } from "@thegraid/easeljs-lib";
 import { Container, MouseEvent, Text } from "@thegraid/easeljs-module";
 import type { GamePlay } from "./game-play";
-import { Hex1, Hex2 } from "./hex";
+import { Hex1, IHex2 } from "./hex";
 import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
 import { C1, HexShape, PaintableShape, TileShape } from "./shapes";
@@ -70,11 +70,11 @@ export class Tile extends Tile0 implements Dragable {
   // static source: any[] = [];
 
   static makeSource0<T extends Tile, TS extends TileSource<T>>(
-    unitSource: new (type: Constructor<Tile>, p: Player, hex: Hex2) => TS,
+    unitSource: new (type: Constructor<Tile>, p: Player, hex: IHex2) => TS,
     // IF (per-player) static source: TileSource[] ELSE static source: TileSource
     type: Constructor<T> & { source: TileSource<T>[] | TileSource<T> },
     player: Player,
-    hex: Hex2,
+    hex: IHex2,
     n = 0,
   ) {
     const source = new unitSource(type, player, hex);
@@ -130,7 +130,7 @@ export class Tile extends Tile0 implements Dragable {
   /** location at start-of-game & after-Recycle; Meeple & Civic; Policy: sendHome -> sendToBag */
   homeHex!: Hex1;
   /** location at start-of-drag */
-  fromHex: Hex2;
+  fromHex: IHex2;
   isDragable(ctx?: DragContext) { return true; }
 
   _hex: Hex1 | undefined;
@@ -239,7 +239,7 @@ export class Tile extends Tile0 implements Dragable {
     }
   }
 
-  showTargetMark(hex: Hex2 | undefined, ctx: DragContext) {
+  showTargetMark(hex: IHex2 | undefined, ctx: DragContext) {
     ctx.targetHex = hex?.isLegal ? hex : this.fromHex;
     ctx.targetHex?.map.showMark(ctx.targetHex);
   }
@@ -250,12 +250,15 @@ export class Tile extends Tile0 implements Dragable {
    * isLegal already set;
    * record ctx.targetHex & showMark() when Tile is over a legal targetHex.
    */
-  dragFunc0(hex: Hex2 | undefined, ctx: DragContext) {
+  dragFunc0(hex: IHex2 | undefined, ctx: DragContext) {
     this.showTargetMark(hex, ctx);
   }
 
-  /** entry point from Table.dropFunc; delegate to this.dropFunc() */
-  dropFunc0(hex: Hex2, ctx: DragContext) {
+  /** entry point from Table.dropFunc; delegate to this.dropFunc()
+   *
+   * then showMark(undefined);
+   */
+  dropFunc0(hex: IHex2, ctx: DragContext) {
     this.dropFunc(ctx.targetHex, ctx);
     ctx.targetHex?.map.showMark(undefined); // if (this.fromHex === undefined)
   }
@@ -275,7 +278,7 @@ export class Tile extends Tile0 implements Dragable {
    * - this.gamePlay.recycleHex.isLegal = this.isLegalRecycle(ctx); // do not increment ctx.nLegal!
    * - OR! class RecycleHex override markLegal to handle this!
    */
-  markLegal(table: Table, setLegal = (hex: Hex2) => { hex.isLegal = false; }, ctx: DragContext = table.dragContext) {
+  markLegal(table: Table, setLegal = (hex: IHex2) => { hex.isLegal = false; }, ctx: DragContext = table.dragContext) {
     table.newHexes.forEach(setLegal);
     table.hexMap.forEachHex(setLegal);
   }
@@ -288,7 +291,7 @@ export class Tile extends Tile0 implements Dragable {
     if (!toHex) return false;
     if (!!toHex.tile) return false; // note: from AuctionHexes to Reserve overrides this.
     if (toHex.meep && !(toHex.meep.player === this.gamePlay.curPlayer)) return false; // QQQ: can place on non-player meep?
-    if ((this.hex as Hex2)?.isOnMap && !ctx?.lastShift) return false;
+    if ((this.hex as IHex2)?.isOnMap && !ctx?.lastShift) return false;
     return true;
   }
 
@@ -301,7 +304,7 @@ export class Tile extends Tile0 implements Dragable {
    * @param targetHex Hex2 this Tile is over when dropped (may be undefined; see also: ctx.targetHex)
    * @param ctx DragContext
    */
-  dropFunc(targetHex: Hex2, ctx: DragContext) {
+  dropFunc(targetHex: IHex2, ctx: DragContext) {
     this.placeTile(targetHex);
   }
 

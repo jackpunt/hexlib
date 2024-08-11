@@ -1,6 +1,6 @@
 import { Shape } from "@thegraid/easeljs-module";
 import type { NamedObject } from "./game-play";
-import type { Hex1, Hex2 } from "./hex";
+import type { Hex1, IHex2 } from "./hex";
 import type { Player } from "./player";
 import { C1, PaintableShape } from "./shapes";
 import type { DragContext, Table } from "./table";
@@ -132,7 +132,7 @@ export class Meeple extends Tile {
 
   /** override markLegal(), if *this* is the only meeple to have moved,
    * unMove it to reset influence; can always move back to startHex; */
-  override markLegal(table: Table, setLegal?: (hex: Hex2) => void, ctx?: DragContext): void {
+  override markLegal(table: Table, setLegal?: (hex: IHex2) => void, ctx?: DragContext): void {
     if (!ctx?.lastShift && !!setLegal && this.canAutoUnmove) {
       this.unMove();          // this.hex = this.startHex;
     }

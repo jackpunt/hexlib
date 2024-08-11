@@ -4,7 +4,7 @@
 import { S, stime } from "@thegraid/common-lib";
 import { KeyBinder } from "@thegraid/easeljs-lib";
 import type { GamePlay } from "./game-play";
-import { Hex, Hex2, HexMap } from "./hex";
+import { Hex, HexMap, IHex2 } from "./hex";
 
 export interface SetupElt {
   Aname?: string;        // {orig-scene}@{turn}
@@ -65,7 +65,7 @@ export class ScenarioParser {
   }
 
   /** debug utility */
-  identCells(map: HexMap<Hex2>) {
+  identCells(map: HexMap<IHex2>) {
     map.forEachHex(hex => {
       const hc = hex.cont;
       hc.mouseEnabled = true;

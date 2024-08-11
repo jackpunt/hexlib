@@ -244,7 +244,7 @@ export class GamePlay extends GamePlay0 {
     KeyBinder.keyBinder.setKey('b', { thisArg: this, func: this.undoMove })
     KeyBinder.keyBinder.setKey('f', { thisArg: this, func: this.redoMove })
     //KeyBinder.keyBinder.setKey('S', { thisArg: this, func: this.skipMove })
-    KeyBinder.keyBinder.setKey('Escape', {thisArg: table, func: table.stopDragging}) // Escape
+    KeyBinder.keyBinder.setKey('Escape', () => this.table.stopDragging()) // Escape
     KeyBinder.keyBinder.setKey('C-c', { thisArg: this, func: this.stopPlayer })// C-c Stop Planner
     KeyBinder.keyBinder.setKey('u', { thisArg: this, func: this.unMove })
     // KeyBinder.keyBinder.setKey('n', () => { this.endTurn(); this.gameState.phase('BeginTurn') });
@@ -434,7 +434,7 @@ export class GamePlay extends GamePlay0 {
 
   /** invoked by GUI or Keyboard */
   undoMove(undoTurn: boolean = true) {
-    this.table.stopDragging() // drop on nextHex (no Move)
+    this.table.stopDragging() // drop on fromHex (no Move)
     //
     // undo state...
     //
@@ -443,7 +443,7 @@ export class GamePlay extends GamePlay0 {
   }
   /** doTableMove(redoMoves[0]) */
   redoMove() {
-    this.table.stopDragging() // drop on nextHex (no Move)
+    this.table.stopDragging() // drop on fromHex (no Move)
     let move = this.redoMoves[0]// addStoneEvent will .shift() it off
     if (!move) return
     this.table.doTableMove(move.hex)

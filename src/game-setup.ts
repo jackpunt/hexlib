@@ -81,7 +81,7 @@ export class GameSetup {
 
   /** set from qParams['n'] */
   nPlayers = 2;
-  makeNplayers(gamePlay: GamePlay) {
+  makeAllPlayers(gamePlay: GamePlay) {
     // Create and Inject all the Players:
     const allPlayers = gamePlay.allPlayers;
     allPlayers.length = 0;
@@ -186,9 +186,12 @@ export class GameSetup {
   }
 
   /**
-   * create a HexMap<Hex>; addToMapCont(); makeAllDistricts(); return
+   * create a HexMap<hexC>; addToMapCont(); makeAllDistricts(); return
    *
-   * Invoked from GameSetup.startup()
+   * Invoked from GameSetup.startup() with NO arg.
+   *
+   * Typical:
+   * override makeHexMap(hexC: Constructor<Hex> = LocalHex) {super.makeHexMap(hexC)}
    *
    * We create hexMap here, and store it in gameSetup,
    * then copy it to this.gamePlay.hexMap in GamePlay.constructor.
@@ -196,11 +199,13 @@ export class GameSetup {
    * It is also copied from gamePlay to table.hexMap in Table.layoutTable()
    *
    * gamePlay.hexMap is used for most references [mostly hexMap.update()]
+   *
+   * @param hexC Constructor of the Hex in this HexMap (default: hexlib.Hex2)
    */
-  makeHexMap() {
-    const hexMap = new HexMap<Hex>(TP.hexRad, true, Hex2 as Constructor<Hex>);
+  makeHexMap(hexC: Constructor<Hex> = Hex2) {
+    const hexMap = new HexMap<Hex>(TP.hexRad, true, hexC);
     const cNames = MapCont.cNames.concat() as string[]; // for example
-    hexMap.addToMapCont(Hex2, cNames);       // addToMapCont(hexC, cNames)
+    hexMap.addToMapCont(hexC, cNames);       // addToMapCont(hexC, cNames)
     hexMap.makeAllDistricts();               // determines size for this.bgRect
     return hexMap;
   }
@@ -248,7 +253,7 @@ export class GameSetup {
    */
   startScenario(scenario: Scenario) {
     const gamePlay = this.gamePlay, table = this.table;
-    this.makeNplayers(gamePlay);     // Players have: civics & meeples & TownSpec
+    this.makeAllPlayers(gamePlay);     // Players have: civics & meeples & TownSpec
 
     // Inject GamePlay to Table; all the GUI components, makeAllDistricts(), addTerrain, initialRegions
     table.layoutTable(gamePlay);     // mutual injection & make all panelForPlayer

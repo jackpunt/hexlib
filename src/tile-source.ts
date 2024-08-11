@@ -1,7 +1,7 @@
 import { Constructor } from "@thegraid/common-lib";
 import { ValueEvent } from "@thegraid/easeljs-lib";
 import { NumCounter } from "./counters";
-import type { Hex2 } from "./hex";
+import type { IHex2 } from "./hex";
 import { H } from "./hex-intfs";
 import { Meeple } from "./meeple";
 import type { Player } from "./player";
@@ -22,7 +22,7 @@ export class TileSource<T extends Tile> {
   constructor(
     public readonly type: Constructor<T>,
     public readonly player: Player,
-    public readonly hex: Hex2,
+    public readonly hex: IHex2,
     counter?: NumCounter,
   ) {
     this.Aname = `${type.name}Source`;

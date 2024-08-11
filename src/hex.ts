@@ -23,18 +23,22 @@ type TopoEW = { [key in EwDir]: DCR }
 type TopoNS = { [key in NsDir]: DCR }
 type Topo = TopoEW | TopoNS
 
-/** to recognize this class in hexUnderPoint and obtain the associated Hex2. */
+/** to recognize this class in hexUnderPoint and obtain the associated hex2: IHex2 */
 export class HexCont extends Container {
-  constructor(public hex2: Hex2) {
+  constructor(public hex2: IHex2) {
     super()
   }
 }
 function nf(n: number) { return `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`; }
 
-/** Base Hex, has no connection to graphics.
- * topological links to adjacent hex objects.
+/**
+ * Minimal Hex, with topological links to adjacent hex objects,
+ * has no connection to graphics.
  */
 export class Hex {
+  /** Identify Hex instance derived from Hex2Mixin; and so implements IHex2. */
+  static isIHex2(hex: Hex): hex is IHex2 { return (hex as any).implementsIHex2 as boolean; }
+
   /** return indicated Hex from otherMap */
   static ofMap(ihex: IdHex, otherMap: HexMap<Hex>) {
     try {
@@ -55,8 +59,8 @@ export class Hex {
     this.links = {}
   }
   /** (x,y): center of hex; (width,height) of hex; scaled by radius if supplied
-   * @param radius [1] radius used in drawPolyStar(radius,,, H.dirRot[tiltDir])
-   * @param ewTopo [TP.useEwTopo] true -> suitable for ewTopo (long axis of hex is N/S)
+   * @param radius [TP.hexRad] 'size' of hex; radius used in drawPolyStar(radius,,, H.dirRot[tiltDir])
+   * @param ewTopo [TP.useEwTopo] true -> suitable for ewTopo (has E & W [vertical] sides)
    * @param row [this.row]
    * @param col [this.col]
    * @returns \{ x, y, w, h, dxdc, dydr } of cell at [row, col]
@@ -78,7 +82,7 @@ export class Hex {
       return { x, y, w, h, dxdc, dydr }
     }
   }
-  get xywh0() { return this.xywh(); } // so can see xywh from debugger
+  get xywh0() { return this.xywh(TP.hexRad); } // so can see xywh from debugger
 
   // _Aname: string;
   // get Aname() { return this._Aname; }
@@ -108,6 +112,7 @@ export class Hex {
   get isLegal() { return this._isLegal; }
   set isLegal(v: boolean) { this._isLegal = v; }
 
+  /** hexlib.Hex uses only the HexM slice of a HexMap. */
   readonly map: HexM<Hex>;  // Note: this.parent == this.map.hexCont [cached] TODO: typify ??
   readonly row: number;
   readonly col: number;
@@ -207,9 +212,14 @@ export class Hex1 extends Hex {
   }
 }
 
-/** Mixin hexlib/Hex2 with (LocalHex extends Hex1)
+/**
+ * Mixin hexlib/Hex2 with (LocalHex extends Hex1)
  *
- * class LocalHex extends Hex2Mixin(Hex1Lib) { ... }
+ * class LocalHex1 extends Hex1Lib { ... }
+ *
+ * class LibHex2extendsLocalHex1 extends Hex2Mixin(LocalHex1) { }
+ *
+ * class LocalHex2 extends LibHex2extendsLocalHex1 { ... }
  */
 export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
   return class Hex2Impl extends Base {
@@ -223,11 +233,12 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       */
     constructor(...args: any[]) {
       const [map, row, col, name] = args;
-      super(map, row, col, name);  // invoke the given Base constructor: Hex2Lib
+      super(map, row, col, name);  // invoke the given Base constructor: LocalHex1
       this.constructorCode(map, row, col, name);
       return;         // breakpoint able
     }
 
+  implementsIHex2 = true;
   /** Child of mapCont.hexCont: HexCont holds hexShape(color), rcText, distText, capMark */
   readonly cont: HexCont = new HexCont(this); // Hex IS-A Hex0, HAS-A HexCont Container
   readonly radius = TP.hexRad;                // determines width & height
@@ -280,7 +291,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
   override get meep() { return super.meep; }
   override set meep(meep: Meeple | undefined) { this.setUnit(meep as Tile, true)}
 
-  constructorCode(map: HexM<Hex2>, row: number, col: number, name?: string) {
+  constructorCode(map: HexM<IHex2>, row: number, col: number, name?: string) {
     this.initCont(row, col);
     map?.mapCont.hexCont.addChild(this.cont);
     this.hexShape.name = this.Aname;
@@ -376,10 +387,15 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
   }
 }
 
-/** One Hex cell in the game, shown as a polyStar Shape */
+/** a default Constructor and implementation of IHex2 */
 export class Hex2 extends Hex2Mixin(Hex1) { }
+type PublicInterface<T> = {[K in keyof T]: T[K]};
 
-export class RecycleHex extends Hex2 { }
+/** A graphics-enabled Hex cell, with a Container holding a HexShape. */
+export type IHex2 = PublicInterface<Hex2>; // IHex2
+
+/** a default Constructor and impl for RecycleHex. */
+export class RecycleHex extends Hex2 { } // RecycleHex
 
 /**
  * A HexShape/PaintableShape to indicate selected hex of HexMap.
@@ -391,7 +407,7 @@ export class RecycleHex extends Hex2 { }
  * @param cm of HexShape/ring for mark ['rgba(127,127,127,.3)']
  */
 export class HexMark extends HexShape {
-  hex?: Hex2;
+  hex?: IHex2;
   constructor(radius: number, radius0 = 0, cm = 'rgba(127,127,127,.3)') {
     super(radius);
     this.graphics.f(cm).dp(0, 0, this.radius, 6, 0, this.tilt);
@@ -401,11 +417,6 @@ export class HexMark extends HexShape {
     this.setHexBounds();      // bounds are based on readonly, should be const
     this.mouseEnabled = false;
   }
-  // don't invoke Mark.paint(new_color); TODO: remove this override.
-  // override paint(color: string): Graphics {
-  //   this.setHexBounds();    // <--- likely redundant, see HexSHape
-  //   return this.graphics;   // do not repaint.
-  // }
 
   // Fail: markCont to be 'above' tileCont...
   /**
@@ -413,7 +424,7 @@ export class HexMark extends HexShape {
    *
    * (this.hex = hex) ? hex.cont.addChild(this.cont) : this.visible = false
    */
-  showOn(hex: Hex2 | undefined) {
+  showOn(hex: IHex2 | undefined) {
     // when mark is NOT showing, this.visible === false && this.hex === undefined.
     // when mark IS showing, this.visible === true && (this.hex instanceof Hex2)
     if (this.hex === hex) return;
@@ -489,6 +500,11 @@ export class MapCont extends Container {
   }
 }
 
+/**
+ * Minimal subset of HexMap\<T extends Hex\> used by hexlib: Hex, Tile, TileSource.
+ *
+ * Expect HexM\<IHex2\> for many cases; HexM\<Hex1\> for robo-planner?
+ */
 export interface HexM<T extends Hex> {
   readonly district: T[][]        // all the Hex in a given district
   readonly mapCont: MapCont
@@ -530,8 +546,9 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     if (addToMapCont) this.addToMapCont(this.hexC as Constructor<T>);
   }
 
-  get asHex2Map() { return this as any as HexMap<Hex2> }
-  /** Each occupied Hex, with the occupying PlayerColor  */
+  /** may be obsolete when using IHex2 */
+  get asIHex2Map() { return this as any as HexMap<IHex2> }
+  /** Each occupied Hex, with the associated district color */
   readonly district: Array<T[]> = []
   hexAry: T[];  // set by makeAllDistricts()
   readonly mapCont: MapCont = new MapCont();   // if/when using Hex2
@@ -547,7 +564,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
 
   readonly radius = TP.hexRad
   /** return this.centerHex.xywh() for this.topo */
-  get xywh() { return this.centerHex.xywh(); }
+  get xywh() { return this.centerHex.xywh(this.radius); }
 
   private minCol?: number = undefined               // Array.forEach does not look at negative indices!
   private maxCol?: number = undefined               // used by rcLinear
@@ -651,7 +668,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     const mark = this.mark as HexMark;
     if (!hex) {  // || hex.Aname === S_Skip || hex.Aname === S_Resign) {
       mark.visible = false;
-    } else if (hex instanceof Hex2) {
+    } else if (Hex.isIHex2(hex)) {
       mark.scaleX = hex.scaleX; mark.scaleY = hex.scaleY;
       mark.visible = true;
       // put the mark, at location of hex, on hex.markCont:
@@ -845,18 +862,18 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param district if district == 0, paint with special distColor[0]
    * @param cColor color for center hex, else use dcolor from pickColor(hex2Ary)
    */
-  paintDistrict(hex2Ary: Hex2[], district = 0, cColor?: string) {
+  paintDistrict(hex2Ary: IHex2[], district = 0, cColor?: string) {
     let dcolor = (district == 0) ? HexMap.distColor[0] : this.pickColor(hex2Ary)
     hex2Ary.forEach((hex, n) => hex.setHexColor((n == 0) ? cColor ?? dcolor : dcolor));
   }
 
   /** find color not used by hex adjacent to given hexAry */
-  pickColor(hexAry: Hex2[]): string {
+  pickColor(hexAry: IHex2[]): string {
     let hex = hexAry[0]
     let adjColor: string[] = [HexMap.distColor[0]] // colors not to use
     this.linkDirs.forEach(hd => {
-      let nhex: Hex2 = hex;
-      while (!!(nhex = nhex.nextHex(hd) as Hex2)) {
+      let nhex = hex;
+      while (!!(nhex = nhex.nextHex(hd) as IHex2)) {
         if (nhex.district != hex.district) { adjColor.push(nhex.distColor); return }
       }
     })
@@ -870,8 +887,8 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    */
   setDistrictAndPaint(hexAry: T[], district = 0) {
     this.district[district] = hexAry;
-    if (hexAry[0] instanceof Hex2) {
-      this.paintDistrict(hexAry as any as Hex2[], district);
+    if (Hex.isIHex2(hexAry[0])) {
+      this.paintDistrict(hexAry as any as IHex2[], district);
     }
   }
 

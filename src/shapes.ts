@@ -1,7 +1,7 @@
 import { C, XYWH, className } from "@thegraid/common-lib";
 import { CenterText } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Graphics, Shape, Text } from "@thegraid/easeljs-module";
-import type { Hex2 } from "./hex";
+import type { IHex2 } from "./hex";
 import { H, HexDir } from "./hex-intfs";
 import { TP } from "./table-params";
 
@@ -242,8 +242,8 @@ export class TileShape extends HexShape {
 }
 
 export class LegalMark extends Shape {
-  hex2: Hex2;
-  setOnHex(hex: Hex2) {
+  hex2: IHex2;
+  setOnHex(hex: IHex2) {
     this.hex2 = hex;
     const parent = hex.mapCont.markCont;
     this.graphics.f(C.legalGreen).dc(0, 0, TP.hexRad/2);
@@ -302,7 +302,7 @@ export class UtilButton extends Container implements Paintable {
 }
 
 export class EdgeShape extends Shape {
-  constructor(public color: string, public hex: Hex2, public dir: HexDir, parent: Container) {
+  constructor(public color: string, public hex: IHex2, public dir: HexDir, parent: Container) {
     super()
     this.reset()
     parent.addChild(this);
