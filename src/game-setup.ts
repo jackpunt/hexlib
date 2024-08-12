@@ -45,16 +45,20 @@ export class GameSetup {
   table: Table;        // here so GameSetup can override type? all uses are from GamePlay.table;
 
   /**
-   * ngAfterViewInit --> start here!
-   * @param canvasId supply undefined for 'headless' Stage
-   * @param qParams queryParams from stageComponent -> this.qParams;
+   * ngAfterViewInit2() --> start here!
+   *
+   * - this.initialize(canvasId, qParams);
+   * - this.loadImagesThenStartup(qParams);
+   *
+   * @param canvasId supply undefined for "headless" Stage
+   * @param qParams queryParams from StageComponent -> this.qParams;
    */
   constructor(canvasId: string, public qParams: Params = {}) {
     this.initialize(canvasId);
     this.loadImagesThenStartup(qParams);
   }
 
-  /** one-time, invoked from Constructor(canvasId) */
+  /** one-time, invoked from new GameSetup(canvasId); typically from StageComponent.ngAfterViewInit2() */
   initialize(canvasId: string) {
     stime.fmt = 'MM-DD kk:mm:ss.SSSL';
     this.stage = makeStage(canvasId, false);
@@ -215,7 +219,7 @@ export class GameSetup {
     return new Table(this.stage);
   }
 
-  initialScenario(qParams: Params = this.qParams) {
+  initialScenario(qParams: Params = this.qParams): Scenario {
     return { turn: 0, Aname: 'defaultScenario' };
   }
 
@@ -225,6 +229,13 @@ export class GameSetup {
 
   /**
    * Make new Table/layout & gamePlay/hexMap & Players.
+   *
+   * - getNPlayers()
+   * - makeHexMap()
+   * - makeTable()
+   * - initialScenario()
+   * - makeGamePlay(scenario)
+   * - startScenario(scenario)
    * @param qParams from URL
    */
   startup(qParams: Params = this.qParams) {
@@ -244,12 +255,15 @@ export class GameSetup {
   }
 
   /** scenario.turn indicate a FULL/SAVED scenario
-   *
-   * - makeNplayers()
-   * - layoutTable()
+   * - gamePlay = this.gamePlay
+   * - makeAllPlayers(gamePlay)
+   * - layoutTable(gamePlay)
+   * - gamePlay.turnNumber = -1
    * - setPlayerScore()
-   * - parseScenario()
-   * - makeGUIs() ? --> move to layoutTable?
+   * - parseScenario(scenario)
+   * - forEachPlayer(p.newGame(gamePlay))
+   * - with (restartable = false) table.makeGUIs() QQQQ: keep in GameSetup ?
+   * - table.startGame(scenario)
    */
   startScenario(scenario: Scenario) {
     const gamePlay = this.gamePlay, table = this.table;
@@ -259,7 +273,7 @@ export class GameSetup {
     table.layoutTable(gamePlay);     // mutual injection & make all panelForPlayer
 
     this.gamePlay.turnNumber = -1;   // in prep for setNextPlayer or parseScenario
-    // Place Pieces and Figures on map:
+    // Place Tiles and Meeple on HexMap, set GameState.
     this.parseScenario(scenario); // may change gamePlay.turnNumber, gamePlay.phase (& conflictRegion)
     this.gamePlay.logWriterLine0();
 
@@ -271,12 +285,18 @@ export class GameSetup {
     return gamePlay;
   }
 
-
+  makeScenarioParser(hexMap: HexMap<Hex>, gamePlay = this.gamePlay) {
+    return new ScenarioParser(hexMap, this.gamePlay);
+  }
   scenarioParser: ScenarioParser;
-  /** make new ScenarioParser to parse given Scenario (with hexMap & gamePlay) -> gameState */
+  /**
+   * Place Tiles and Meeples on HexMap, set GameState.
+   *
+   * new ScenarioParser(hexMap, gamePlay).parseScenario(scenario);
+   */
   parseScenario(scenario: SetupElt) {
     const hexMap = this.gamePlay.hexMap;
-    const scenarioParser = this.scenarioParser = new ScenarioParser(hexMap, this.gamePlay);
+    const scenarioParser = this.scenarioParser = this.makeScenarioParser(hexMap, this.gamePlay);
     this.gamePlay.logWriter.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)
     scenarioParser.parseScenario(scenario);
   }

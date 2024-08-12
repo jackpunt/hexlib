@@ -177,7 +177,7 @@ export class Hex {
     while (!!(nhex = hex.links[ds])) { hex = nhex }
     return hex
   }
-  /** distance between Hexes: adjacent = 1, based on row, col, sqrt3 */
+  /** distance between Hexes: adjacent = 1, based on row, col, unit = 1 / H.sqrt3 */
   radialDist(hex: Hex): number {
     let unit = 1 / H.sqrt3 // so w = delta(col) = 1
     let { x: tx, y: ty } = this.xywh(unit), { x: hx, y: hy } = hex.xywh(unit)
@@ -220,6 +220,8 @@ export class Hex1 extends Hex {
  * class LibHex2extendsLocalHex1 extends Hex2Mixin(LocalHex1) { }
  *
  * class LocalHex2 extends LibHex2extendsLocalHex1 { ... }
+ *
+ * https://www.typescriptlang.org/docs/handbook/mixins.html
  */
 export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
   return class Hex2Impl extends Base {
@@ -515,27 +517,33 @@ export interface HexM<T extends Hex> {
 }
 
 /**
- * Collection of Hex *and* Graphics-Containers for Hex2
- * districts: Hex[]
+ * 2-D Array[row][col]: Hex; plus a mapCont of Graphics-Containers for IHex2.
  *
- * HexMap[row][col]: Hex or Hex2 elements.
- * If mapCont is set, then populate with Hex2
+ * hexAry[n]: all the Hex (or IHex2) elements.
+ *
+ * district[i]: Hex[]; all the Hex in a given district.
  *
  * (TP.mh X TP.nh) hexes in districts;
  *
- * With a Mark and off-map: skipHex & resignHex
+ * Use addToMapCont(hexC), to populate with new hexC()
+ *
+ * mark: a HexMark to visually indicate a selected IHex2.
  *
  */
 export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
-  // A color for each District: 'rgb(198,198,198)'
+  /** A color for each District: 'rgb(198,198,198)' */
   static readonly distColor = ['lightgrey', 'limegreen', 'deepskyblue', 'rgb(255,165,0)', 'violet', 'rgb(250,80,80)', 'yellow'];
 
   /**
-   * HexMap: TP.nRows X TP.nCols hexes.
+   * HexMap: TP.nRows X TP.nCols of Hex [new hexC()]
    *
-   * Basic map is non-GUI, addToMapCont uses Hex2 elements to enable GUI interaction.
-   * @param addToMapCont use Hex2 for Hex, make Containers: hexCont, infCont, markCont, stoneCont
-   * @param hexC Constructor<T> for the Hex elements (typed as HexConstructor<Hex> for Typescript...)
+   * Basic map is non-GUI, addToMapCont(hexC) makes IHex2 elements to enable GUI interaction.
+   * Use hexC() to make Hex; mapCont has layers of Containers per HexMap.cNames;
+   *
+   * @param radius [TP.hexRad] typically 60
+   * @param addToMapCont [false] set true to include addToMapCont(hexC)
+   * @param hexC [Hex] HexConstructor\<Hex\> for each element
+   * @param Aname ['mainMap'] a name for debugger
    */
   constructor(radius: number = TP.hexRad, addToMapCont = false,
     public hexC: HexConstructor<Hex> = Hex,
@@ -727,16 +735,19 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     });
   }
   /**
-   * The [Legal] Hex (LegalMark.hex2) under the given x,y coordinates.
-   * If on the line, then the top (last drawn) Hex.
+   * Return the Hex under the given x,y coordinates.
+   *
+   * Conceptually: (legal ? LegalMark : HexCont)?.hex2 as \<T extends IHex2\>;
+   *
+   * If multiple HexCont at x,y, return the top (last drawn) HexCont.
    * @param x in local coordinates of this HexMap.mapCont
    * @param y
-   * @param legal - returnn ONLY hex with LegalMark visible & mouseenabled.
-   * @returns the Hex2 under mouse or undefined, if not a Hex (background)
+   * @param legal - return ONLY a Hex with LegalMark visible & mouseenabled.
+   * @returns the IHex2 of the LegalMark or HexCont at the given point (or undefined if no such HexCont)
    */
   hexUnderPoint(x: number, y: number, legal = true): T | undefined {
     const mark = this.mapCont.markCont.getObjectUnderPoint(x, y, 1);
-    // Note: in theory, mark could be on a Hex2 that is NOT in hexCont!
+    // Note: in theory, mark could be on a IHex2 that is NOT in hexCont!
     if (mark instanceof LegalMark) return mark.hex2 as any as T;
     if (legal) return undefined;
     const hexc = this.mapCont.hexCont.getObjectUnderPoint(x, y, 1); // 0=all, 1=mouse-enabled (Hex, not Stone)
@@ -783,7 +794,10 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   /**
    * overridable action for makeAllDistricts;
    *
-   * Base implementation invokes makeMetaDistrict(nh, mh, rc0)
+   * Base implementation invokes makeMetaHexRings(nh, mh, rc0)
+   *
+   * Alterative: makeRect(nrow, ncol, ...)
+   *
    * @param nh
    * @param mh
    * @param rc0
@@ -795,6 +809,11 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
 
   /**
    * Make the center district, then make (mh-1) rings other meta-hex districts.
+   *
+   * Spiral clockwise from center, placing a line of meta-hex [using makeMetaHex()].
+   *
+   * MakeMetaHex likewise spirals from center, placing a line of Hex.
+   *
    * @param nh order [number of 'rings'] of meta-hexes (2 or 3 for this game) [TP.mHexes]
    * @param mh size ['rings' in each meta-hex] of meta-hex (1..6) [TP.nHexes]
    * @param rc0 location of initial, central Hex

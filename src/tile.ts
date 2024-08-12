@@ -131,6 +131,7 @@ export class Tile extends Tile0 implements Dragable {
   homeHex!: Hex1;
   /** location at start-of-drag */
   fromHex: IHex2;
+  /** override hook to deselect/stopDragging a Tile. */
   isDragable(ctx?: DragContext) { return true; }
 
   _hex: Hex1 | undefined;
@@ -239,44 +240,95 @@ export class Tile extends Tile0 implements Dragable {
     }
   }
 
+  /** map.showMark(ctx.targetHex); override for alternate showMark. */
   showTargetMark(hex: IHex2 | undefined, ctx: DragContext) {
-    ctx.targetHex = hex?.isLegal ? hex : this.fromHex;
-    ctx.targetHex?.map.showMark(ctx.targetHex);
+    ctx.targetHex?.map.showMark(ctx.targetHex); // else prev mark still showing
   }
 
   /**
-   * Augment Table.dragFunc0().
+   * Invoked for each mouseMove when dragging this Tile.
    *
-   * isLegal already set;
-   * record ctx.targetHex & showMark() when Tile is over a legal targetHex.
+   * hex.isLegal was already set by dragStart [for ALL Hex]
+   *
+   * set ctx.targetHex = hex?.isLegal ? hex : this.fromHex;
+   *
+   * then this.dragFunc(hex, ctx);
+   *
+   * @param hex Hex under this Tile
+   * @param ctx
    */
-  dragFunc0(hex: IHex2 | undefined, ctx: DragContext) {
+  dragFunc0(hex: IHex2 | undefined, ctx: DragContext): void {
+    ctx.targetHex = hex?.isLegal ? hex : this.fromHex;
     this.showTargetMark(hex, ctx);
+    this.dragFunc(hex, ctx);
   }
 
-  /** entry point from Table.dropFunc; delegate to this.dropFunc()
+  /**
+   * this Tile is being dragged.
    *
-   * then showMark(undefined);
+   * default: [return] just let it drag until it's dropped.
+   * @param hex Hex under this Tile
+   * @param ctx full context: ctrl/shift, nLegal, info, targetHex
+   */
+  dragFunc(hex: IHex2 | undefined, ctx: DragContext) {
+    return;
+  }
+
+  /**
+   * entry point from Table.dropFunc;
+   *
+   * Invoke this.dropFunc() then showMark(undefined);
    */
   dropFunc0(hex: IHex2, ctx: DragContext) {
     this.dropFunc(ctx.targetHex, ctx);
     ctx.targetHex?.map.showMark(undefined); // if (this.fromHex === undefined)
   }
 
+  /**
+   * Tile.dropFunc; override to give game-specific or tile-specific behavior.
+   *
+   * default: this.placeTile(targetHex)
+   * @param targetHex last legal Hex this Tile was over. (may be fromHex)
+   * @param ctx DragContext
+   */
+  dropFunc(targetHex: IHex2, ctx: DragContext) {
+    this.placeTile(targetHex);
+  }
+
+  /**
+   * Indicates if given Player is allowed to dragStart this Tile.
+   * @param player typically: this.gamePlay.curPlayer
+   * @param ctx the dragStart context
+   * @returns a 'reason' string if cant be moved, undefined if can be moved.
+   */
   cantBeMovedBy(player: Player, ctx: DragContext): string | boolean | undefined {
     return (ctx?.lastShift || this.player === undefined || this.player === player) ? undefined : 'Not your Tile';
   }
 
-  /** override as necessary. */
-  dragStart(ctx: DragContext) {  }
+  /**
+   * Invoked before checking isLegalTarget;
+   *
+   * Tile has not yet been moved: tile.hex is still tile.fromHex.
+   *
+   * default: [return] override as necessary.
+   */
+  dragStart(ctx: DragContext) {
+    return;
+  }
 
   /** state of shiftKey has changed during drag */
   dragShift(shiftKey: boolean | undefined, ctx: DragContext) { }
 
-  /** with recycleHex: override with:
+  /**
+   * When this Tile starts a drag,
+   * run setLegal() on all Hex of given Table to identify legal targets.
    *
-   * - this.gamePlay.recycleHex.isLegal = this.isLegalRecycle(ctx); // do not increment ctx.nLegal!
-   * - OR! class RecycleHex override markLegal to handle this!
+   * All Hex is table.newHexes and table.hexMap.hexAry.
+   * - does not include table.recycleHex, so that may need special treatment.
+   *
+   * @param table acces to newHexes and hexMap
+   * @param setLegal [default: hex.isLegal = false] or countLegalHexes/isLegalTarget
+   * @param ctx DragContext if needed
    */
   markLegal(table: Table, setLegal = (hex: IHex2) => { hex.isLegal = false; }, ctx: DragContext = table.dragContext) {
     table.newHexes.forEach(setLegal);
@@ -299,16 +351,14 @@ export class Tile extends Tile0 implements Dragable {
     return true;
   }
 
-  /**
-   * Tile.dropFunc; Override in AuctionTile, Civic, Meeple/Leader.
-   * @param targetHex Hex2 this Tile is over when dropped (may be undefined; see also: ctx.targetHex)
-   * @param ctx DragContext
+  /** Called by table.dragStart() if there are no legal targets for this Tile.
+   *
+   * unless recycleHex.isLegal, stopDragging();
    */
-  dropFunc(targetHex: IHex2, ctx: DragContext) {
-    this.placeTile(targetHex);
-  }
-
-  noLegal() {
+  noLegalTarget(ctx: DragContext) {
+    if (!this.gamePlay.recycleHex?.isLegal) {
+      this.gamePlay.table.stopDragging(); // actually, maybe let it drag, so we can see beneath...
+    }
     // const cause = this.gamePlay.failToBalance(this) ?? '';
     // const [infR, coinR] = this.gamePlay.getInfR(this);
     // this.gamePlay.logText(`No placement for ${this.andInfStr} ${cause} infR=${infR} coinR=${coinR}`, 'Tile.noLegal')
@@ -342,7 +392,11 @@ export class Token extends Tile {
 
 }
 
-/** Tiles that can be played to the Map: AuctionTile, Civic, Monument, BonusTile */
+/**
+ * Tiles that can be played to the Map, and generally stay where they are dropped.
+ *
+ * Tiles that are moved around on the map are classed as Meeple.
+ */
 export class MapTile extends Tile {
 
 }

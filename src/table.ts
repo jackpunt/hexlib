@@ -35,7 +35,7 @@ interface StageTable extends Stage {
 type MinDragInfo = { first?: boolean, event?: MouseEvent };
 
 export interface DragContext {
-  targetHex: IHex2;      // last isLegalTarget() or fromHex
+  targetHex: IHex2;     // last isLegalTarget() or fromHex; with showMark()
   lastShift?: boolean;  // true if Shift key is down
   lastCtrl?: boolean;   // true if control key is down
   info: DragInfo;       // we only use { first, event }
@@ -104,7 +104,7 @@ export class Table {
     return (obj.stage as StageTable).table
   }
 
-  disp: EventDispatcher;
+  disp: EventDispatcher = this as any as EventDispatcher;
   namedOn(Aname: string, type: string, listener: (eventObj: Object) => boolean, scope?: Object, once?: boolean, data?: any, useCapture = false) {
     const list2 = this.disp.on(type, listener, scope, once, data, useCapture) as NamedObject;
     list2.Aname = Aname;
@@ -136,12 +136,10 @@ export class Table {
    * typically: this.hexC = this.hexMap.hexC as Constructor\<IHex2\> */
   hexC: Constructor<IHex2>;
 
-  overlayCont = new Container();
+  overlayCont = new NamedContainer('overlay');
   constructor(stage: Stage) {
     // super();
     EventDispatcher.initialize(this);
-    this.disp = (this as any as EventDispatcher);
-    this.overlayCont.name = 'overlay';
     // backpointer so Containers can find their Table (& curMark)
     Table.table = (stage as StageTable).table = this;
     this.stage = stage
@@ -507,13 +505,13 @@ export class Table {
    */
   makeParamGUI(parent: Container, x = 0, y = 0) {
     const gui = new ParamGUI(TP, { textAlign: 'right' });
-    const gamePlay = this.gamePlay.gameSetup;
+    const gameSetup = this.gamePlay.gameSetup;
     gui.makeParamSpec('hexRad', [30, 60, 90, 120], { fontColor: 'red' }); TP.hexRad;
     gui.makeParamSpec('nHexes', [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], { fontColor: 'red' }); TP.nHexes;
     gui.makeParamSpec('mHexes', [1, 2, 3], { fontColor: 'red' }); TP.mHexes;
-    gui.spec("hexRad").onChange = (item: ParamItem) => { gamePlay.restart({ hexRad: item.value }) }
-    gui.spec("nHexes").onChange = (item: ParamItem) => { gamePlay.restart({ nh: item.value }) }
-    gui.spec("mHexes").onChange = (item: ParamItem) => { gamePlay.restart({ mh: item.value }) }
+    gui.spec("hexRad").onChange = (item: ParamItem) => { gameSetup.restart({ hexRad: item.value }) }
+    gui.spec("nHexes").onChange = (item: ParamItem) => { gameSetup.restart({ nh: item.value }) }
+    gui.spec("mHexes").onChange = (item: ParamItem) => { gameSetup.restart({ mh: item.value }) }
 
     parent.addChild(gui)
     gui.x = x // (3*cw+1*ch+6*m) + max(line.width) - (max(choser.width) + 20)
@@ -624,15 +622,20 @@ export class Table {
   }
 
   dragContext: DragContext;
+  /** Direct callback from this.dragger. Invoke this.dragFunc0(tile, info, hexUnderTile) */
   dragFunc(tile: DisplayObject, info?: DragInfo) {
     const hex = this.hexUnderObj(tile); // clickToDrag 'snaps' to non-original hex!
     this.dragFunc0(tile as Tile, info, hex);
   }
 
-  /** Table.dragFunc0 (Table.dragFunc to inject drag/start actions programatically)
+  /** Table.dragFunc0
+   *
+   * Version of Table.dragFunc used to inject drag/start actions programatically.
+   *
+   * Calls out to Tile.dragFunc0(IHex2, DragContext)
    * @param tile is being dragged
    * @param info { first: boolean, event: MouseEvent }
-   * @param hex the Hex that tile is currently over (may be undefined or off map)
+   * @param hex the IHex2 which tile is currently over (may be undefined or off map)
    */
   dragFunc0(tile: Tile, info?: DragInfo, hex = this.hexUnderObj(tile)) {
     let ctx = this.dragContext;
@@ -647,6 +650,7 @@ export class Table {
       }
       const event = info.event?.nativeEvent;
       tile.fromHex = tile.hex as IHex2;  // dragStart: set tile.fromHex when first move!
+      // create and record a DragContext for this drag:
       ctx = {
         tile: tile,                  // ASSERT: hex === tile.hex
         targetHex: tile.fromHex,     // last isLegalTarget() or fromHex
@@ -664,10 +668,10 @@ export class Table {
       if (!ctx.tile) return;         // stopDragging() was invoked
     }
     this.checkShift(hex, ctx);
-    tile.dragFunc0(hex, ctx);
+    tile.dragFunc0(hex, ctx);        // tile is dragged over hex
   }
 
-  // invoke dragShift 'event' if shift state changes
+  /** invoke dragShift callback if shift state changes */
   checkShift(hex: IHex2 | undefined, ctx: DragContext) {
     const nativeEvent = ctx.info.event?.nativeEvent
     ctx.lastCtrl = nativeEvent?.ctrlKey;
@@ -680,6 +684,21 @@ export class Table {
     }
   }
 
+  /**
+   * Try start dragging.
+   * Abort if tile.cantBeMoved(player)
+   *
+   * Inform tile.dragStart(ctx)
+   *
+   * Mark all legal Hexes, set ctx.nLegal
+   *
+   * tile.moveTo(undefined); // dropFunc() will placeTile on targetHex/fromHex.
+   *
+   * Invoke tile.noLegalTarget(ctx) if nLegal === 0
+   *
+   * @param tile the Tile to be Dragged
+   * @param ctx DragContext with shift/ctrl from table.dragFunc0()
+   */
   dragStart(tile: Tile, ctx: DragContext) {
     // press SHIFT to capture [recycle] opponent's Criminals or Tiles
     const reason = tile.cantBeMovedBy(this.gamePlay.curPlayer, ctx);
@@ -701,22 +720,20 @@ export class Table {
       tile.moveTo(undefined); // notify source Hex, so it can scale; also triggers nextUnit !!
       this.hexMap.update();
       if (ctx.nLegal === 0) {
-        tile.noLegal();
-        if (!this.gamePlay.recycleHex?.isLegal) {
-          this.stopDragging(); // actually, maybe let it drag, so we can see beneath...
-        }
+        tile.noLegalTarget(ctx);
       }
     }
   }
 
-  /** state of shiftKey has changed during drag */
+  /** state of shiftKey has changed during drag. call tile.dragShift(). */
   dragShift(tile: Tile | undefined, shiftKey: boolean | undefined, ctx: DragContext) {
     tile?.dragShift(shiftKey, ctx);
   }
 
-  /** Tile dropFunc */
+  /** dropFunc for each Dragable/Tile -> tile.dropFunc0(hex, ctx) */
   dropFunc(dobj: DisplayObject, info?: DragInfo, hex = this.hexUnderObj(dobj)) {
     const tile = dobj as Tile;
+    // invoke Tile.dropFunc0() which will delegate to Tile.dropFunc(targetHex, ctx)
     tile.dropFunc0(hex as IHex2, this.dragContext); // generally: hex == ctx.targetHex
     tile.markLegal(this); // hex => hex.isLegal = false;
     // this.gamePlay.recycleHex.isLegal = false;
@@ -727,10 +744,10 @@ export class Table {
   /** synthesize dragStart(tile), tile.dragFunc0(hex), dropFunc(tile);  */
   dragStartAndDrop(tile: Tile, toHex: Hex) {
     if (!tile) return; // C-q when no EventTile on eventHex
-    const hex = toHex as IHex2, info = { first: true } as DragInfo; // event: undefined
-    this.dragFunc0(tile, info, tile.hex as IHex2);  // dragStart()
-    tile.dragFunc0(hex, this.dragContext);
-    this.dropFunc(tile, info, hex);
+    const toHex2 = toHex as IHex2, info = { first: true } as DragInfo; // event: undefined
+    this.dragFunc0(tile, info, tile.hex as IHex2); // table.dragStart(tile)->tile.dragstart(ctx); tile.dragFunc0(fromHex)
+    tile.dragFunc0(toHex2, this.dragContext);      // tile.dragFunc0(toHex)
+    this.dropFunc(tile, info, toHex2);             // table.dropFunc(toHex)->tile.dropFunc0(toHex,ctx)
   }
 
   private isDragging() { return this.dragContext?.tile !== undefined; }

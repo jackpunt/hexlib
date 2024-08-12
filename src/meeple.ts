@@ -106,7 +106,7 @@ export class Meeple extends Tile {
   override moveTo(hex: Hex1) {
     const destMeep = hex?.meep;
     if (destMeep && destMeep !== this) {
-      destMeep.x += 10; // make double occupancy apparent [until this.unMove()]
+      destMeep.x += 10; // make double occupancy apparent [until this.unMove()][hextowns]
       destMeep.unMove();
     }
     const fromHex = this.fromHex;
@@ -114,31 +114,20 @@ export class Meeple extends Tile {
     this.faceUp(!(hex?.isOnMap && fromHex?.isOnMap && hex !== this.startHex));
   }
 
-
   override cantBeMovedBy(player: Player, ctx: DragContext) {
     const reason1 = super.cantBeMovedBy(player, ctx);
     if (reason1 || reason1 === false) return reason1;
-    // if (!ctx?.lastShift && !this.canAutoUnmove && this.backSide.visible) return "already moved"; // no move if not faceUp
     return undefined;
   }
-
-  isOnLine(hex0: Hex1, fromHex = this.hex as Hex1) {
-    return !!fromHex.linkDirs.find(dir => fromHex.hexesInDir(dir).includes(hex0));
-    // return !!fromHex.linkDirs.find(dir => fromHex.findInDir(dir, hex => hex === hex0));
-    // return !!fromHex.findLinkHex((hex, dir) => !!hex.findInDir(dir, hex => hex === hex0));
-  }
-
-  get canAutoUnmove() { return this.player?.allOnMap(Meeple).filter(meep => meep.hex !== meep.startHex).length == 1 }
-
-  /** override markLegal(), if *this* is the only meeple to have moved,
-   * unMove it to reset influence; can always move back to startHex; */
-  override markLegal(table: Table, setLegal?: (hex: IHex2) => void, ctx?: DragContext): void {
-    if (!ctx?.lastShift && !!setLegal && this.canAutoUnmove) {
-      this.unMove();          // this.hex = this.startHex;
-    }
-    super.markLegal(table, setLegal);
-    if (this.fromHex) this.fromHex.isLegal = !!setLegal; // if (this.startHex) [not all Tiles have a fromHex!]
-    return;
+  /**
+   * For Meeples that are constrained to move along a line from current hex.
+   * @param toHex
+   * @param fromHex [this.hex]
+   * @returns true if hex0 and fromHex are on a line
+   */
+  isOnLine(toHex: Hex1, fromHex = this.hex as Hex1) {
+    return !!fromHex.linkDirs.find(dir => fromHex.hexesInDir(dir).includes(toHex));
+    // [from hextowns]
   }
 
   isLegalTarget0(hex: Hex1, ctx?: DragContext) {  // Meeple
