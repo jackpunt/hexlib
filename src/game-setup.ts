@@ -211,6 +211,7 @@ export class GameSetup {
     const cNames = MapCont.cNames.concat() as string[]; // for example
     hexMap.addToMapCont(hexC, cNames);       // addToMapCont(hexC, cNames)
     hexMap.makeAllDistricts();               // determines size for this.bgRect
+    hexMap.mapCont.hexCont && hexMap.mapCont.centerContainers();
     return hexMap;
   }
 
@@ -243,7 +244,7 @@ export class GameSetup {
     Meeple.allMeeples = [];
     Player.allPlayers = [];
 
-    this.nPlayers = this.getNPlayers();
+    this.nPlayers = this.getNPlayers();        // Scenario may override?
     this.hexMap = this.makeHexMap();           // only reference is in GamePlay constructor!
     this.table = this.makeTable();
     const scenario = this.initialScenario();

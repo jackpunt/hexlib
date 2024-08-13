@@ -1,7 +1,7 @@
 import { XY } from '@thegraid/common-lib';
 import { C, CenterText, Constructor, F, RC } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
-import { NamedObject } from "./game-play";
+import { NamedContainer } from "./game-play";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
 import type { Meeple } from "./meeple";
 import { HexShape, LegalMark } from "./shapes";
@@ -385,8 +385,8 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
      */
     edgePoint(dir: HexDir, rad = 1, point: XY = new Point()) {
       const a = H.dirRot[dir] * H.degToRadians, h = rad * this.radius * H.sqrt3_2;
-      point.x = this.hexShape.x + Math.sin(a) * h;
-      point.y = this.hexShape.y - Math.cos(a) * h;
+      point.x = this.x + Math.sin(a) * h;
+      point.y = this.y - Math.cos(a) * h;
       return point as Point;
     }
   }
@@ -479,8 +479,7 @@ export class MapCont extends Container {
     this._cNames = cNames.concat();
     this.removeAllChildren();
     this.cNames.forEach(cname => {
-      const cont = new Container();
-      (cont as NamedObject).Aname = cont.name = cname;
+      const cont = new NamedContainer(cname);
       this[cname as ContName] = cont;
       this.addChild(cont);
     })
@@ -790,7 +789,6 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     this.setSize(nh, mh);
     const rc0 = this.calculateRC0();
     const hexAry = this.hexAry = this.makeAllHexes(nh, mh, rc0);    // nh hexes on outer ring; single meta-hex
-    this.mapCont.hexCont && this.mapCont.centerContainers();
     return hexAry;
   }
 
