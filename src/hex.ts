@@ -363,17 +363,20 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       let dx = tx - hx, dy = ty - hy
       return Math.sqrt(dx * dx + dy * dy); // tw == H.sqrt3
     }
-    /** location of corner between dir0 and dir1; in parent coordinates.
-     * @param dir0 an EwDir
-     * @param dir1 an EwDir
+    /** Location of corner between dir0 and dir1; in parent coordinates.
+     * @param dir0 a HexDir
+     * @param dir1 a HexDir
+     * @param point [new Point()] set location-x,y in point and return it.
+     * @param rad [this.radius]
      */
-    // hexmarket uses to find ewDir corner between two nsDir edges.
-    cornerPoint(dir0: HexDir, dir1: HexDir) {
-      const d0 = H.ewDirRot[dir0 as EwDir], d1 = H.ewDirRot[dir1 as EwDir];
-      let a2 = (d0 + d1) / 2, h = this.radius
+    cornerPoint(dir0: HexDir, dir1: HexDir, point = new Point(), rad = this.radius) {
+      const d0 = H.dirRot[dir0], d1 = H.dirRot[dir1];
+      let a2 = (d0 + d1) / 2;
       if (Math.abs(d0 - d1) > 180) a2 += 180
-      let a = a2 * H.degToRadians
-      return new Point(this.x + Math.sin(a) * h, this.y - Math.cos(a) * h)
+      const a = a2 * H.degToRadians
+      point.x = this.x + Math.sin(a) * rad;
+      point.y = this.y - Math.cos(a) * rad;
+      return point;
     }
     /** Location of edge point in dir; in parent coordinates.
      * @param dir indicates direction to edge
@@ -381,7 +384,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
      * @param point [new Point()] set location-x,y in point and return it.
      */
     edgePoint(dir: HexDir, rad = 1, point: XY = new Point()) {
-      const a = H.nsDirRot[dir as NsDir] * H.degToRadians, h = rad * this.radius * H.sqrt3_2;
+      const a = H.dirRot[dir] * H.degToRadians, h = rad * this.radius * H.sqrt3_2;
       point.x = this.hexShape.x + Math.sin(a) * h;
       point.y = this.hexShape.y - Math.cos(a) * h;
       return point as Point;

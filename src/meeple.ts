@@ -138,8 +138,8 @@ export class Meeple extends Tile {
     return true;
   }
 
-  override isLegalTarget(hex: Hex1, ctx?: DragContext) {  // Meeple
-    return this.isLegalTarget0(hex, ctx);
+  override isLegalTarget(toHex: Hex1, ctx?: DragContext) {  // Meeple
+    return this.isLegalTarget0(toHex, ctx);
   }
 
   override isLegalRecycle(ctx: DragContext) {
