@@ -1,4 +1,4 @@
-import { XY } from '@thegraid/common-lib';
+import { XY, XYWH } from '@thegraid/common-lib';
 import { C, CenterText, Constructor, F, RC } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
 import { NamedContainer } from "./game-play";
@@ -135,7 +135,7 @@ export class Hex {
   get linkHexes() {
     return (Object.keys(this.links) as HexDir[]).map((dir: HexDir) => this.links[dir])
   }
-  forEachLinkHex(func: (hex: Hex | undefined, dir: HexDir | undefined, hex0: Hex) => unknown, inclCenter = false) {
+  forEachLinkHex(func: (hex: this | undefined, dir: HexDir | undefined, hex0: this) => unknown, inclCenter = false) {
     if (inclCenter) func(this, undefined, this);
     this.linkDirs.forEach((dir: HexDir) => func(this.links[dir], dir, this));
   }
@@ -145,8 +145,8 @@ export class Hex {
   }
 
   /** continue in HexDir until pred is satisfied. */
-  findInDir(dir: HexDir, pred: (hex: Hex, dir: HexDir, hex0: Hex) => boolean) {
-    let hex: Hex | undefined = this;
+  findInDir(dir: HexDir, pred: (hex: this, dir: HexDir, hex0: this) => boolean): this | undefined {
+    let hex: this | undefined = this;
     do {
       if (pred(hex, dir, this)) return hex;
     } while (!!(hex = hex.nextHex(dir)));
@@ -154,7 +154,7 @@ export class Hex {
   }
 
   /** array of all hexes in line from dir. */
-  hexesInDir(dir: HexDir, rv: this[] = []) {
+  hexesInDir(dir: HexDir, rv: this[] = []): this[] {
     let hex: this | undefined = this;
     while (!!(hex = hex.links[dir])) rv.push(hex);
     return rv;
@@ -165,16 +165,16 @@ export class Hex {
     this.linkDirs.forEach((dir: HexDir) => this.hexesInDir(dir).filter(hex => !!hex).map(hex => func(hex, dir, this)));
   }
 
-  /** from this Hex, follow links[ds], ns times. */
-  nextHex(dir: HexDir, ns: number = 1) {
-    let hex: Hex | undefined = this;
-    while (!!(hex = hex.links[dir]) && --ns > 0) { }
+  /** from this Hex, follow links[ds], ns times (or until !links[ds]). */
+  nextHex(dir: HexDir, ns: number = 1): this | undefined {
+    let hex: this | undefined = this;
+    while (ns-- > 0 && !!(hex = hex.links[dir])) { }
     return hex;
   }
   /** return last Hex on axis in given direction */
-  lastHex(ds: HexDir): Hex {
-    let hex: Hex = this, nhex: Hex | undefined;
-    while (!!(nhex = hex.links[ds])) { hex = nhex }
+  lastHex(ds: HexDir): this {
+    let hex = this, nhex: this | undefined;
+    while (!!(nhex = hex.links[ds] as this | undefined)) { hex = nhex }
     return hex
   }
   /** distance between Hexes: adjacent = 1, based on row, col, unit = 1 / H.sqrt3 */
@@ -222,6 +222,40 @@ export class Hex1 extends Hex {
  * class LocalHex2 extends LibHex2extendsLocalHex1 { ... }
  *
  * https://www.typescriptlang.org/docs/handbook/mixins.html
+ *
+ *
+ * Note: In the compiled hex.js and its hex.d.ts,
+ * the type 'this' in the Hex2Mixin versions of Hex methods
+ * is converted to type 'any'.
+ * (because Hex2Mixin and Hex2_base come from new(...) but are not a class,
+ * therefore have no instance or this/type)
+ *
+ * To get properly typed versions in your derived class extends Hex2Mixin,
+ * include the following overrides:
+ *
+ * @example
+  override forEachLinkHex(func: (hex: this | undefined, dir: HexDir | undefined, hex0: this) => unknown, inclCenter = false) {
+    super.forEachLinkHex(func)
+  }
+  override findLinkHex(pred: (hex: this | undefined, dir: HexDir, hex0: this) => boolean) {
+    return super.findLinkHex(pred)
+  }
+  override findInDir(dir: HexDir, pred: (hex: this, dir: HexDir, hex0: this) => boolean): this | undefined {
+    return super.findInDir(dir, pred)
+  }
+  override hexesInDir(dir: HexDir, rv: this[] = []): this[] {
+    return super.hexesInDir(dir, rv)
+  }
+  override forEachHexDir(func: (hex: this, dir: HexDir, hex0: this) => unknown) {
+    super.forEachHexDir(func);
+  }
+  override nextHex(dir: HexDir, ns: number = 1): this | undefined {
+    return super.nextHex(dir, ns) as this | undefined;
+  }
+  override lastHex(ds: HexDir): this {
+    return super.lastHex(ds)
+  }
+ *
  */
 export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
   return class Hex2Impl extends Base {
@@ -477,7 +511,7 @@ export class MapCont extends Container {
   /** add all the layers of Containers. update this.cNames */
   addContainers(cNames: readonly string[] = this.cNames) {
     this._cNames = cNames.concat();
-    this.removeAllChildren();
+    this.removeAllChildren(); // TODO: remove all the field references also
     this.cNames.forEach(cname => {
       const cont = new NamedContainer(cname);
       this[cname as ContName] = cont;
@@ -513,9 +547,15 @@ export interface HexM<T extends Hex> {
   readonly district: T[][]        // all the Hex in a given district
   readonly mapCont: MapCont
   rcLinear(row: number, col: number): number
-  forEachHex<K extends T>(fn: (hex: K) => void): void // stats forEachHex(incCounters(hex))
+  forEachHex(fn: (hex: T) => void): void // stats forEachHex(incCounters(hex))
   update(): void
   showMark(hex?: T): void
+  // Table also uses:
+  radius: number;
+  centerHex: T;
+  xywh: XYWH & { dxdc: number; dydr: number; }
+  hexC: Constructor<Hex>
+  hexUnderObj(dragObj: DisplayObject, legalOnly?: boolean): T | undefined
 }
 
 /**
@@ -548,7 +588,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param Aname ['mainMap'] a name for debugger
    */
   constructor(radius: number = TP.hexRad, addToMapCont = false,
-    public hexC: HexConstructor<Hex> = Hex,
+    public hexC: Constructor<Hex> = Hex,
     public Aname: string = 'mainMap') //
   {
     super(); // Array<Array<Hex>>()

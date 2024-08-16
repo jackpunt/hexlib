@@ -3,7 +3,7 @@ import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape,
 import { NamedContainer, NamedObject, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
 import type { GameState } from "./game-state";
-import { Hex, IHex2, HexMap, IdHex, RecycleHex } from "./hex";
+import { Hex, IHex2, HexMap, IdHex, RecycleHex, HexM } from "./hex";
 import { XYWH } from "./hex-intfs";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
@@ -113,7 +113,7 @@ export class Table {
   gamePlay: GamePlay;
   stage: Stage;
   bgRect: Shape
-  hexMap: HexMap<IHex2>; // from gamePlay.hexMap
+  hexMap: HexM<IHex2>; // from gamePlay.hexMap
 
   paramGUIs: ParamGUI[];
   netGUI: ParamGUI; // paramGUIs[2]
@@ -136,7 +136,7 @@ export class Table {
    * typically: this.hexC = this.hexMap.hexC as Constructor\<IHex2\> */
   hexC: Constructor<IHex2>;
 
-  overlayCont = new NamedContainer('overlay');
+  readonly overlayCont = new NamedContainer('overlay');
   constructor(stage: Stage) {
     // super();
     EventDispatcher.initialize(this);
@@ -231,7 +231,7 @@ export class Table {
     if (this.downClick) return (this.downClick = false, undefined) // skip one 'click' when pressup/dropfunc
     if (vis === undefined) vis = this.isVisible = !this.isVisible;
     Tile.allTiles.forEach(tile => tile.textVis(vis));
-    this.hexMap.forEachHex<IHex2>(hex => hex.showText(vis))
+    this.hexMap.forEachHex(hex => hex.showText(vis))
     this.hexMap.update()               // after toggleText & updateCache()
     return undefined;
   }
@@ -320,7 +320,7 @@ export class Table {
    */
   layoutTable(gamePlay: GamePlay) {
     this.gamePlay = gamePlay;
-    this.hexMap = gamePlay.hexMap as any as HexMap<IHex2>;
+    this.hexMap = gamePlay.hexMap as HexMap<IHex2>;
     this.hexC = this.hexMap.hexC as Constructor<IHex2>;
 
     const xywh = this.bgXYWH();              // override bgXYHW() to supply default/arg values
@@ -599,15 +599,19 @@ export class Table {
   setPlayerScore(plyr: Player, score: number, rank?: number) {
   }
 
-  /** update table when a new Game is started. */
+  /** update table when a new Game is started.
+   *
+   * default: [allTiles.makeDragable(); setNextPlayer(gamePlay.turnNumber)]
+   *
+   * A Tile or class of Tile may stopDragging() due to noLegalTargets().
+   */
   startGame(scenario: Scenario) {
-    // All Tiles (& Meeple) are Dragable:
+    // All Tiles (& Meeple) are Dragable: (Note: if noLegal then stopDragging)
     Tile.allTiles.forEach(tile => {
       this.makeDragable(tile);
     });
 
     // this.stage.enableMouseOver(10);
-    this.scaleCont.addChild(this.overlayCont); // now at top of the list.
     this.gamePlay.setNextPlayer(this.gamePlay.turnNumber > 0 ? this.gamePlay.turnNumber : 0);
   }
 

@@ -195,8 +195,13 @@ export class GameSetup {
    * Invoked from GameSetup.startup() with NO arg.
    *
    * Typical:
-   * override makeHexMap(hexC: Constructor<Hex> = LocalHex) {super.makeHexMap(hexC)}
-   *
+   * @example
+   * ```
+   * override makeHexMap(hexMC: Constructor<HexMap<Hex>> = LocalHexMap, hexC: Constructor<Hex> = LocalHex) {
+   *   const cNames = ...;
+   *   super.makeHexMap(hexMC, hexC, cNames);
+   * }
+   * ```
    * We create hexMap here, and store it in gameSetup,
    * then copy it to this.gamePlay.hexMap in GamePlay.constructor.
    *
@@ -204,11 +209,17 @@ export class GameSetup {
    *
    * gamePlay.hexMap is used for most references [mostly hexMap.update()]
    *
-   * @param hexC Constructor of the Hex in this HexMap (default: hexlib.Hex2)
+   * @param hexMC Constructor of a HexMap<Hex>(radius, addToMapCont, hexC) [HexMap]
+   * @param hexC Constructor of Hex in the HexMap [hexlib.Hex2]
+   * @param cNames add fields & Containers to MapCont [MapCont.cNames.concat()]
    */
-  makeHexMap(hexC: Constructor<Hex> = Hex2) {
-    const hexMap = new HexMap<Hex>(TP.hexRad, true, hexC);
-    const cNames = MapCont.cNames.concat() as string[]; // for example
+  makeHexMap(
+    hexMC: Constructor<HexMap<Hex>> = HexMap,
+    hexC: Constructor<Hex> = Hex2,
+    cNames = MapCont.cNames.concat() as string[])
+  {
+    const hexMap = new hexMC(TP.hexRad, true, hexC);
+    new HexMap()
     hexMap.addToMapCont(hexC, cNames);       // addToMapCont(hexC, cNames)
     hexMap.makeAllDistricts();               // determines size for this.bgRect
     hexMap.mapCont.hexCont && hexMap.mapCont.centerContainers();
@@ -255,13 +266,15 @@ export class GameSetup {
     this.startScenario(scenario);
   }
 
-  /** scenario.turn indicate a FULL/SAVED scenario
+  /**
+   * Given hexMap, table, and gamePlay, setup/layout everything for the game scenario.
+   *
    * - gamePlay = this.gamePlay
    * - makeAllPlayers(gamePlay)
    * - layoutTable(gamePlay)
    * - gamePlay.turnNumber = -1
    * - setPlayerScore()
-   * - parseScenario(scenario)
+   * - parseScenario(scenario) // scenario.turn set on a FULL/SAVED scenario
    * - forEachPlayer(p.newGame(gamePlay))
    * - with (restartable = false) table.makeGUIs() QQQQ: keep in GameSetup ?
    * - table.startGame(scenario)
@@ -282,6 +295,7 @@ export class GameSetup {
     this.restartable = false;
     this.table.makeGUIs();
     this.restartable = true;   // *after* makeLines has stablilized selectValue
+    table.scaleCont.addChild(table.overlayCont); // now at top of the list.
     table.startGame(scenario); // parseScenario; allTiles.makeDragable(); setNextPlayer();
     return gamePlay;
   }
