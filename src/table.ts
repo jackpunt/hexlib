@@ -39,7 +39,7 @@ export interface DragContext {
   lastShift?: boolean;  // true if Shift key is down
   lastCtrl?: boolean;   // true if control key is down
   info: DragInfo;       // we only use { first, event }
-  tile?: Tile;          // the DisplayObject being dragged
+  tile?: Tile;          // the Tile being dragged
   nLegal: number;       // number of legal drop tiles (excluding recycle)
   gameState?: GameState;// gamePlay.gameState
   phase?: string;       // keysof GameState.states
@@ -754,33 +754,40 @@ export class Table {
     this.dropFunc(tile, info, toHex2);             // table.dropFunc(toHex)->tile.dropFunc0(toHex,ctx)
   }
 
-  private isDragging() { return this.dragContext?.tile !== undefined; }
+  /** the Tile being dragged or undefined. */
+  protected get isDragging() { return this.dragger.dragCont.getChildAt(0); }
 
   /** Force this.dragger to drop the current drag object on given target Hex.
    *
    * without checking isLegalTarget();
+   * @param targetHex where to drop Tile [this.dragContext.tile.fromHex]
    */
-  stopDragging(target = this.dragContext?.tile?.fromHex) {
-    //console.log(stime(this, `.stopDragging: dragObj=`), this.dragger.dragCont.getChildAt(0), {noMove, isDragging: this.isDragging()})
-    if (this.isDragging()) {
-      if (target) this.dragContext.targetHex = target;
+  stopDragging(targetHex = this.dragContext?.tile?.fromHex) {
+    // console.log(stime(this, `.stopDragging: isDragging=`), this.isDragging)
+    if (this.isDragging) {
+      if (targetHex) this.dragContext.targetHex = targetHex;
       this.dragger.stopDrag(); // ---> dropFunc(this.dragContext.tile, info)
     }
     const data = this.dragger.getDragData(this.scaleCont);
     if (data) data.dragStopped = true;
   }
 
-  /** Toggle dragging: dragTarget(target) OR stopDragging(targetHex)
-   * - attach supplied target to mouse-drag (default is eventHex.tile)
-   * @param target the DisplayObject being dragged
+  /**
+   * if (isDragging) stopDragging(targetHex); else startDragging(dragObj);
+   * @param dragObj a DisplayObject to start dragging with dragTarget
    * @param xy offset from target to mouse pointer
    */
-  dragTarget(target = this.gamePlay.recycleHex?.tile as DisplayObject, xy: XY = { x: TP.hexRad / 2, y: TP.hexRad / 2 }) {
-    if (this.isDragging()) {
+  dragTarget(dragObj?: DisplayObject, xy: XY = { x: TP.hexRad / 2, y: TP.hexRad / 2 }) {
+    if (this.isDragging) {
+      // drop current dragObj on last legal targetHex
       this.stopDragging(this.dragContext.targetHex) // drop and make move
-    } else if (target) {
-      this.dragger.dragTarget(target, xy);
+    } else if (dragObj) {
+      this.startDragging(dragObj, xy);
     }
+  }
+
+  startDragging(dragObj: DisplayObject, xy: XY = { x: 0, y: 0 }) {
+    this.dragger.dragTarget(dragObj, xy);
   }
 
   logCurPlayer(plyr: Player) {
@@ -843,11 +850,15 @@ export class Table {
     }
     if (bindKeys) {
       this.bindKeysToScale(scaleC, "a", 436, 2);
-      KeyBinder.keyBinder.setKey('Space', () => this.dragTarget());
-      KeyBinder.keyBinder.setKey('S-Space', () => this.dragTarget());
-      KeyBinder.keyBinder.setKey('t', () => this.toggleText());
+      this.bindKeys();
     }
     return scaleC;
+  }
+
+  bindKeys() {
+    KeyBinder.keyBinder.setKey('Space', () => this.dragTarget());
+    KeyBinder.keyBinder.setKey('S-Space', () => this.dragTarget());
+    KeyBinder.keyBinder.setKey('t', () => this.toggleText());
   }
 
   /** put a Rectangle Shape at (0,0) with XYWH bounds as given */

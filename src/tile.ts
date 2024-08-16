@@ -182,6 +182,14 @@ export class Tile extends Tile0 implements Dragable {
     this.updateCache()
   }
 
+  /** Install onRightClick(evt) handler.
+   * @example
+   * when (button === 2) {
+   *   this.onRightClick(evt)
+   *   evt.nativeEvent.preventDefault()
+   *   evt.nativeEvent.stopImmediatePropagation()
+   * }
+   */
   rightClickable() {
     const ifRightClick = (evt: MouseEvent) => {
       const nevt = evt.nativeEvent;
@@ -194,6 +202,7 @@ export class Tile extends Tile0 implements Dragable {
     this.on(S.click, ifRightClick as any, this, false, {}, true); // TS fails with overload
   }
 
+  /** rightClick handler for this Tile. */
   onRightClick(evt: MouseEvent) {
     console.log(stime(this, `.rightclick: ${this}`), this);
   }
