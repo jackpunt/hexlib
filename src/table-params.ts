@@ -1,17 +1,34 @@
-export const playerColors = ['b', 'w'] as const // Player Colors!
-export const playerColorsC = ['b', 'w', 'c'] as const // Player Colors + Criminal!
+const playerColorsLib = ['b', 'w'] as const // Player Colors!
+export const playerColors = playerColorsLib.concat();
+/** Default type for PlayerColor. Maybe don't import, define your own locally.
+ *
+ * @example
+ * import { playerColors, PlayerColor as PCLib } from "@thegraid/hexlib"
+ * playerColors.push('c')
+ * type PlayerColor = PCLib | 'c' // Player Colors + Criminal!
+ */
+export type PlayerColor = typeof playerColorsLib[number];
+// Locally (for example, hextowns):
+
 export const playerColor0 = playerColors[0]
 export const playerColor1 = playerColors[1]
-export const playerColor2 = playerColorsC[2]
-//type playerColorTuple = typeof playerColors
-export type PlayerColor = typeof playerColorsC[number];
+// export const playerColor2 = playerColorsC[2]
 export function otherColor(color: PlayerColor): PlayerColor { return color === playerColor0 ? playerColor1 : playerColor0 }
 
-/** PlayerColerRecord<T> maps from PlayerColor -> T */
 export type PlayerColorRecord<T> = Record<PlayerColor, T>
-export function playerColorRecord<T>(b: T, w: T, c: T): PlayerColorRecord<T> { return { b, w, c } };
-export function playerColorRecordF<T>(f: (sc: PlayerColor) => T) { return playerColorRecord(f(playerColor0), f(playerColor1), f(playerColor2)) }
+/** @return \{ pc0: arg0 as T, pc1: arg1 as T, ...}: PlayerColorRecord\<T> */
+export function playerColorRecord<T>(...args: T[]) {
+  const rv = {} as PlayerColorRecord<T>
+  playerColors.forEach((key, ndx) => rv[key] = (args[ndx]))
+  return rv;
+}
+export function playerColorRecordF<T>(f: (sc: PlayerColor) => T) {
+  return playerColorRecord(...playerColors.map(pc => f(pc)))
+}
 
+// old forms:
+function playerColorRecord0<T>(b: T, w: T, c?: T): PlayerColorRecord<T> { return { b, w } };
+function playerColorRecordF0<T>(f: (sc: PlayerColor) => T) { return playerColorRecord(f(playerColor0), f(playerColor1)) }
 /** OR: import { Params } from "@angular/router"; */
 declare type Params = Record<string, any>;
 
@@ -25,8 +42,9 @@ export class TP {
     return static_props;
   }
   /** called by framework before TP is used; put your overrides here.
-   * @param qParams
+   * @param qParams source of the new values (TP-local)
    * @param force true to apply exact value, if new key or new type.
+   * @param over the target in which to set the values from qParams (TPLib)
    */
   static setParams(qParams: Params = {}, force = false, over = (TP as Params)) {
     /** do not muck with standard basic properties of all/empty classes */

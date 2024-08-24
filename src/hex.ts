@@ -829,6 +829,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     this.setSize(nh, mh);
     const rc0 = this.calculateRC0();
     const hexAry = this.hexAry = this.makeAllHexes(nh, mh, rc0);    // nh hexes on outer ring; single meta-hex
+    this.mapCont?.hexCont && this.mapCont.centerContainers();
     return hexAry;
   }
 

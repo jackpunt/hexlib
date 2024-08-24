@@ -236,6 +236,30 @@ export class Table {
     return undefined;
   }
 
+  cacheScale = TP.cacheTiles;
+  /** re-cache all Tiles with alternate cacheScale; improves resolution at high zoom.
+   *
+   * Alternate invokcations return cacheScale to 0 (un-cached)
+   */
+  reCacheTiles() {
+    this.cacheScale = Math.max(1, this.scaleCont.scaleX); // If zoomed in, use that higher scale
+    TP.cacheTiles = (TP.cacheTiles == 0) ? this.cacheScale : 1; //
+    console.log(stime('GamePlay', `.reCacheTiles: TP.cacheTiles=`), TP.cacheTiles, this.scaleCont.scaleX);
+    Tile.allTiles.forEach(tile => {
+      tile.setBounds(null as any as number, 0, 0, 0)
+      if (tile.cacheID) {
+        tile.uncache();
+        const rad = tile.radius, b = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
+        tile.setBounds(b.x, b.y , b.width, b.height)
+      } else {
+        const rad = tile.radius, b = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
+        // tile.cache(b?.x ?? -rad, b?.y ?? -rad, b?.width ?? 2 * rad, b?.height ?? 2 * rad, TP.cacheTiles);
+        tile.cache(b.x, b.y , b.width, b.height, TP.cacheTiles);
+      }
+    });
+    this.hexMap.update();
+  }
+
   aiControl(color = TP.bgColor, dx = 100, rad = 16) {
     let table = this
     // c m v on buttons
@@ -288,7 +312,7 @@ export class Table {
 
   /**
    * all number in units of dxdc or dydr
-   * @param x0 frame left; relative to scaleCont
+   * @param x0 frame left; relative to scaleCont (offset from bgRect to hexCont)
    * @param y0 frame top; relative to scaleCont
    * @param w0 pad width; width of bgRect, beyond hexCont, centered on hexCont
    * @param h0 pad height; height of bgRect, beyond hexCont, centered on hexCont
@@ -304,7 +328,7 @@ export class Table {
     this.scaleCont.addChild(mapCont);
 
     // background sized for hexMap:
-    const { width, height } = hexCont.getBounds();
+    const { width, height } = hexCont.getBounds(); // & .setBounds() ??
     const { dxdc, dydr } = hexMap.xywh;
     const { x, y, w, h } = { x: x0 * dxdc, y: y0 * dydr, w: width + w0 * dxdc, h: height + h0 * dydr }
     // align center of mapCont(0,0) == hexMap(center) with center of background
@@ -329,18 +353,11 @@ export class Table {
     const { x, y, width, height } = hexCont.getBounds();
     hexCont.cache(x, y, width, height); // cache hexCont (bounded by bgr)
 
-    /**
-     * After setBackground() & hexCont.cache(); before makePerPlayer();
-     *
-     * Whatever: make overlays, score panel, extra tracks (auction...)
-     */
     this.layoutTable2(); // supply args (mapCont?) if necessary;
     this.makePerPlayer();
 
     this.setupUndoButtons(55, 60, 45, xywh) // & enableHexInspector()
 
-    this.stage.on('drawend', () => setTimeout(() => this.toggleText(this.initialVis), 10), this, true);
-    this.hexMap.update();
     this.layoutTurnlog();
 
     this.namedOn("playerMoveEvent", S.add, this.gamePlay.playerMoveEvent, this.gamePlay)
@@ -363,9 +380,16 @@ export class Table {
     return { row, col };
   }
 
+  /**
+   * After setBackground() & hexCont.cache(); before makePerPlayer();
+   *
+   * Whatever: make overlays, score panel, extra tracks (auction...)
+   */
   layoutTable2() {
-
+    this.stage.on('drawend', () => setTimeout(() => this.toggleText(this.initialVis), 10), this, true);
+    this.hexMap.update();
   }
+
   gpanel(makeGUI: (cont: Container) => ParamGUI, name: string, cx: number, cy: number, scale = 1, d = 5) {
     const guiC = new NamedContainer(name, cx * scale, cy * scale);
     // const map = table.hexMap.mapCont.parent;
@@ -835,13 +859,13 @@ export class Table {
   }
   scaleParams = { initScale: .125, scale0: .05, scaleMax: 4, steps: 30, zscale: .20, };
 
-  readonly scaleCont: ScaleableContainer2;
+  readonly scaleCont: ScaleableContainer;
   /** makeScaleableBack and setup scaleParams
-   * @param bindkeys true if there's a GUI/user/keyboard
+   * @param bindkeys true if there's a GUI/user/keyboard (Canvas)
    */
   makeScaleCont(bindKeys: boolean) {
     /** scaleCont: a scalable background */
-    const scaleC = new ScaleableContainer2(this.stage, this.scaleParams);
+    const scaleC = new ScaleableContainer(this.stage, this.scaleParams);
     this.dragger = new Dragger(scaleC);
     if (!!scaleC.stage.canvas) {
       // Special case of makeDragable; drag the parent of Dragger!
@@ -849,7 +873,7 @@ export class Table {
       //this.scaleUp(Dragger.dragCont, 1.7); // Items being dragged appear larger!
     }
     if (bindKeys) {
-      this.bindKeysToScale(scaleC, "a", 436, 2);
+      this.bindKeysToScale(scaleC);
       this.bindKeys();
     }
     return scaleC;
@@ -887,15 +911,15 @@ export class Table {
   }
 
   /**
-   * invoked before this.scaleC has been set
-   * @param scaleC same Container as this.scaleC
-   * @param char keybinding to set initial scale
-   * @param xos x-offset of scaleC in screen coords (pre-scale)
-   * @param yos y-offset of scaleC in screen coords (pre-scale)
-   * @param scale0 imitial scale [.5]
+   * invoked before this.scaleCont has been set.
+   * @param scaleC the ScaleableContainer to be used
+   * @param isc ['a'] initial scale char, keybinding to reset to initial scale
+   * @param xos initial x-offset of scaleC in screen coords (pre-scale)
+   * @param yos initial y-offset of scaleC in screen coords (pre-scale)
+   * @param scale0 [.5] initial scale
    */
   // bindKeysToScale('a', scaleC, 436, 0, .5)
-  bindKeysToScale(scaleC: ScaleableContainer2, char: string, xos: number, yos: number, scale0 = .5) {
+  bindKeysToScale(scaleC: ScaleableContainer, isc = 'a', xos = 436, yos = 2, scale0 = .5) {
     const nsA = scale0;
     const apt = { x: xos, y: yos }
     let nsZ = 0.647; //
@@ -920,7 +944,7 @@ export class Table {
     }
 
     // Scale-setting keystrokes:
-    KeyBinder.keyBinder.setKey("a", { func: () => setScaleXY(nsA, apt) });
+    KeyBinder.keyBinder.setKey(isc, { func: () => setScaleXY(nsA, apt) });
     KeyBinder.keyBinder.setKey("z", { func: () => setScaleXY(nsZ, zpt) });
     KeyBinder.keyBinder.setKey("x", { func: () => saveScaleZ() });
     KeyBinder.keyBinder.setKey("p", { func: () => getOop(), thisArg: this });
@@ -933,10 +957,7 @@ export class Table {
     KeyBinder.keyBinder.setKey('ArrowUp', { thisArg: this, func: this.pan, argVal: { x: 0, y: -10 } })
     KeyBinder.keyBinder.setKey('ArrowDown', { thisArg: this, func: this.pan, argVal: { x: 0, y: 10 } })
 
-    KeyBinder.keyBinder.dispatchChar(char)
+    KeyBinder.keyBinder.dispatchChar(isc)
   }
 }
 
-class ScaleableContainer2 extends ScaleableContainer {
-
-}

@@ -190,11 +190,11 @@ export class Tile extends Tile0 implements Dragable {
    *   evt.nativeEvent.stopImmediatePropagation()
    * }
    */
-  rightClickable() {
+  rightClickable(onRightClick = (evt: MouseEvent) => this.onRightClick(evt)) {
     const ifRightClick = (evt: MouseEvent) => {
       const nevt = evt.nativeEvent;
       if (nevt.button === 2) {
-        this.onRightClick(evt);
+        onRightClick(evt);
         nevt.preventDefault();           // evt is non-cancelable, but stop the native event...
         nevt.stopImmediatePropagation(); // TODO: prevent Dragger.clickToDrag() when button !== 0
       }

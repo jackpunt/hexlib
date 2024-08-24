@@ -219,10 +219,8 @@ export class GameSetup {
     cNames = MapCont.cNames.concat() as string[])
   {
     const hexMap = new hexMC(TP.hexRad, true, hexC);
-    new HexMap()
     hexMap.addToMapCont(hexC, cNames);       // addToMapCont(hexC, cNames)
     hexMap.makeAllDistricts();               // determines size for this.bgRect
-    hexMap.mapCont.hexCont && hexMap.mapCont.centerContainers();
     return hexMap;
   }
 

@@ -241,7 +241,7 @@ export class GamePlay extends GamePlay0 {
     KeyBinder.keyBinder.setKey('C-c', { thisArg: this, func: this.stopPlayer })// C-c Stop Planner
     KeyBinder.keyBinder.setKey('u', { thisArg: this, func: this.unMove })
     // KeyBinder.keyBinder.setKey('n', () => { this.endTurn(); this.gameState.phase('BeginTurn') });
-    KeyBinder.keyBinder.setKey('C-c', { thisArg: this, func: this.reCacheTiles })
+    KeyBinder.keyBinder.setKey('C-c', () => this.table.reCacheTiles())
 
     KeyBinder.keyBinder.setKey('c', { thisArg: this, func: this.clickConfirm, argVal: false })
     KeyBinder.keyBinder.setKey('y', { thisArg: this, func: this.clickConfirm, argVal: true })
@@ -366,23 +366,6 @@ export class GamePlay extends GamePlay0 {
     if (this.curPlayer.plannerRunning) return
     this.undoMove();
     this.makeMove(true, undefined, 1)
-  }
-
-  cacheScale = TP.cacheTiles;
-  reCacheTiles() {
-    this.cacheScale = Math.max(1, this.table.scaleCont.scaleX);
-    TP.cacheTiles = (TP.cacheTiles == 0) ? this.cacheScale : 0;
-    console.log(stime('GamePlay', `.reCacheTiles: TP.cacheTiles=`), TP.cacheTiles, this.table.scaleCont.scaleX);
-    Tile.allTiles.forEach(tile => {
-      if (tile.cacheID) {
-        tile.uncache();
-      } else {
-        const rad = tile.radius, b = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
-        // tile.cache(b?.x ?? -rad, b?.y ?? -rad, b?.width ?? 2 * rad, b?.height ?? 2 * rad, TP.cacheTiles);
-        tile.cache(b.x, b.y , b.width, b.height, TP.cacheTiles);
-      }
-    });
-    this.hexMap.update();
   }
 
   /**

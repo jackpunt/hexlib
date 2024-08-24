@@ -159,6 +159,7 @@ export class PolyShape extends PaintableShape {
   }
 }
 
+/** a Rectangular Shape, maybe with rounded corners */
 export class RectShape extends PaintableShape {
   static rectWHXY(w: number, h: number, x = -w / 2, y = -h / 2, g0 = new Graphics()) {
     return g0.dr(x, y, w, h)
@@ -168,16 +169,18 @@ export class RectShape extends PaintableShape {
     return g0.rr(x, y, w, h, r);
   }
 
-  /** draw rectangle suitable for given Text; with border, textAlign. */
-  static rectText(t: Text | string, fs?: number, b?: number, align = (t instanceof Text) ? t.textAlign : 'center', g0 = new Graphics()) {
-    const txt = (t instanceof Text) ? t : new CenterText(t, fs ?? 30);
-    txt.textAlign = align;
-    if (txt.text === undefined) return g0; // or RectShape.rectWHXY(0,0,0,0); ??
-    if (fs === undefined) fs = txt.getMeasuredHeight();
+  /**
+   * paint a background RectShape for given Text.
+   * @param txt Text
+   * @param b border size around text [txt.getMeasuredLineHeight * .1]
+   * @param g0 append to Graphics [new Graphics()]
+   * @returns
+   */
+  static rectText(txt: Text, b?: number, g0 = new Graphics()) {
+    const fs = txt.getMeasuredLineHeight();
     if (b === undefined) b = fs * .1;
-    const txtw = txt.getMeasuredWidth(), w = b + txtw + b, h = b + fs + b;
-    const x = (align == 'right') ? w-b : (align === 'left') ? -b : w / 2;
-    return RectShape.rectWHXY(w, h, -x, -h / 2, g0);
+    const { x, y, width, height } = txt.getBounds();
+    return RectShape.rectWHXY(width + 2 * b, height + 2 * b, x - b, y - b, g0);
   }
 
   rect: XYWH;
@@ -255,6 +258,7 @@ export class LegalMark extends Shape {
   }
 }
 
+/** Show text in a colored Rectangle. */
 export class UtilButton extends Container implements Paintable {
   blocked: boolean = false
   shape: PaintableShape;
@@ -265,6 +269,14 @@ export class UtilButton extends Container implements Paintable {
     this.paint(undefined, true);
   }
 
+  /**
+   * Create Container with CenterText above a RectShape.
+   * @param color of background RectShape.
+   * @param text label
+   * @param fontSize
+   * @param textColor
+   * @param cgf
+   */
   constructor(color: string, text: string, public fontSize = TP.hexRad / 2, public textColor = C.black, cgf?: CGF) {
     super();
     this.label = new CenterText(text, fontSize, textColor);
@@ -274,7 +286,7 @@ export class UtilButton extends Container implements Paintable {
   }
 
   ubcsf(color: string, g = new Graphics()) {
-    return RectShape.rectText(this.label.text, this.fontSize, this.fontSize * .3, this.label.textAlign, g.f(color))
+    return RectShape.rectText(this.label, this.fontSize * .3, g.f(color))
   }
 
   paint(color = this.shape.colorn, force = false ) {
@@ -287,7 +299,7 @@ export class UtilButton extends Container implements Paintable {
    * Allow Chrome to finish stage.update before proceeding with afterUpdate().
    *
    * Other code can watch this.blocked; then call updateWait(false) to reset.
-   * @param hide true to hide and disable the turnButton
+   * @param hide true to hide and disable this UtilButton
    * @param afterUpdate callback ('drawend') when stage.update is done [none]
    * @param scope thisArg for afterUpdate [this TurnButton]
    * @deprecated use easeljs-lib afterUpdate(container, function)
