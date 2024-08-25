@@ -241,7 +241,7 @@ export class GamePlay extends GamePlay0 {
     KeyBinder.keyBinder.setKey('C-c', { thisArg: this, func: this.stopPlayer })// C-c Stop Planner
     KeyBinder.keyBinder.setKey('u', { thisArg: this, func: this.unMove })
     // KeyBinder.keyBinder.setKey('n', () => { this.endTurn(); this.gameState.phase('BeginTurn') });
-    KeyBinder.keyBinder.setKey('C-c', () => this.table.reCacheTiles())
+    KeyBinder.keyBinder.setKey('C', () => this.table.reCacheTiles()) // toggle-update cache
 
     KeyBinder.keyBinder.setKey('c', { thisArg: this, func: this.clickConfirm, argVal: false })
     KeyBinder.keyBinder.setKey('y', { thisArg: this, func: this.clickConfirm, argVal: true })

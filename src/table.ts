@@ -239,7 +239,7 @@ export class Table {
   cacheScale = TP.cacheTiles;
   /** re-cache all Tiles with alternate cacheScale; improves resolution at high zoom.
    *
-   * Alternate invokcations return cacheScale to 0 (un-cached)
+   * Alternate invocations return cacheScale to 0 (un-cached)
    */
   reCacheTiles() {
     this.cacheScale = Math.max(1, this.scaleCont.scaleX); // If zoomed in, use that higher scale

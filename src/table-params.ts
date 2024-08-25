@@ -26,55 +26,51 @@ export function playerColorRecordF<T>(f: (sc: PlayerColor) => T) {
   return playerColorRecord(...playerColors.map(pc => f(pc)))
 }
 
-// old forms:
-function playerColorRecord0<T>(b: T, w: T, c?: T): PlayerColorRecord<T> { return { b, w } };
-function playerColorRecordF0<T>(f: (sc: PlayerColor) => T) { return playerColorRecord(f(playerColor0), f(playerColor1)) }
-/** OR: import { Params } from "@angular/router"; */
+/** 'Object' OR: import { Params } from "@angular/router"; */
 declare type Params = Record<string, any>;
 
 export class TP {
+  /** compose a URL of form wss://host.domain:port/path.
+   *
+   * @param scheme ['wss']
+   * @param host [TP.ghost]
+   * @param domain [TP.gdomain]
+   * @param port [TP.gport]
+   * @param path [''] supply your own '/' and any query part
+   */
   static buildURL(scheme = 'wss', host = TP.ghost, domain = TP.gdomain, port = TP.gport, path = ''): string {
     return `${scheme}://${host}.${domain}:${port}${path}`
   }
+  /** return OwnPropertyNames that are NOT also in Object (ie: length, name, prototype) */
   static staticFields(over = (TP as Params)) {
     const basic_props = Object.getOwnPropertyNames(class { });// [length, prototype, name]
     const static_props = Object.getOwnPropertyNames(over).filter(k => !basic_props.includes(k));
     return static_props;
   }
-  /** called by framework before TP is used; put your overrides here.
-   * @param qParams source of the new values (TP-local)
-   * @param force true to apply exact value, if new key or new type.
-   * @param over the target in which to set the values from qParams (TPLib)
+  /**
+   * If local field has a (non-function) value, set it in tplib, and delete it from local.
+   * So that library methods will see the value as TP.field
+   *
+   * If tplib value is a number and local value is a string, try coerce using parseInt()
+   *
+   * @param local source of the new values (TP-local)
+   * @param force [false] if true, do not attempt to coerce value with parseInt().
+   * @param tplib [TP-lib] the target in which to set the values from local.
    */
-  static setParams(qParams: Params = {}, force = false, over = (TP as Params)) {
+  static setParams(local: Params = {}, force = false, tplib = (TP as Params)) {
     /** do not muck with standard basic properties of all/empty classes */
-    const static_props = TP.staticFields(over);
-    for (let [key, value] of Object.entries(qParams)) {
-      if (force || static_props.includes(key)) {
-        if (!force && (typeof value === 'string' && typeof over[key] === 'number')) {
-          value = Number.parseInt(value); // minimal effort to align types.
-        }
-        (TP as Params)[key] = value; // set a static value in base; DANGER! not typesafe!
+    const static_props = TP.staticFields(tplib);
+    for (let [key, value] of Object.entries(local)) {
+      if (!static_props.includes(key)) continue; // if no collision leave in TP-local
+      if (!force && (typeof value === 'string' && typeof tplib[key] === 'number')) {
+        value = Number.parseInt(value); // minimal effort to align types.
       }
+      tplib[key] = value; // set a static value in base; DANGER! not typesafe!
+      delete local[key];  // so future local[key] = value will tplib[key] = value;
     }
+    return tplib
   }
 
-  /**
-   * After pushing all values from local subclass of TP into base TP,
-   * delete them, so there is only the one copy in original base class: TP (from hexlib)
-   * Local references should still get/set values in the base object.
-   *
-   * This way, tsc still sees local TP for type safety,
-   * but there is a single object for updates using Chooser.
-   *
-   * @param local the locally created subclass of TP with static fields
-   */
-  static eraseLocal(local: Params) {
-    const static_props = TP.staticFields(local);
-    static_props.forEach(key => delete local[key])
-    const new_props = TP.staticFields(local);
-    // assert new_props is empty!
-  }
   /** the current map from PlayerColor to colorn */
   static colorScheme = playerColorRecordF(n => n as string);
   static useEwTopo = true;
