@@ -1,23 +1,18 @@
 import { AT, C, CenterText, Constructor, Dragger, DragInfo, DropdownStyle, F, KeyBinder, ParamGUI, ParamItem, S, ScaleableContainer, stime, XY } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape, Stage, Text } from "@thegraid/easeljs-module";
-import { NamedContainer, NamedObject, type GamePlay } from "./game-play";
+import { EBC, PidChoice } from "./choosers";
+import { NamedContainer, NamedObject, TileEvent, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
 import type { GameState } from "./game-state";
-import { Hex, IHex2, HexMap, IdHex, RecycleHex, HexM } from "./hex";
+import { Hex, HexM, HexMap, IdHex, IHex2, RecycleHex } from "./hex";
 import { XYWH } from "./hex-intfs";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
 import { CircleShape, HexShape, RectShape, UtilButton } from "./shapes";
-import { PlayerColor, playerColor0, playerColor1, TP } from "./table-params";
+import { playerColor0, playerColor1, TP } from "./table-params";
 import { Tile } from "./tile";
 import { TileSource } from "./tile-source";
-import { PidChoice, EBC } from "./choosers";
 //import { TablePlanner } from "./planner";
-
-function firstChar(s: string, uc = true) { return uc ? s.substring(0, 1).toUpperCase() : s.substring(0, 1) };
-
-export type EventName = 'Claim' | 'Split' | 'Conflict' | 'merge' | 'redzone';
-export interface ActionButton extends Container { isEvent: boolean, pid: number, rollover?: ((b: ActionButton, over: boolean) => void) }
 
 export interface Dragable {
   dragFunc0(hex: IHex2, ctx: DragContext): void;
@@ -105,7 +100,7 @@ export class Table {
   }
 
   disp: EventDispatcher = this as any as EventDispatcher;
-  namedOn(Aname: string, type: string, listener: (eventObj: Object) => boolean, scope?: Object, once?: boolean, data?: any, useCapture = false) {
+  namedOn(Aname: string, type: string, listener: (eventObj: any) => boolean, scope?: Object, once?: boolean, data?: any, useCapture = false) {
     const list2 = this.disp.on(type, listener, scope, once, data, useCapture) as NamedObject;
     list2.Aname = Aname;
   }
@@ -237,24 +232,27 @@ export class Table {
   }
 
   cacheScale = TP.cacheTiles;
-  /** re-cache all Tiles with alternate cacheScale; improves resolution at high zoom.
+  /**
+   * re-cache all Tiles with alternate cacheScale; improves resolution at high zoom.
    *
    * Alternate invocations return cacheScale to 0 (un-cached)
+   * @param setScale [TP.cacheTiles === 0] set true to force setting, false to toggle
+   * @param cacheScale [max(1, scaleCont.scaleX)] set to use specific scale
    */
-  reCacheTiles() {
-    this.cacheScale = Math.max(1, this.scaleCont.scaleX); // If zoomed in, use that higher scale
-    TP.cacheTiles = (TP.cacheTiles == 0) ? this.cacheScale : 1; //
+  reCacheTiles(setScale = (TP.cacheTiles === 0), cacheScale?: number) {
+    this.cacheScale = cacheScale ?? Math.max(1, this.scaleCont.scaleX); // If zoomed in, use that higher scale
+    TP.cacheTiles = setScale ? this.cacheScale : 1; //
     console.log(stime('GamePlay', `.reCacheTiles: TP.cacheTiles=`), TP.cacheTiles, this.scaleCont.scaleX);
     Tile.allTiles.forEach(tile => {
+      const rad = tile.radius
       tile.setBounds(null as any as number, 0, 0, 0)
       if (tile.cacheID) {
         tile.uncache();
-        const rad = tile.radius, b = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
-        tile.setBounds(b.x, b.y , b.width, b.height)
+        const { x, y, width, height } = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
+        tile.setBounds(x, y , width, height)
       } else {
-        const rad = tile.radius, b = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
-        // tile.cache(b?.x ?? -rad, b?.y ?? -rad, b?.width ?? 2 * rad, b?.height ?? 2 * rad, TP.cacheTiles);
-        tile.cache(b.x, b.y , b.width, b.height, TP.cacheTiles);
+        const { x, y, width, height } = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
+        tile.cache(x, y , width, height, TP.cacheTiles)
       }
     });
     this.hexMap.update();
@@ -390,27 +388,35 @@ export class Table {
     this.hexMap.update();
   }
 
+  /**
+   * Make ParamGUI with a background RectShape, and make it dragable.
+   * @param makeGUI a function(Container) to create a ParamGUI
+   * @param name of the Container to hold the ParamGUI
+   * @param cx location of Container on scaleCont: cx * scale
+   * @param cy location of Container on scaleCont: cy * scale
+   * @param scale [TP.hexRad / 60] Container scaleX, scaleY
+   * @param d border size of background RectShape around/behind GUI Container
+   * @returns the gui returned from makeGUI(Table, Ccntainer)
+   */
   gpanel(makeGUI: (cont: Container) => ParamGUI, name: string, cx: number, cy: number, scale = 1, d = 5) {
     const guiC = new NamedContainer(name, cx * scale, cy * scale);
     // const map = table.hexMap.mapCont.parent;
     this.scaleCont.addChildAt(guiC);
     guiC.scaleX = guiC.scaleY = scale;
-    const gui = makeGUI.call(this, guiC);      // @[0, 0]
-    guiC.x -= (gui.linew + d) * scale;
+    const gui = makeGUI.call(this, guiC);      // gui.[x,y] = [0, 0];
+    guiC.x -= (gui.linew + d) * scale;         // Chooser-lines go to left, text to right
     const bgr = new RectShape({ x: -d, y: -d, w: gui.linew + 2 * d, h: gui.ymax + 2 * d }, 'rgb(200,200,200,.5)', '');
     guiC.addChildAt(bgr, 0);
     this.dragger.makeDragable(guiC);
     return gui;
   }
   /**
-   * makeNetworkGUI(parent)
-   * makeParamGUI(parent)
-   * makeParamGUI2(parent)
-   * makeDragable()
-   * @param table
+   * makeNetworkGUI(parent) -> gui3.ymax
+   * makeParamGUI(parent)   -> gui1.ymax
+   * makeParamGUI2(parent)  -> gui2.ymax
    */
-  makeGUIs() {
-    const scaleCont = this.scaleCont, scale = TP.hexRad / 60, cx = -200, cy = 250, dy = 20;
+  makeGUIs(scale = TP.hexRad / 60, cx = -200, cy = 250, dy = 20) {
+    const scaleCont = this.scaleCont;
     let ymax = 0;
     const gui3 = this.gpanel(this.makeNetworkGUI, 'NetGUI', cx, cy + ymax, scale);
     ymax += gui3.ymax + dy;
@@ -609,13 +615,13 @@ export class Table {
     actionCont.addChild(doneButton);
 
     // prefix advice: set text color
-    const o_cgf = doneButton.shape.cgf;
+    const o_cgf = doneButton.rectShape.cgf;
     const cgf = (color: string) => {
       const tcolor = (C.dist(color, C.WHITE) < C.dist(color, C.black)) ? C.black : C.white;
       doneButton.label.color = tcolor;
       return o_cgf(color);
     }
-    doneButton.shape.cgf = cgf; // invokes shape.paint(cgf) !!
+    doneButton.rectShape.cgf = cgf; // invokes shape.paint(cgf) !!
     return actionCont;
   }
 
@@ -838,17 +844,24 @@ export class Table {
   }
   /**
    * All manual moves feed through this (drop & redo)
+   *
    * TablePlanner.logMove(); then dispatchEvent() --> gamePlay.doPlayerMove()
    *
    * New: let Ship (Drag & Drop) do this.
    */
   doTableMove(ihex: IdHex) {
   }
-  /** All moves (GUI & player) feed through this: */
-  moveStoneToHex(ihex: IdHex, sc: PlayerColor) {
-    // let hex = Hex.ofMap(ihex, this.hexMap)
-    // this.hexMap.showMark(hex)
-    // this.dispatchEvent(new HexEvent(S.add, hex, sc)) // -> GamePlay.playerMoveEvent(hex, sc)
+
+  /** All moves (GUI & plannerMove) feed through here:
+   *
+   * gamePlay listens with playerMoveEvent(TileEvent)
+   *
+   * and eventually get to Player.doPlayerMove()
+   */
+  moveTileToHex(tile: Tile, ihex: IdHex) {
+    const hex = this.hexMap.getHex(ihex);
+    this.hexMap.showMark(hex);
+    this.disp.dispatchEvent(new TileEvent(S.add, tile, hex)) // -> GamePlay.playerMoveEvent(hex, sc)
   }
 
   /** default scaling-up value */

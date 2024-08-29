@@ -1,6 +1,6 @@
-import { json } from "@thegraid/common-lib";
+import { Constructor, json } from "@thegraid/common-lib";
 import { KeyBinder, S, Undo, blinkAndThen, stime } from "@thegraid/easeljs-lib";
-import { Container } from "@thegraid/easeljs-module";
+import { Container, Event } from "@thegraid/easeljs-module";
 import type { GameSetup, Scenario } from "./game-setup";
 import { GameState } from "./game-state";
 import { Hex, Hex1, HexMap, IdHex } from "./hex";
@@ -22,7 +22,18 @@ export class NamedContainer extends Container implements NamedObject {
   }
 }
 
-class HexEvent {}
+/**
+ * Event indicating a Tile has been placed on a Hex.
+ *
+ * Dispatched by Table
+ *
+ * Not actually related to the display list
+ */
+export class TileEvent extends Event {
+  constructor(type: string, public tile: Tile, public hex: Hex) {
+    super(type, false, true)
+  }
+}
 
 /** moves also identified by IHex | Hex, indicating where stone was placed. */
 class Move {
@@ -465,18 +476,38 @@ export class GamePlay extends GamePlay0 {
   paintForPlayer() {
   }
 
-  /** dropFunc | eval_sendMove -- indicating new Move attempt */
-  localMoveEvent(hev: HexEvent) {
+  /**
+   * Update board/game-state to accont for player's move (tile->hex)
+   *
+   * terminates this player's turn: closeUndo()
+   * @param hex
+   * @param tile
+   * @returns
+   */
+  doPlayerMove(hex: Hex, tile: Tile) {
+    return;
+  }
+
+  /** dropFunc | eval_sendMove -- indicating new Move attempt
+   *
+   * All moves funnel through here;
+   *
+   * adjust 'redo';
+   * doPlayerMove();
+   *
+   * Send move to network
+   */
+  localMoveEvent(hev: TileEvent) {
     let redo = this.redoMoves.shift()   // pop one Move, maybe pop them all:
-    //if (!!redo && redo.hex !== hev.hex) this.redoMoves.splice(0, this.redoMoves.length)
-    //this.doPlayerMove(hev.hex, hev.playerColor)
+    if (!!redo && redo.hex !== hev.hex) this.redoMoves.splice(0, this.redoMoves.length)
+    this.doPlayerMove(hev.hex, hev.tile)
+    this.undoRecs.closeUndo()
     this.setNextPlayer()
     this.ll(2) && console.log(stime(this, `.localMoveEvent: after doPlayerMove - setNextPlayer =`), this.curPlayer.color)
-    return false;
   }
 
   /** local Player has moved (S.add); network ? (sendMove.then(removeMoveEvent)) : localMoveEvent() */
-  playerMoveEvent(hev: HexEvent) {
+  playerMoveEvent(hev: TileEvent) {
     this.localMoveEvent(hev)
     return false;
   }

@@ -1,4 +1,4 @@
-import { CenterText, S, stime } from "@thegraid/easeljs-lib";
+import { afterUpdate, CenterText, S, stime } from "@thegraid/easeljs-lib";
 import { Container, Graphics, MouseEvent, Text } from "@thegraid/easeljs-module";
 import { NamedContainer } from "./game-play";
 import { Player } from "./player";
@@ -7,7 +7,7 @@ import { Table } from "./table";
 import { TP } from "./table-params";
 
 
-interface ConfirmCont extends Container {
+interface ConfirmCont extends NamedContainer {
   titleText: Text;
   messageText: Text;
   buttonYes: UtilButton;
@@ -63,7 +63,7 @@ export class PlayerPanel extends NamedContainer {
    * @param bgc fill color
    */
   setOutline(t1 = 2, bgc = this.bg0) {
-    const { wide, high, brad, gap } = this.metrics;
+    const { wide, high, } = this.metrics;
     const t2 = t1 * 2 + 1, g = new Graphics().ss(t2);
     this.removeChild(this.outline);
     this.outline = new RectShape({ x: -t1, y: -t1, w: wide + t2, h: high + t2 }, bgc, this.player.color, g);
@@ -76,23 +76,25 @@ export class PlayerPanel extends NamedContainer {
   }
 
   confirmContainer: ConfirmCont;
-  makeConfirmation() {
+  /** create the 'Are you sure' popup. */
+  makeConfirmation(query = 'Are you sure?', a1 = 'Yes', a2 = 'Cancel') {
+    const c1 = 'lightgreen', c2 = 'rgb(255, 100, 100)'
     const { wide, high, brad, gap, rowh } = this.metrics;
     const { table } = this.objects;
-    const conf = this.confirmContainer = new Container() as ConfirmCont; conf.name = 'confirm'
+    const conf = this.confirmContainer = new NamedContainer('confirm') as ConfirmCont;
     const bg0 = new RectShape({ x: 0, y: - brad - gap, w: wide, h: high }, '', '');
     bg0.paint('rgba(240,240,240,.2)');
     const bg1 = new RectShape({ x: 0, y: 4 * rowh - brad - 2 * gap, w: wide, h: high - 4 * rowh + gap }, '', '');
     bg1.paint('rgba(240,240,240,.8)');
 
-    const title = conf.titleText = new CenterText('Are you sure?', 30);
+    const title = conf.titleText = new CenterText(query, 30);
     title.x = wide / 2;
     title.y = 3.85 * rowh;
     const msgText = conf.messageText = new CenterText('', 30);
     msgText.x = wide / 2;
     msgText.y = 5 * rowh;
-    const button1 = conf.buttonYes = new UtilButton('lightgreen', 'Yes', TP.hexRad);
-    const button2 = conf.buttonCan = new UtilButton('rgb(255, 100, 100)', 'Cancel', TP.hexRad);
+    const button1 = conf.buttonYes = new UtilButton(c1, a1, TP.hexRad);
+    const button2 = conf.buttonCan = new UtilButton(c2, a2, TP.hexRad);
     button1.y = button2.y = 6 * rowh;
     button1.x = wide * .4;
     button2.x = wide * .6;
@@ -112,7 +114,8 @@ export class PlayerPanel extends NamedContainer {
     (yes ? buttonYes : buttonCan).dispatchEvent(event);
   }
 
-  areYouSure(msg: string, yes: () => void, cancel?: () => void, afterUpdate: () => void = () => {}) {
+  /** popup the confirmContainer, take yes() or cancel() action */
+  areYouSure(msg: string, yes: () => void, cancel?: () => void, afterPopup: () => void = () => {}) {
     const { panel, table } = this.objects, doneVis = table.doneButton.visible;
     table.doneButton.mouseEnabled = table.doneButton.visible = false;
     const conf = this.confirmContainer;
@@ -125,7 +128,7 @@ export class PlayerPanel extends NamedContainer {
       button1.removeAllEventListeners();
       button2.removeAllEventListeners();
       table.doneButton.mouseEnabled = table.doneButton.visible = doneVis;
-      button1.updateWait(false, func);
+      afterUpdate(conf, func, this);
     }
     button2.visible = !!cancel;
     button1.label_text = !!cancel ? 'Yes' : 'Continue';
@@ -136,7 +139,7 @@ export class PlayerPanel extends NamedContainer {
     console.log(stime(this, `.areYouSure? [${this.player.Aname}], ${msg}`));
     panel.localToLocal(0, 0, table.overlayCont, conf);
     conf.visible = true;
-    button1.updateWait(false, afterUpdate);
+    afterUpdate(conf, afterPopup, this);
     // setTimeout(cancel, 500);
   }
 }

@@ -1,6 +1,7 @@
 import { C, stime } from "@thegraid/common-lib";
 // import { json } from "./functions";
 import type { GamePlay } from "./game-play";
+import { afterUpdate } from "@thegraid/easeljs-lib";
 
 
 export interface Phase {
@@ -50,12 +51,12 @@ export class GameState {
    * empty label hides & disables.
    * optional continuation function on 'drawend'.
    */
-  doneButton(label?: string, color = this.curPlayer.color, afterUpdate: undefined | ((evt?: Object, ...args: any[]) => void) = undefined) {
+  doneButton(label?: string, color = this.curPlayer.color, afterPopup?: () => void) {
     const doneButton = this.table.doneButton;
     doneButton.visible = !!label;
     doneButton.label_text = label;
     doneButton.paint(color, true);
-    doneButton.updateWait(false, afterUpdate);
+    afterUpdate(doneButton, afterPopup)
   }
 
   /** invoked when 'Done' button clicked. [or whenever phase is 'done' by other means] */

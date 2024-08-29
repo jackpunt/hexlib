@@ -48,14 +48,16 @@ export class TP {
     return static_props;
   }
   /**
-   * If local field has a (non-function) value, set it in tplib, and delete it from local.
-   * So that library methods will see the value as TP.field
+   * If local field is present in tplib, set local value in tplib, and delete it from local.
+   *
+   * So hexlib methods will see and use the value as TP.field
    *
    * If tplib value is a number and local value is a string, try coerce using parseInt()
    *
-   * @param local source of the new values (TP-local)
+   * @param local source of the new values (typically TP-local or {...})
    * @param force [false] if true, do not attempt to coerce value with parseInt().
    * @param tplib [TP-lib] the target in which to set the values from local.
+   * @return local with tplib values removed
    */
   static setParams(local: Params = {}, force = false, tplib = (TP as Params)) {
     /** do not muck with standard basic properties of all/empty classes */
@@ -68,7 +70,7 @@ export class TP {
       tplib[key] = value; // set a static value in base; DANGER! not typesafe!
       delete local[key];  // so future local[key] = value will tplib[key] = value;
     }
-    return tplib
+    return local
   }
 
   /** the current map from PlayerColor to colorn */

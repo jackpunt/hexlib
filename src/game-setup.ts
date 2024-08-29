@@ -133,6 +133,7 @@ export class GameSetup {
     }
     deContainer(this.stage);
     this.resetState(stateInfo);
+    this.startup();             // was in resetState() but this makes more sense. maybe startup(stateInfo)?
     // next tick, new thread...
     setTimeout(() => this.netState = netState, 100) // onChange-> ('new', 'join', 'ref') initiate a new connection
   }
@@ -143,7 +144,6 @@ export class GameSetup {
     TP.mHexes = mh ?? TP.mHexes;
     TP.nHexes = nh ?? TP.nHexes;
     TP.hexRad = hexRad ?? TP.hexRad;
-    this.startup();
   }
 
   /** read & parse State from text element */

@@ -268,6 +268,10 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       * - distText: initially distText.text = `${district}` slightly below center, BLACK
       */
     constructor(...args: any[]) {
+      // here we inforce that derived class has identical Constructor!
+      // Alternative, we could pass the args [] directly, ie: super(args) !not spread!
+      // new class constructor could parse/spread to get the bits they want,
+      // then edit-in-place the args array to be compatible for this.constructorCode()
       const [map, row, col, name] = args;
       super(map, row, col, name);  // invoke the given Base constructor: LocalHex1
       this.constructorCode(map, row, col, name);
@@ -556,6 +560,7 @@ export interface HexM<T extends Hex> {
   xywh: XYWH & { dxdc: number; dydr: number; }
   hexC: Constructor<Hex>
   hexUnderObj(dragObj: DisplayObject, legalOnly?: boolean): T | undefined
+  getHex(id: RC): T;
 }
 
 /**
@@ -636,6 +641,17 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   getCornerHex(dn: HexDir) {
     return this.centerHex.lastHex(dn)
   }
+
+  getHex(ihex: RC) {
+    /** return indicated Hex from otherMap */
+    try {
+      return this[ihex.row][ihex.col]
+    } catch (err) {
+      console.warn(`ofMap failed:`, err, { ihex, hexMap: this }) // eg: id is from different (mh,nh)
+      throw err
+    }
+  }
+
   rcLinear(row: number, col: number): number { return col + row * (1 + (this.maxCol ?? 0) - (this.minCol ?? 0)) }
 
   mark: HexMark | undefined                        // a cached DisplayObject, used by showMark

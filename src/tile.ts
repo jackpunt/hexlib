@@ -1,6 +1,6 @@
 import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
 import { CenterText } from "@thegraid/easeljs-lib";
-import { Container, MouseEvent, Text } from "@thegraid/easeljs-module";
+import { Container, MouseEvent, Rectangle, Text } from "@thegraid/easeljs-module";
 import type { GamePlay } from "./game-play";
 import { Hex1, IHex2 } from "./hex";
 import { AliasLoader } from "./image-loader";
@@ -58,6 +58,24 @@ class Tile0 extends Container {
     this.updateCache();           // push graphics to bitmapCache
   }
 
+  /**
+   * reset bounds and cache
+   * @param b [undefined] new bounds or undefined to use computed bounds
+   * @param uncached [false] if true: set bounds but do not set cache (unusual)
+   * @returns the new bounds
+   */
+  setCache(b?: Rectangle, uncached = false ) {
+    const rad = this.radius;
+    this.setBounds(null as any as number, 0, 0, 0); // remove old bounds
+    if (this.cacheID) {
+      this.uncache();             // remove bounds from old cache
+    }
+    // use given bounds OR computed bounds OR default minimal bounds
+    b = b ?? this.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
+    this.setBounds(b.x, b.y, b.width, b.height);    // set computed bounds
+    this.cache(b.x, b.y, b.width, b.height, TP.cacheTiles); // cache & bounds
+    return b;
+  }
 }
 
 /** all the [Hexagonal] game pieces that appear; can be dragged/dropped.

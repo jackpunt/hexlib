@@ -1,6 +1,6 @@
-import { C, XYWH, className } from "@thegraid/common-lib";
-import { CenterText } from "@thegraid/easeljs-lib";
-import { Container, DisplayObject, Graphics, Shape, Text } from "@thegraid/easeljs-module";
+import { C, F, XYWH, className } from "@thegraid/common-lib";
+import { afterUpdate, CenterText } from "@thegraid/easeljs-lib";
+import { Container, DisplayObject, Graphics, Rectangle, Shape, Text } from "@thegraid/easeljs-module";
 import type { IHex2 } from "./hex";
 import { H, HexDir } from "./hex-intfs";
 import { TP } from "./table-params";
@@ -15,6 +15,11 @@ export class C1 {
 export interface Paintable extends DisplayObject {
   /** paint with new player color; updateCache() */
   paint(colorn: string, force?: boolean): Graphics;
+
+  /** Paintable can compute its own Bounds. setBounds(undefined, 0, 0, 0) */
+  setBounds(x: undefined | null | number, y: number, width: number, height: number): void;
+  /** compute bounds of this PaintableShape */
+  calcBounds(): XYWH;
 }
 
 /** Create/Color Graphics Function (color, g0); extend graphics with additional instructions.
@@ -34,7 +39,11 @@ export type CGF = (color: string, g?: Graphics) => Graphics;
  * -   }
  * - }
  */
-
+// The "origin story" was to create new Shapes without subclassing.
+// Just make a new PaintableShape with its CGF
+// can even compose by passing/invoking the CGF of other Shapes.
+// the tricky bit for that is finding the 'inherited' CGF;
+// maybe a known static; or constructor arg: either a CGF or a PS instance.
 export class PaintableShape extends Shape implements Paintable {
   /** if supplied in contructor, cgf extends a clone [otherwise use new Graphics()] */
   _g0?: Graphics;
@@ -75,39 +84,141 @@ export class PaintableShape extends Shape implements Paintable {
     }
     return this.graphics;
   }
+  // easeljs does: BitMap, Sprite (Frame?), Text, Filter, BitmapCache, BlurFilter
+  // easeljs does Container as union of bounds provided by children.
+  /**
+   * Paintable shape can & should calculate its Bounds.
+   *
+   * Subclasses should override to calculate their bounds.
+   * @param x
+   * * undefined -> calculate bounds,
+   * * null -> remove bounds,
+   * * number -> set to {x, y, width, height}
+   * @param y
+   * @param width
+   * @param height
+   */
+  override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
+    if (x === undefined) {
+      const cached = this.cacheID; // undefined | number >= 1
+      this.uncache();
+      // setBounds(null, 0, 0, 0);   // not nec'sary/useful
+      const { x, y, w, h } = this.calcBounds()
+      super.setBounds(x, y, w, h);
+      if (cached) this.cache(x, y, w, h); // recache if previously cached
+    } else {
+      super.setBounds(x as any as number, y, width, height);
+    }
+  }
+
+  /** subclass to override to compute actual bounds of their Shape. */
+  calcBounds(): XYWH {
+    return { x: 0, y: 0, w: 5, h: 5 }
+  }
+
+  // TODO/QQQ: declare in Paintable?
+  /** ensure PaintableShape is cached; expect setBounds() already done. */
+  setCacheID() {
+    let b = this.getBounds() as Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
+    if (!b) { debugger; b = { x: 0, y: 0, width: 8, height: 8 } }
+    this.cache(b.x, b.y, b.width, b.height);
+  }
+
+}
+
+/** an n-sided Polygon, tilted */
+export class PolyShape extends PaintableShape {
+  public rad = TP.hexRad;
+  public nsides = 4;
+  public pSize = 0;
+  public tilt = 0;
+  public fillc = C.grey;
+  public strokec = C.black;
+
+  /**
+   * pscgf() invokes drawPoly(0,0,...);
+   *
+   * To adjust (x,y): supply g0 = new Graphics().mt(x,y)
+   * @param params \{ rad, nsides, pSize, tilt, fillc, strokec }
+   * @param g0 Graphics base
+   */
+  constructor({ rad, nsides, pSize, tilt, fillc, strokec }:
+    { rad?: number, nsides?: number, pSize: number, tilt?: number, fillc?: string, strokec?: string }, g0?: Graphics) {
+    super((fillc, g) => this.pscgf(fillc, g ?? g0), fillc, g0);
+
+    this.nsides = nsides ?? 4;
+    this.rad = rad ?? TP.hexRad;
+    this.pSize = pSize ?? 0;
+    this.tilt = tilt ?? 0;
+    this.fillc = fillc ?? C.grey;
+    this.strokec = strokec ?? C.black;
+    this._cgf = this.pscgf;
+    this.paint(fillc);
+  }
+
+  /** set fillc and strokec, invoke drawPoly(0, 0, ...) */
+  pscgf(fillc: string, g = this.g0) {
+    ((this.fillc = fillc) ? g.f(fillc) : g.ef());
+    (this.strokec ? g.s(this.strokec) : g.es());
+    g.dp(0, 0, this.rad, this.nsides, this.pSize, this.tilt * H.degToRadians);
+    return g;
+  }
+
+  override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
+    if (x === undefined) {
+      // overestimate: without nsides & tilt
+      this.setBounds(-this.rad, -this.rad, 2 * this.rad, 2 * this.rad)
+    } else {
+      super.setBounds(x, y, width, height)
+    }
+  }
 }
 
 /**
- * The colored PaintableShape that fills a Hex.
+ * A colored PaintableShape that fills a Hex.
+ *
  * @param radius in call to drawPolyStar()
  */
 export class HexShape extends PaintableShape {
+  /**
+   *
+   * @param radius [TP.hexRad] radius of hexagon
+   * @param tilt [EwTopo ? 30 : 0] tilt to align EW as vertical
+   */
   constructor(
     readonly radius = TP.hexRad,
     readonly tilt = TP.useEwTopo ? 30 : 0,  // ewTopo->30, nsTopo->0
   ) {
     super((fillc) => this.hscgf(fillc));
-    this.setHexBounds(); // Assert radius & tilt are readonly, so bounds never changes!
+    this.setBounds(undefined, 0, 0, 0); // ASSERT: radius & tilt are readonly, so bounds never changes!
   }
 
+  /**
+   * @deprecated use setBounds(undefined, 0, 0, 0)
+   * @param r [this.radius]
+   * @param tilt [this.tilt]
+   */
   setHexBounds(r = this.radius, tilt = this.tilt) {
     const b = H.hexBounds(r, tilt);
     this.setBounds(b.x, b.y, b.width, b.height);
   }
 
-  setCacheID() {
-    const b = this.getBounds();              // Bounds are set
-    this.cache(b.x, b.y, b.width, b.height);
-  }
-
   /**
    * Draw a Hexagon 1/60th inside the given radius.
-   * overrides should include call to setHexBounds(radius, angle)
-   * or in other way setBounds().
    */
   hscgf(color: string, g0 = this.graphics) {
     return g0.f(color).dp(0, 0, Math.floor(this.radius * 59 / 60), 6, 0, this.tilt); // 30 or 0
   }
+
+  override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
+    if (x === undefined) {
+      const b = H.hexBounds(this.radius, this.tilt)
+      this.setBounds(b.x, b.y, b.width, b.height);
+    } else {
+      super.setBounds(x, y, width, height)
+    }
+  }
+
 }
 
 
@@ -128,8 +239,16 @@ export class EllipseShape extends PaintableShape {
   cscgf(fillc: string, g = this.g0) {
     ((this.fillc = fillc) ? g.f(fillc) : g.ef());
     (this.strokec ? g.s(this.strokec) : g.es());
-    g.de(-this.radx, -this.rady, 2 * this.radx, 2 * this.rady);  // easlejs can determine Bounds of Ellipse
+    g.de(-this.radx, -this.rady, 2 * this.radx, 2 * this.rady);
     return g;
+  }
+
+  override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
+    if (x === undefined) {
+      this.setBounds(-this.radx, -this.rady, 2 * this.radx, 2 * this.rady)
+    } else {
+      super.setBounds(x, y, width, height)
+    }
   }
 }
 
@@ -144,76 +263,89 @@ export class CircleShape extends EllipseShape {
   }
 }
 
-export class PolyShape extends PaintableShape {
-  constructor(public nsides = 4, public tilt = 0, public fillc = C.white, public rad = TP.hexRad / 2, public strokec = C.black, g0?: Graphics) {
-    super((fillc) => this.pscgf(fillc), fillc, g0);
-    this._cgf = this.pscgf;
-    this.paint(fillc);
-  }
-
-  pscgf(fillc: string, g = this.g0) {
-    ((this.fillc = fillc) ? g.f(fillc) : g.ef());
-    (this.strokec ? g.s(this.strokec) : g.es());
-    g.dp(0, 0, this.rad, this.nsides, 0, this.tilt * H.degToRadians);
-    return g;
-  }
-}
 
 /** a Rectangular Shape, maybe with rounded corners */
 export class RectShape extends PaintableShape {
-  static rectWHXY(w: number, h: number, x = -w / 2, y = -h / 2, g0 = new Graphics()) {
-    return g0.dr(x, y, w, h)
-  }
+  // static rectWHXY(w: number, h: number, x = -w / 2, y = -h / 2, g0 = new Graphics()) {
+  //   return g0.dr(x, y, w, h)
+  // }
 
-  static rectWHXYr(w: number, h: number, x = -w / 2, y = -h / 2, r = 0, g0 = new Graphics()) {
-    return g0.rr(x, y, w, h, r);
-  }
+  // static rectWHXYr(w: number, h: number, x = -w / 2, y = -h / 2, r = 0, g0 = new Graphics()) {
+  //   return g0.rr(x, y, w, h, r);
+  // }
+
+  // /**
+  //  * paint a background RectShape for given Text.
+  //  * @param txt Text
+  //  * @param b border size around text [txt.getMeasuredLineHeight * .1]
+  //  * @param g0 append to Graphics [new Graphics()]
+  //  * @returns
+  //  */
+  // static rectText(txt: Text, b?: number, g0 = new Graphics()) {
+  //   const fs = txt.getMeasuredLineHeight();
+  //   if (b === undefined) b = fs * .1;
+  //   const { x, y, width, height } = txt.getBounds();
+  //   return RectShape.rectWHXY(width + 2 * b, height + 2 * b, x - b, y - b, g0);
+  // }
+
+  // compare to Bounds;
+  // this._bounds: Rectangle === { x, y, width, height }
+  // this._rectangle: Rectangle === { x, y, width, height }
+  _rect: XYWH;
+  _cRad = 0;
 
   /**
-   * paint a background RectShape for given Text.
-   * @param txt Text
-   * @param b border size around text [txt.getMeasuredLineHeight * .1]
-   * @param g0 append to Graphics [new Graphics()]
-   * @returns
+   * Paint a rectangle (possibly with rounded corners) with fillc and stroke.
+   * @param rect \{ x=0, y=0, w=hexRad, h=hexRad, r=0 } origin, extent and corner radius of Rectangle
+   * @param fillc [C.white] color to fill the rectangle, '' for no fill
+   * @param strokec [C.black] stroke color, '' for no stroke
+   * @param g0 [new Graphics()] Graphics to clone and extend during paint()
    */
-  static rectText(txt: Text, b?: number, g0 = new Graphics()) {
-    const fs = txt.getMeasuredLineHeight();
-    if (b === undefined) b = fs * .1;
-    const { x, y, width, height } = txt.getBounds();
-    return RectShape.rectWHXY(width + 2 * b, height + 2 * b, x - b, y - b, g0);
-  }
-
-  rect: XYWH;
-  rc: number = 0;
   constructor(
-    { x = 0, y = 0, w = TP.hexRad / 2, h = TP.hexRad / 2, r = 0 }: XYWH & { r?: number },
+    { x = 0, y = 0, w = TP.hexRad, h = TP.hexRad, r = 0 }: {x?: number, y?: number, w?: number, h?: number, r?: number },
     public fillc = C.white,
     public strokec = C.black,
     g0?: Graphics,
   ) {
     super((fillc) => this.rscgf(fillc as string), fillc, g0);
     this._cgf = this.rscgf;
-    this.rect = { x, y, w, h };
+    this._cRad = r;
+    this._rect = { x, y, w, h };
     this.setBounds(x, y, w, h);
-    this.rc = r;
     this.paint(fillc, true); // this.graphics = rscgf(...)
   }
 
+  /** update any of {x, y, w, h, r} for future paint() or setBounds(...) */
+  setRectRad({ x = this._rect.x, y = this._rect.y, w = this._rect.w, h = this._rect.h, r = this._cRad }: Partial<XYWH & { r: number }>) {
+    this._cRad = r ?? this._cRad
+    this._rect = { x, y, w, h }
+  }
+
+  override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
+    if (x === undefined) {
+      const b = this._rect;
+      this.setBounds(b.x, b.y, b.w, b.h)
+    } else {
+      super.setBounds(x, y, width, height)
+    }
+  }
+
   rscgf(fillc: string, g = this.g0) {
-    const { x, y, w, h } = this.rect, r = TP.hexRad / 2;
+    const { x, y, w, h } = this._rect;
     (fillc ? g.f(fillc) : g.ef());
     (this.strokec ? g.s(this.strokec) : g.es());
-    if (this.rc === 0) {
-      g.dr(x ?? 0, y ?? 0, w ?? r, h ?? r);
+    if (this._cRad === 0) {
+      g.dr(x, y, w, h);
     } else {
-      g.rr(x ?? 0, y ?? 0, w ?? r, h ?? r, this.rc);
+      g.rr(x, y, w, h, this._cRad);
+      // note: there is also a drawRoundRectComplex(x,y,w,h,rTL,rTR,rBR,rBL)
     }
     return g;
   }
 }
 
 
-/** from hextowns, with translucent center. */
+/** from hextowns, with translucent center circle. */
 export class TileShape extends HexShape {
   static fillColor = C1.lightgrey_8;// 'rgba(200,200,200,.8)'
 
@@ -234,17 +366,16 @@ export class TileShape extends HexShape {
   }
 
   readonly bgColor = C.nameToRgbaString(C.WHITE, .8);
-  /** colored HexShape filled with very-lightgrey disk: */
+  /** colored HexShape filled with very-lightgrey disk: interpose on cgf with replaceDisk */
   tscgf(colorn: string, g0 = this.cgfGraphics?.clone() ?? new Graphics(), super_cgf = (color: string) => new Graphics()) {
-    // HexShape.cgf(rgba(C.WHITE, .8))
-    const g = this.graphics = super_cgf.call(this, this.bgColor); // paint HexShape(White)
+    const g = this.graphics = super_cgf.call(this, this.bgColor); // HexShape.cgf(rgba(C.White, .8))
     const fillColor = C.nameToRgbaString(colorn, .8);
     this.replaceDisk(fillColor, this.radius * H.sqrt3_2 * (55 / 60));
     return this.graphics = g;
   }
 }
 
-export class LegalMark extends Shape {
+export class LegalMark extends Shape { // TODO: maybe someday CircleShape?
   hex2: IHex2;
   setOnHex(hex: IHex2) {
     this.hex2 = hex;
@@ -258,39 +389,98 @@ export class LegalMark extends Shape {
   }
 }
 
-/** Show text in a colored Rectangle. */
-export class UtilButton extends Container implements Paintable {
-  blocked: boolean = false
-  shape: PaintableShape;
-  label: CenterText;
+// TODO: Mixin base class PaintableShape? and override everything except setBounds()?
+/** A Text label above a colored RectShape.
+ *
+ * Configure the border width [.3] and corner radius [0].
+ */
+export class TextInRect extends Container implements Paintable {
+  /** draws a RectShape around label_text, with border, no strokec */
+  rectShape: RectShape = new RectShape({ x: 0, y: 0, w: 8, h: 8, r: 0 });
+  /** Text object to be displayed above an RectShape of color */
+  label: Text;
+
+  _border: number;
+  /** extend RectShape around Text bounds; fraction of line height. */
+  get border() { return this._border; }
+  set border(b: number) { this._border = b; }
+
+  _corner: number;
+  /** corner radius; fraction of line height. */
+  get corner() { return this._corner; }
+  set corner(rc: number) {
+    this._corner = rc;
+    const r = rc * this.label.getMeasuredLineHeight();
+    this.rectShape.setRectRad({ r })
+  }
+  /** the string inside the Text label. */
   get label_text() { return this.label.text; }
-  set label_text(t: string | undefined) {
-    this.label.text = t as string;
+  set label_text(txt: string | undefined) {
+    this.label.text = txt as string;
+    this.setBounds(undefined, 0, 0, 0)
     this.paint(undefined, true);
   }
+
+  /**
+   * Create Container with Text above a RectShape.
+   * @param color of background RectShape.
+   * @param text label
+   * @param border [.3] extend RectShape around Text; fraction of fontSize
+   * @param corner [0] corner radius as fraction of fontSize
+   * @param cgf [new Graphics()]
+   */
+  constructor(color: string, label: Text, border = .3, corner = 0, cgf?: CGF) {
+    super();
+    this.label = label;
+    this.border = border;
+    this.corner = corner;               // _rShape._cRad = corner
+    this.setBounds(undefined, 0, 0, 0); // calc (Text + border) -> rectShape -> this
+    this.rectShape.paint(color);        // set initial color, Graphics
+    this.addChild(this.rectShape, this.label);
+  }
+
+  /** TextInRect.paint(color) paints new color for the backing RectShape. */
+  paint(color = this.rectShape.colorn, force = false ) {
+    this.rectShape.rscgf;
+    return this.rectShape.paint(color, force);
+  }
+
+  calcBounds(): XYWH {
+    const tb = this.label.getBounds(), db = this.label.getMeasuredLineHeight() * this._border;
+    const b = { x: tb.x - db, y: tb.y - db, w: tb.width + 2 * db, h: tb.height + 2 * db };
+    return b;
+  }
+
+  // Bounds = (label:Text + border) -> rectShape._rect [& cRad] -> this._bounds
+  // Copied from/to PaintableShape.setBounds()
+  override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
+    if (x === undefined) {
+      const { x, y, w, h } = this.calcBounds(), cached = this.cacheID;
+      this.uncache();
+      super.setBounds(x, y, w, h);
+      if (cached) this.cache(x, y, w, h); // recache if previously cached
+    } else {
+      super.setBounds(x as any as number, y, width, height);
+    }
+  }
+}
+
+// From ankh, 'done' button to move to next phase or action.
+/** Construct a CenterText for a TextInRect. */
+export class UtilButton extends TextInRect {
 
   /**
    * Create Container with CenterText above a RectShape.
    * @param color of background RectShape.
    * @param text label
-   * @param fontSize
-   * @param textColor
-   * @param cgf
+   * @param fontSize [TP.hexRad/2]
+   * @param textColor [C.black]
+   * @param border [.3]
+   * @param cgf [trcsf]
    */
-  constructor(color: string, text: string, public fontSize = TP.hexRad / 2, public textColor = C.black, cgf?: CGF) {
-    super();
-    this.label = new CenterText(text, fontSize, textColor);
-    this.shape = new PaintableShape(cgf ?? ((c) => this.ubcsf(c)));
-    this.shape.paint(color);
-    this.addChild(this.shape, this.label);
-  }
-
-  ubcsf(color: string, g = new Graphics()) {
-    return RectShape.rectText(this.label, this.fontSize * .3, g.f(color))
-  }
-
-  paint(color = this.shape.colorn, force = false ) {
-    return this.shape.paint(color, force);
+  constructor(color: string, text: string, public fontSize = TP.hexRad / 2, public textColor = C.black, border = .3 ,cgf?: CGF) {
+    const label = new CenterText(text, fontSize, textColor);
+    super(color, label, border, 0, cgf)
   }
 
   /**
@@ -299,25 +489,15 @@ export class UtilButton extends Container implements Paintable {
    * Allow Chrome to finish stage.update before proceeding with afterUpdate().
    *
    * Other code can watch this.blocked; then call updateWait(false) to reset.
-   * @param hide true to hide and disable this UtilButton
-   * @param afterUpdate callback ('drawend') when stage.update is done [none]
-   * @param scope thisArg for afterUpdate [this TurnButton]
-   * @deprecated use easeljs-lib afterUpdate(container, function)
+   * @param after callback on('drawend') when stage.update is done [none]
+   * @param scope thisArg for after [this UtilButton]
+   * @param hide [false] true to hide and disable this UtilButton
+   * @deprecated use easeljs-lib.afterUpdate(cont, after, scope) directly
    */
-  updateWait(hide: boolean, afterUpdate?: (evt?: Object, ...args: any) => void, scope: any = this) {
-    this.blocked = hide;
+  updateWait(after?: () => void, scope: any = this, hide = false) {
     this.visible = this.mouseEnabled = !hide
     // using @thegraid/easeljs-module@^1.1.8: on(once=true) will now 'just work'
-    afterUpdate && this.stage.on('drawend', afterUpdate, scope, true)
-    this.stage.update()
+    // using @thegraid/common-lib@^1.3.12: afterUpdate will always update
+    afterUpdate(this, after, scope)
   }
-}
-
-export class EdgeShape extends Shape {
-  constructor(public color: string, public hex: IHex2, public dir: HexDir, parent: Container) {
-    super()
-    this.reset()
-    parent.addChild(this);
-  }
-  reset(color = this.color) { this.graphics.c().ss(12, 'round', 'round').s(color) }
 }
