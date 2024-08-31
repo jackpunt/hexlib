@@ -432,6 +432,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
 
 /** a default Constructor and implementation of IHex2 */
 export class Hex2 extends Hex2Mixin(Hex1) { }
+
 type PublicInterface<T> = { [K in keyof T]: T[K] };
 
 /** A graphics-enabled Hex cell, with a Container holding a HexShape. */

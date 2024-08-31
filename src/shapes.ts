@@ -18,8 +18,10 @@ export interface Paintable extends DisplayObject {
 
   /** Paintable can compute its own Bounds. setBounds(undefined, 0, 0, 0) */
   setBounds(x: undefined | null | number, y: number, width: number, height: number): void;
-  /** compute bounds of this PaintableShape */
+  /** compute bounds of this Paintable */
   calcBounds(): XYWH;
+  /** ensure Paintable is cached; expect setBounds() already done. */
+  setCacheID(): void;
 }
 
 /** Create/Color Graphics Function (color, g0); extend graphics with additional instructions.
@@ -116,11 +118,14 @@ export class PaintableShape extends Shape implements Paintable {
     return { x: 0, y: 0, w: 5, h: 5 }
   }
 
-  // TODO/QQQ: declare in Paintable?
   /** ensure PaintableShape is cached; expect setBounds() already done. */
   setCacheID() {
+    if (this.cacheID) return;  // also: if already cached, get/setBounds is useless
     let b = this.getBounds() as Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
-    if (!b) { debugger; b = { x: 0, y: 0, width: 8, height: 8 } }
+    if (!b) {
+      const { x, y, w, h } = this.calcBounds();
+      b = { x, y, width: w, height: h }
+    }
     this.cache(b.x, b.y, b.width, b.height);
   }
 
@@ -326,7 +331,7 @@ export class RectShape extends PaintableShape {
       const b = this._rect;
       this.setBounds(b.x, b.y, b.w, b.h)
     } else {
-      super.setBounds(x, y, width, height)
+      super.setBounds(x, y, width, height) // can be different from _rect
     }
   }
 
@@ -396,7 +401,7 @@ export class LegalMark extends Shape { // TODO: maybe someday CircleShape?
  */
 export class TextInRect extends Container implements Paintable {
   /** draws a RectShape around label_text, with border, no strokec */
-  rectShape: RectShape = new RectShape({ x: 0, y: 0, w: 8, h: 8, r: 0 });
+  rectShape: RectShape = new RectShape({ x: 0, y: 0, w: 8, h: 8, r: 0 }, C.WHITE, '');
   /** Text object to be displayed above an RectShape of color */
   label: Text;
 
@@ -445,10 +450,15 @@ export class TextInRect extends Container implements Paintable {
     return this.rectShape.paint(color, force);
   }
 
+  // override here if you don't like (label.bounds + border)
   calcBounds(): XYWH {
     const tb = this.label.getBounds(), db = this.label.getMeasuredLineHeight() * this._border;
     const b = { x: tb.x - db, y: tb.y - db, w: tb.width + 2 * db, h: tb.height + 2 * db };
     return b;
+  }
+
+  setCacheID() {
+    this.rectShape.setCacheID.call(this); //invoke from a PaintableShape
   }
 
   // Bounds = (label:Text + border) -> rectShape._rect [& cRad] -> this._bounds
@@ -456,6 +466,8 @@ export class TextInRect extends Container implements Paintable {
   override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
     if (x === undefined) {
       const { x, y, w, h } = this.calcBounds(), cached = this.cacheID;
+      this.rectShape.setRectRad({ x, y, w, h });
+      this.rectShape.setBounds(x, y, w, h); // setBounds to _rect
       this.uncache();
       super.setBounds(x, y, w, h);
       if (cached) this.cache(x, y, w, h); // recache if previously cached
