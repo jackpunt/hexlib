@@ -390,7 +390,7 @@ export class Table {
 
   /**
    * Make ParamGUI with a background RectShape, and make it dragable.
-   * @param makeGUI a function(Container) to create a ParamGUI
+   * @param makeGUI a function(Container, x?, y?) to create a ParamGUI
    * @param name of the Container to hold the ParamGUI
    * @param cx location of Container on scaleCont: cx * scale
    * @param cy location of Container on scaleCont: cy * scale
@@ -398,16 +398,15 @@ export class Table {
    * @param d border size of background RectShape around/behind GUI Container
    * @returns the gui returned from makeGUI(Table, Ccntainer)
    */
-  gpanel(makeGUI: (cont: Container) => ParamGUI, name: string, cx: number, cy: number, scale = 1, d = 5) {
-    const guiC = new NamedContainer(name, cx * scale, cy * scale);
-    // const map = table.hexMap.mapCont.parent;
-    this.scaleCont.addChildAt(guiC);
-    guiC.scaleX = guiC.scaleY = scale;
-    const gui = makeGUI.call(this, guiC);      // gui.[x,y] = [0, 0];
-    guiC.x -= (gui.linew + d) * scale;         // Chooser-lines go to left, text to right
+  gpanel(makeGUI: (cont: Container, x?: number, y?: number) => ParamGUI, cx: number, cy: number, scale = 1, d = 5) {
+    const gui = makeGUI.call(this, this.scaleCont, cx, cy);
+    // gui.x -= (gui.linew + d);         // Chooser-lines go to left, text to right
+    gui.scaleX = gui.scaleY = scale;  // make guiC larger when hexRad is larger (b/c scaleC will be zoomed down)
+    gui.x *= scale; gui.y *= scale;
     const bgr = new RectShape({ x: -d, y: -d, w: gui.linew + 2 * d, h: gui.ymax + 2 * d }, 'rgb(200,200,200,.5)', '');
-    guiC.addChildAt(bgr, 0);
-    this.dragger.makeDragable(guiC);
+    gui.addChildAt(bgr, 0);
+    this.dragger.makeDragable(gui);
+    this.stage.update()
     return gui;
   }
   /**
@@ -417,16 +416,20 @@ export class Table {
    */
   makeGUIs(scale = TP.hexRad / 60, cx = -200, cy = 250, dy = 20) {
     const scaleCont = this.scaleCont;
-    let ymax = 0;
-    const gui3 = this.gpanel(this.makeNetworkGUI, 'NetGUI', cx, cy + ymax, scale);
-    ymax += gui3.ymax + dy;
-    const gui1 = this.gpanel(this.makeParamGUI, 'ParamGUI', cx, cy + ymax, scale);
-    ymax += gui1.ymax + dy;
-    const gui2 = this.gpanel(this.makeParamGUI2, 'AI_GUI', cx, cy + ymax, scale);
-    ymax += gui2.ymax + dy;
-    scaleCont.addChild(gui2.parent, gui1.parent, gui3.parent); // lower y values ABOVE to dropdown is not obscured
+    let lmax = 0, ymax = 0;
+    const align = (gui: ParamGUI) => {
+      ymax += (gui.ymax + dy);
+      lmax = Math.max(lmax, (gui.children[0] as RectShape).getBounds().width)
+    }
+    const guis = [this.makeNetworkGUI, this.makeParamGUI, this.makeParamGUI2].map(mgf => {
+      const gui = this.gpanel(mgf, cx, cy + ymax, scale)
+      align(gui)
+      return gui;
+    })
+    scaleCont.addChild(...guis.reverse()); // lower y values ABOVE to dropdown is not obscured
+    guis.forEach(gui => gui.x -= lmax)
     // TODO: dropdown to use given 'top' container!
-    gui1.stage.update();
+    guis[0].stage.update();
   }
 
   get panelHeight() { return (2 * TP.nHexes - 1) / 3 - .2; }
@@ -544,8 +547,7 @@ export class Table {
     gui.spec("mHexes").onChange = (item: ParamItem) => { gameSetup.restart({ mh: item.value }) }
 
     parent.addChild(gui)
-    gui.x = x // (3*cw+1*ch+6*m) + max(line.width) - (max(choser.width) + 20)
-    gui.y = y
+    gui.x = x; gui.y = y
     gui.makeLines();
     return gui
   }
@@ -559,7 +561,6 @@ export class Table {
     parent.addChild(gui)
     gui.x = x; gui.y = y
     gui.makeLines()
-    gui.stage.update()
     return gui
   }
 
@@ -586,9 +587,8 @@ export class Table {
     });
     this.showNetworkGroup()
     parent.addChild(gui)
-    gui.makeLines()
     gui.x = x; gui.y = y;
-    parent.stage.update()
+    gui.makeLines()
     return gui
   }
 
@@ -887,15 +887,22 @@ export class Table {
     }
     if (bindKeys) {
       this.bindKeysToScale(scaleC);
+      this.bindArrowKeys();
       this.bindKeys();
     }
     return scaleC;
   }
 
+  /** Space => dragTarget; 't' => toggleText */
   bindKeys() {
     KeyBinder.keyBinder.setKey('Space', () => this.dragTarget());
     KeyBinder.keyBinder.setKey('S-Space', () => this.dragTarget());
     KeyBinder.keyBinder.setKey('t', () => this.toggleText());
+
+    // of dubious utility...
+    const getOop = () => { this.stage.getObjectsUnderPoint(500, 100, 1) }
+    KeyBinder.keyBinder.setKey("p", { func: () => getOop(), thisArg: this });
+
   }
 
   /** put a Rectangle Shape at (0,0) with XYWH bounds as given */
@@ -907,6 +914,46 @@ export class Table {
     return bgRect
   }
 
+  viewA: View = { x: 436, y: 2, scale: .5, isk: 'a'}
+  viewZ: View = { x: 120, y: 118, scale: 0.647, isk: 'z', ssk: 'x' };
+  /**
+   * Invoked before this.scaleCont has been set.
+   *
+   * View.x & View.y are screen coordinates for origin of scaleCont (pre-scale)
+   *
+   * type View = XY & { scale: number, isk: string, ssk?: string }
+   * - isk is key to invoke the view; ssk is key to set the view.
+   * @param scaleC the ScaleableContainer to be used
+   * @param views bind isk (& ssk) for each supplied View
+   * - if supplied, invoke views[0].isk to set initial scale.
+   */
+  bindKeysToScale(scaleC: ScaleableContainer, ...views: View[]) {
+    /** save scale & offsets for later: */
+    const saveScaleZ = (view: View) => {
+      view.scale = scaleC.scaleX;
+      view.x = scaleC.x
+      view.y = scaleC.y
+    }
+    // xy is the fixed point, but is ignored because we set xy directly.
+    // sxy is the final xy offset, saved by saveScaleZ()
+    const setScaleXY = (view: View) => {
+      scaleC.setScale(view.scale);
+      scaleC.x = view.x; scaleC.y = view.y;
+      this.stage.update()
+    }
+    if (!views.length) {
+      views = [this.viewA, this.viewZ];
+    }
+    views.forEach(view => {
+      KeyBinder.keyBinder.setKey(view.isk, { func: () => setScaleXY(view) });
+      if (view.ssk)
+        KeyBinder.keyBinder.setKey(view.ssk, { func: () => saveScaleZ(view) });
+    })
+    if (views?.[0]) KeyBinder.keyBinder.dispatchChar(views[0].isk)
+
+  }
+
+  // TODO: zoom and pan as methods of ScaleableContainer?
   zoom(z = 1.1) {
     const stage = this.stage;
     const pxy = { x: stage.mouseX / stage.scaleX, y: stage.mouseY / stage.scaleY };
@@ -917,60 +964,30 @@ export class Table {
     // this.scaleCont.scaleX = this.scaleCont.scaleY = this.scaleCont.scaleX * z;
     this.stage?.update();
   }
+
   pan(xy: XY) {
     this.scaleCont.x += xy.x;
     this.scaleCont.y += xy.y;
     this.stage?.update();
   }
-
   /**
-   * invoked before this.scaleCont has been set.
-   * @param scaleC the ScaleableContainer to be used
-   * @param isc ['a'] initial scale char, keybinding to reset to initial scale
-   * @param xos initial x-offset of scaleC in screen coords (pre-scale)
-   * @param yos initial y-offset of scaleC in screen coords (pre-scale)
-   * @param scale0 [.5] initial scale
+   * * Left/Right => pan X
+   * * S-left/right => pan X
+   * * Up/Down => pan Y
+   * * S-Up => zoom in
+   * * S-Down => zoom out
    */
-  // bindKeysToScale('a', scaleC, 436, 0, .5)
-  bindKeysToScale(scaleC: ScaleableContainer, isc = 'a', xos = 436, yos = 2, scale0 = .5) {
-    const nsA = scale0;
-    const apt = { x: xos, y: yos }
-    let nsZ = 0.647; //
-    const zpt = { x: 120, y: 118 }
-
-    // set Keybindings to reset Scale:
-    /** save scale & offsets for later: */
-    const saveScaleZ = () => {
-      nsZ = scaleC.scaleX;
-      zpt.x = scaleC.x; zpt.y = scaleC.y;
-    }
-    // xy is the fixed point, but is ignored because we set xy directly.
-    // sxy is the final xy offset, saved by saveScaleZ()
-    const setScaleXY = (ns?: number, sxy: XY = { x: 0, y: 0 }) => {
-      scaleC.setScale(ns);
-      //console.log({si, ns, xy, sxy, cw: this.canvas.width, iw: this.map_pixels.width})
-      scaleC.x = sxy.x; scaleC.y = sxy.y;
-      this.stage.update()
-    }
-    const getOop = () => {
-      this.stage.getObjectsUnderPoint(500, 100, 1)
-    }
-
+  bindArrowKeys() {
     // Scale-setting keystrokes:
-    KeyBinder.keyBinder.setKey(isc, { func: () => setScaleXY(nsA, apt) });
-    KeyBinder.keyBinder.setKey("z", { func: () => setScaleXY(nsZ, zpt) });
-    KeyBinder.keyBinder.setKey("x", { func: () => saveScaleZ() });
-    KeyBinder.keyBinder.setKey("p", { func: () => getOop(), thisArg: this });
-    KeyBinder.keyBinder.setKey('S-ArrowUp', { thisArg: this, func: this.zoom, argVal: 1.03 })
+    KeyBinder.keyBinder.setKey('S-ArrowUp',   { thisArg: this, func: this.zoom, argVal: 1.03 })
     KeyBinder.keyBinder.setKey('S-ArrowDown', { thisArg: this, func: this.zoom, argVal: 1 / 1.03 })
+    KeyBinder.keyBinder.setKey('ArrowLeft',   { thisArg: this, func: this.pan, argVal: { x: -10, y: 0 } })
     KeyBinder.keyBinder.setKey('S-ArrowLeft', { thisArg: this, func: this.pan, argVal: { x: -10, y: 0 } })
-    KeyBinder.keyBinder.setKey('ArrowRight', { thisArg: this, func: this.pan, argVal: { x: 10, y: 0 } })
-    KeyBinder.keyBinder.setKey('ArrowLeft', { thisArg: this, func: this.pan, argVal: { x: -10, y: 0 } })
+    KeyBinder.keyBinder.setKey('ArrowRight',   { thisArg: this, func: this.pan, argVal: { x: 10, y: 0 } })
     KeyBinder.keyBinder.setKey('S-ArrowRight', { thisArg: this, func: this.pan, argVal: { x: 10, y: 0 } })
-    KeyBinder.keyBinder.setKey('ArrowUp', { thisArg: this, func: this.pan, argVal: { x: 0, y: -10 } })
+    KeyBinder.keyBinder.setKey('ArrowUp',   { thisArg: this, func: this.pan, argVal: { x: 0, y: -10 } })
     KeyBinder.keyBinder.setKey('ArrowDown', { thisArg: this, func: this.pan, argVal: { x: 0, y: 10 } })
-
-    KeyBinder.keyBinder.dispatchChar(isc)
   }
 }
+type View = XY & { scale: number, isk: string, ssk?: string }
 

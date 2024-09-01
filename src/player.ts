@@ -10,6 +10,7 @@ import { MapTile, Tile, } from "./tile";
 
 export class Player {
   static allPlayers: Player[] = [];
+  // PlayerLib uses type string, client can make a restricted type
   static colorScheme = ['Red', 'Blue', 'darkgreen', 'Violet', 'gold', 'purple'];
 
   readonly Aname: string;
