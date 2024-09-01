@@ -1,4 +1,4 @@
-import { AT, C, CenterText, Constructor, Dragger, DragInfo, DropdownStyle, F, KeyBinder, ParamGUI, ParamItem, S, ScaleableContainer, stime, XY } from "@thegraid/easeljs-lib";
+import { afterUpdate, AT, C, CenterText, Constructor, Dragger, DragInfo, DropdownStyle, F, KeyBinder, ParamGUI, ParamItem, S, ScaleableContainer, stime, XY } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
 import { NamedContainer, NamedObject, TileEvent, type GamePlay } from "./game-play";
@@ -138,8 +138,13 @@ export class Table {
     // backpointer so Containers can find their Table (& curMark)
     Table.table = (stage as StageTable).table = this;
     this.stage = stage
-    this.scaleCont = this.makeScaleCont(!!this.stage.canvas) // scaleCont & background
+    this.scaleCont = this.makeScaleCont() // scaleCont & background
     this.scaleCont.addChild(this.overlayCont); // will add again at top/end of the list.
+    if (!!this.stage.canvas) {
+      this.bindKeysToScale(this.scaleCont);
+      this.bindArrowKeys();
+      this.bindKeys();
+    }
   }
   /** shows the last 2 start of turn lines */
   turnLog = new TextLog('turnLog', 2);
@@ -221,14 +226,14 @@ export class Table {
 
   downClick = false;
   isVisible = false;
-  /** method invokes closure defined in enableHexInspector. */
-  toggleText(vis?: boolean) {
-    if (this.downClick) return (this.downClick = false, undefined) // skip one 'click' when pressup/dropfunc
-    if (vis === undefined) vis = this.isVisible = !this.isVisible;
+  /** invoked by enableHexInspector or KeyBinding. */
+  toggleText(vis: boolean = !this.isVisible) {
+    if (this.downClick) { this.downClick = false; return } // skip one 'click' when pressup/dropfunc
+    this.isVisible = vis;
     Tile.allTiles.forEach(tile => tile.textVis(vis));
     this.hexMap.forEachHex(hex => hex.showText(vis))
     this.hexMap.update()               // after toggleText & updateCache()
-    return undefined;
+    return;
   }
 
   cacheScale = TP.cacheTiles;
@@ -384,8 +389,8 @@ export class Table {
    * Whatever: make overlays, score panel, extra tracks (auction...)
    */
   layoutTable2() {
-    this.stage.on('drawend', () => setTimeout(() => this.toggleText(this.initialVis), 10), this, true);
-    this.hexMap.update();
+    afterUpdate(this.stage, () => setTimeout(() => this.toggleText(this.initialVis), 10));
+    return;
   }
 
   /**
@@ -538,6 +543,7 @@ export class Table {
    */
   makeParamGUI(parent: Container, x = 0, y = 0) {
     const gui = new ParamGUI(TP, { textAlign: 'right' });
+    gui.name = (gui as NamedObject).Aname = 'ParamGUI';
     const gameSetup = this.gamePlay.gameSetup;
     gui.makeParamSpec('hexRad', [30, 60, 90, 120], { fontColor: 'red' }); TP.hexRad;
     gui.makeParamSpec('nHexes', [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], { fontColor: 'red' }); TP.nHexes;
@@ -555,6 +561,7 @@ export class Table {
   /** configures the AI player */
   makeParamGUI2(parent: Container, x = 0, y = 0) {
     const gui = new ParamGUI(TP, { textAlign: 'center' })
+    gui.name = (gui as NamedObject).Aname = 'AIGui';
     gui.makeParamSpec("log", [-1, 0, 1, 2], { style: { textAlign: 'right' } }); TP.log
     gui.makeParamSpec("maxPlys", [1, 2, 3, 4, 5, 6, 7, 8], { fontColor: "blue" }); TP.maxPlys
     gui.makeParamSpec("maxBreadth", [5, 6, 7, 8, 9, 10], { fontColor: "blue" }); TP.maxBreadth
@@ -569,6 +576,7 @@ export class Table {
   /** controls multiplayer network participation */
   makeNetworkGUI(parent: Container, x = 0, y = 0) {
     const gui = this.netGUI = new ParamGUI(TP, this.netStyle)
+    gui.name = (gui as NamedObject).Aname = 'NetGUI';
     gui.makeParamSpec("Network", [" ", "new", "join", "no", "ref", "cnx"], { fontColor: "red" })
     gui.makeParamSpec("PlayerId", ["     ", 0, 1, 2, 3, "ref"], { chooser: PidChoice, fontColor: "red" })
     gui.makeParamSpec("networkGroup", [TP.networkGroup], { chooser: EBC, name: 'gid', fontColor: C.GREEN, style: { textColor: C.BLACK } }); TP.networkGroup
@@ -876,7 +884,7 @@ export class Table {
   /** makeScaleableBack and setup scaleParams
    * @param bindkeys true if there's a GUI/user/keyboard (Canvas)
    */
-  makeScaleCont(bindKeys: boolean) {
+  makeScaleCont() {
     /** scaleCont: a scalable background */
     const scaleC = new ScaleableContainer(this.stage, this.scaleParams);
     this.dragger = new Dragger(scaleC);
@@ -884,11 +892,6 @@ export class Table {
       // Special case of makeDragable; drag the parent of Dragger!
       this.dragger.makeDragable(scaleC, scaleC, undefined, undefined, true); // THE case where not "useDragCont"
       //this.scaleUp(Dragger.dragCont, 1.7); // Items being dragged appear larger!
-    }
-    if (bindKeys) {
-      this.bindKeysToScale(scaleC);
-      this.bindArrowKeys();
-      this.bindKeys();
     }
     return scaleC;
   }
@@ -917,7 +920,7 @@ export class Table {
   viewA: View = { x: 436, y: 2, scale: .5, isk: 'a'}
   viewZ: View = { x: 120, y: 118, scale: 0.647, isk: 'z', ssk: 'x' };
   /**
-   * Invoked before this.scaleCont has been set.
+   * Invoked after this.scaleCont has been set.
    *
    * View.x & View.y are screen coordinates for origin of scaleCont (pre-scale)
    *
@@ -928,40 +931,50 @@ export class Table {
    * - if supplied, invoke views[0].isk to set initial scale.
    */
   bindKeysToScale(scaleC: ScaleableContainer, ...views: View[]) {
-    /** save scale & offsets for later: */
-    const saveScaleZ = (view: View) => {
+    /** save scale & offsets for later */
+    const saveView = (view: View) => {
       view.scale = scaleC.scaleX;
       view.x = scaleC.x
       view.y = scaleC.y
     }
-    // xy is the fixed point, but is ignored because we set xy directly.
-    // sxy is the final xy offset, saved by saveScaleZ()
-    const setScaleXY = (view: View) => {
-      scaleC.setScale(view.scale);
-      scaleC.x = view.x; scaleC.y = view.y;
+    // View holds scale & XY offset, saved by saveScaleZ()
+    const invokeView = (view: View) => {
+      this.setScaleXY(view.scale, view)
       this.stage.update()
     }
     if (!views.length) {
       views = [this.viewA, this.viewZ];
     }
     views.forEach(view => {
-      KeyBinder.keyBinder.setKey(view.isk, { func: () => setScaleXY(view) });
+      KeyBinder.keyBinder.setKey(view.isk, { func: () => invokeView(view) });
       if (view.ssk)
-        KeyBinder.keyBinder.setKey(view.ssk, { func: () => saveScaleZ(view) });
+        KeyBinder.keyBinder.setKey(view.ssk, { func: () => saveView(view) });
     })
     if (views?.[0]) KeyBinder.keyBinder.dispatchChar(views[0].isk)
 
   }
+  /** reset scale to nearest index and set origin point directly. */
+  setScaleXY(ns = 1.0, pt: XY = { x: 0, y: 0 }): number {
+    const sc = this.scaleCont, ndx = sc.findIndex(ns);
+    sc.getScale(ndx); // close appx, no side effects.
+    sc.scaleInternal(0, ns, pt);
+    return ndx;
+  }
+  setScaleOnly(ns = 1.0, pt = { x: 0, y: 0 }) {
+    const sc = this.scaleCont, os = sc.scaleX, ndx = sc.findIndex(ns);
+    sc.getScale(ndx); // close appx, no side effects.
+    sc.x = (pt.x + (sc.x - pt.x) * ns / os);
+    sc.y = (pt.y + (sc.y - pt.y) * ns / os);
+    sc.scaleX = sc.scaleY = ns;
+    return ndx;
+  }
 
-  // TODO: zoom and pan as methods of ScaleableContainer?
+  // TODO: resetScale, zoom and pan as methods of ScaleableContainer?
   zoom(z = 1.1) {
     const stage = this.stage;
+    if (!stage) return;
     const pxy = { x: stage.mouseX / stage.scaleX, y: stage.mouseY / stage.scaleY };
-    this.scaleCont.setScale(this.scaleCont.scaleX * z, pxy);
-    // would require adjusting x,y offsets, so we just scale directly:
-    // TODO: teach ScaleableContainer to check scaleC.x,y before scroll-zooming.
-
-    // this.scaleCont.scaleX = this.scaleCont.scaleY = this.scaleCont.scaleX * z;
+    this.setScaleOnly(z * this.scaleCont.scaleX, pxy);
     this.stage?.update();
   }
 
@@ -979,14 +992,14 @@ export class Table {
    */
   bindArrowKeys() {
     // Scale-setting keystrokes:
-    KeyBinder.keyBinder.setKey('S-ArrowUp',   { thisArg: this, func: this.zoom, argVal: 1.03 })
-    KeyBinder.keyBinder.setKey('S-ArrowDown', { thisArg: this, func: this.zoom, argVal: 1 / 1.03 })
-    KeyBinder.keyBinder.setKey('ArrowLeft',   { thisArg: this, func: this.pan, argVal: { x: -10, y: 0 } })
-    KeyBinder.keyBinder.setKey('S-ArrowLeft', { thisArg: this, func: this.pan, argVal: { x: -10, y: 0 } })
-    KeyBinder.keyBinder.setKey('ArrowRight',   { thisArg: this, func: this.pan, argVal: { x: 10, y: 0 } })
-    KeyBinder.keyBinder.setKey('S-ArrowRight', { thisArg: this, func: this.pan, argVal: { x: 10, y: 0 } })
-    KeyBinder.keyBinder.setKey('ArrowUp',   { thisArg: this, func: this.pan, argVal: { x: 0, y: -10 } })
-    KeyBinder.keyBinder.setKey('ArrowDown', { thisArg: this, func: this.pan, argVal: { x: 0, y: 10 } })
+    KeyBinder.keyBinder.setKey('S-ArrowUp', () => this.zoom(1.03))
+    KeyBinder.keyBinder.setKey('S-ArrowDown', () => this.zoom(1 / 1.03))
+    KeyBinder.keyBinder.setKey('ArrowLeft', () => this.pan({ x: - 10, y: 0 }))
+    KeyBinder.keyBinder.setKey('S-ArrowLeft', () => this.pan({ x: -10, y: 0 }))
+    KeyBinder.keyBinder.setKey('ArrowRight', () => this.pan({ x: 10, y: 0 }));
+    KeyBinder.keyBinder.setKey('S-ArrowRight', () => this.pan({ x: 10, y: 0 }))
+    KeyBinder.keyBinder.setKey('ArrowUp', () => this.pan({ x: 0, y: -10 }))
+    KeyBinder.keyBinder.setKey('ArrowDown', () => this.pan({ x: 0, y: 10 }))
   }
 }
 type View = XY & { scale: number, isk: string, ssk?: string }
