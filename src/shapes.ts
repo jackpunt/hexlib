@@ -149,7 +149,7 @@ export class PolyShape extends PaintableShape {
    */
   constructor({ rad, nsides, pSize, tilt, fillc, strokec }:
     { rad?: number, nsides?: number, pSize: number, tilt?: number, fillc?: string, strokec?: string }, g0?: Graphics) {
-    super((fillc, g) => this.pscgf(fillc, g ?? g0), fillc, g0);
+    super((fillc) => this.pscgf(fillc), fillc, g0);
 
     this.nsides = nsides ?? 4;
     this.rad = rad ?? TP.hexRad;
@@ -271,27 +271,6 @@ export class CircleShape extends EllipseShape {
 
 /** a Rectangular Shape, maybe with rounded corners */
 export class RectShape extends PaintableShape {
-  // static rectWHXY(w: number, h: number, x = -w / 2, y = -h / 2, g0 = new Graphics()) {
-  //   return g0.dr(x, y, w, h)
-  // }
-
-  // static rectWHXYr(w: number, h: number, x = -w / 2, y = -h / 2, r = 0, g0 = new Graphics()) {
-  //   return g0.rr(x, y, w, h, r);
-  // }
-
-  // /**
-  //  * paint a background RectShape for given Text.
-  //  * @param txt Text
-  //  * @param b border size around text [txt.getMeasuredLineHeight * .1]
-  //  * @param g0 append to Graphics [new Graphics()]
-  //  * @returns
-  //  */
-  // static rectText(txt: Text, b?: number, g0 = new Graphics()) {
-  //   const fs = txt.getMeasuredLineHeight();
-  //   if (b === undefined) b = fs * .1;
-  //   const { x, y, width, height } = txt.getBounds();
-  //   return RectShape.rectWHXY(width + 2 * b, height + 2 * b, x - b, y - b, g0);
-  // }
 
   // compare to Bounds;
   // this._bounds: Rectangle === { x, y, width, height }
@@ -312,7 +291,7 @@ export class RectShape extends PaintableShape {
     public strokec = C.black,
     g0?: Graphics,
   ) {
-    super((fillc) => this.rscgf(fillc as string), fillc, g0);
+    super((fillc) => this.rscgf(fillc), fillc, g0);
     this._cgf = this.rscgf;
     this._cRad = r;
     this._rect = { x, y, w, h };
@@ -435,7 +414,8 @@ export class TextInRect extends Container implements Paintable {
    * @param cgf [new Graphics()]
    */
   constructor(color: string, label: Text, border = .3, corner = 0, cgf?: CGF) {
-    super();
+    super();                             // ISA new Container()
+    if (cgf) this.rectShape._cgf = cgf;  // HasA RectShape & Text
     this.label = label;
     this.border = border;
     this.corner = corner;               // _rShape._cRad = corner
@@ -490,7 +470,7 @@ export class UtilButton extends TextInRect {
    * @param border [.3]
    * @param cgf [trcsf]
    */
-  constructor(color: string, text: string, public fontSize = TP.hexRad / 2, public textColor = C.black, border = .3 ,cgf?: CGF) {
+  constructor(color: string, text: string, public fontSize = TP.hexRad / 2, public textColor = C.black, border = .3, cgf?: CGF) {
     const label = new CenterText(text, fontSize, textColor);
     super(color, label, border, 0, cgf)
   }

@@ -52,8 +52,8 @@ class TextLog extends NamedContainer {
   lastLine = '';
   nReps = 0;
 
-  height(n = this.lines.length) {
-    return (this.size + this.lead) * n;
+  height(nLines = this.lines.length) {
+    return (this.size + this.lead) * nLines;
   }
 
   clear() {
@@ -72,6 +72,7 @@ class TextLog extends NamedContainer {
     this.lines.forEach(tline => (tline.y = cy, cy += tline.getMeasuredLineHeight() + lead))
   }
 
+  /** convert line to single-line; inc count if same line; insert & scroll up */
   log(line: string, from = '', toConsole = true) {
     line = line.replace('/\n/g', '-');
     toConsole && console.log(stime(`${from}:`), line);
@@ -146,20 +147,30 @@ export class Table {
       this.bindKeys();
     }
   }
-  /** shows the last 2 start of turn lines */
-  turnLog = new TextLog('turnLog', 2);
+  /** shows the last TP.numPlayers start of turn lines */
+  turnLog = new TextLog('turnLog', TP.numPlayers);
   /** show [13] other interesting log strings */
   textLog = new TextLog('textLog', TP.textLogLines);
 
-  logTurn(line: string) {
-    this.turnLog.log(line, 'table.logTurn'); // in top two lines
-  }
-  logText(line: string, from = '') {
-    const text = this.textLog.log(`${this.gamePlay.turnNumber}: ${line}`, from || '***'); // scrolling lines below
+  /** write '// ${turn}: ${line}' comment line to TextLog (& console) & logWriter */
+  logText(line: string, from = '', toConsole = true) {
+    const text = this.textLog.log(`${this.gamePlay.turnNumber}: ${line}`, from || '***', toConsole); // scrolling lines below
     this.gamePlay.logWriter.writeLine(`// ${text}`);
     // JSON string, instead of JSON5 comment:
     // const text = this.textLog.log(`${this.gamePlay.turnNumber}: ${line}`, from); // scrolling lines below
     // this.gamePlay.logWriter.writeLine(`"${line}",`);
+  }
+
+  logCurPlayer(plyr: Player) {
+    const tn = this.gamePlay.turnNumber
+    const robo = plyr.useRobo ? AT.ansiText(['red', 'bold'], "robo") : "----";
+    const info = { turn: tn, gamePlay: this.gamePlay, curPlayer: plyr, plyr: plyr.Aname }
+    console.log(stime(this, `.logCurPlayer --${robo}--`), info);
+    this.logTurnPlayer(`//${tn}: ${plyr.Aname}`);
+  }
+
+  logTurnPlayer(line: string) {
+    this.turnLog.log(line, 'table.logTurn', false); // in top two lines
   }
 
   setupUndoButtons(xOffs: number, bSize: number, skipRad: number, bgr: XYWH, row = 8, col = -7) {
@@ -370,7 +381,7 @@ export class Table {
     const parent = this.scaleCont;
     this.setToRowCol(this.turnLog, rowy, colx);
     this.setToRowCol(this.textLog, rowy, colx);
-    this.textLog.y += this.turnLog.height(Player.allPlayers.length + 1); // allow room for 1 line per player
+    this.textLog.y += this.turnLog.height(TP.numPlayers + 1); // allow room for 1 line per player
 
     parent.addChild(this.turnLog, this.textLog);
     parent.stage.update();
@@ -444,8 +455,12 @@ export class Table {
    * six panel locations [row, col, dir][].
    *
    * col==0 is on left edge of hexMap; The *center* hex is col == (nHexes-1)
+   * @example
+   * P0  ---  P3
+   * P1 --C-- P4
+   * P2  ---  P5
    */
-  setPanelLocs() {
+  getPanelLocs() {
     const r0 = this.hexMap.centerHex.row, dr = this.panelHeight + .2;
     const cc = this.hexMap.centerHex.col, coff = this.panelOffset;
     const c0 = cc - coff, c1 = cc + coff;
@@ -454,12 +469,26 @@ export class Table {
       [r0 - dr, c1, -1], [r0, c1, -1], [r0 + dr, c1, -1]];
     return locs;
   }
+  /**
+   * Which PanelLocs to use for a given number of Players
+   * @param np number of Players
+   * @returns array of indices into PanelLocs (one for each Player)
+   */
+  panelLocsForNp(np: number) {
+    return [[], [0], [0, 3], [0, 3, 1], [0, 3, 4, 1], [0, 3, 4, 2, 1], [0, 3, 4, 5, 2, 1]][np];
+  }
 
-  /** select from setPanelLoc, based on pIndex from total np */
-  panelLoc(pIndex: number, np = Math.min(Player.allPlayers.length, 6), locs = this.setPanelLocs()) {
-    const seq = [[], [0], [0, 3], [0, 3, 1], [0, 3, 4, 1], [0, 3, 4, 2, 1], [0, 3, 4, 5, 2, 1]];
-    const seqn = seq[np], ndx = seqn[Math.min(pIndex, np - 1)];
-    return locs[ndx];
+  /** Panel location for the nth of nPlayers.
+   *
+   * @param pIndex Player index (0 .. nPlayers-1)
+   * @param nPlayers [allPlayers.length] total number of Players
+   * @param panelLocs [getPanelLocs] potential panel locations
+   * @return panelLocs[panelLocsForNp(nPlayers)][pIndex]
+   */
+  panelLoc(pIndex: number, nPlayers = Math.min(TP.numPlayers, 6), panelLocs = this.getPanelLocs()) {
+    const seqn = this.panelLocsForNp(nPlayers);
+    const ndx = seqn[Math.min(pIndex, nPlayers - 1)];
+    return panelLocs[ndx];
   }
 
   readonly allPlayerPanels: PlayerPanel[] = [];
@@ -467,7 +496,7 @@ export class Table {
   makePerPlayer() {
     this.allPlayerPanels.length = 0; // TODO: maybe deconstruct
     const high = this.panelHeight, wide = 4.5;
-    const np = Math.min(Player.allPlayers.length, 6), locs = this.setPanelLocs();
+    const np = Math.min(TP.numPlayers, 6), locs = this.getPanelLocs();
     this.gamePlay.forEachPlayer((player, pIndex) => {
       const [row, col, dir] = this.panelLoc(pIndex, np, locs);
       this.allPlayerPanels[pIndex] = player.panel = new PlayerPanel(this, player, high, wide, row - high / 2, col - wide / 2, dir);
@@ -828,17 +857,11 @@ export class Table {
     this.dragger.dragTarget(dragObj, xy);
   }
 
-  logCurPlayer(plyr: Player) {
-    const tn = this.gamePlay.turnNumber
-    const robo = plyr.useRobo ? AT.ansiText(['red', 'bold'], "robo") : "----";
-    const info = { turn: tn, plyr: plyr.Aname, gamePlay: this.gamePlay, curPlayer: plyr }
-    console.log(stime(this, `.logCurPlayer --${robo}--`), info);
-    this.logTurn(`//${tn}: ${plyr.Aname}`);
-  }
   showRedoUndoCount() {
     this.undoText.text = `${this.gamePlay.undoRecs.length}`
     this.redoText.text = `${this.gamePlay.redoMoves.length}`
   }
+  /** log --> comment line to [console], TextLog, logWriter; showRedoUndoCount() */
   showNextPlayer(log: boolean = true) {
     let curPlayer = this.gamePlay.curPlayer // after gamePlay.setNextPlayer()
     if (log) this.logCurPlayer(curPlayer)

@@ -88,14 +88,14 @@ export class GamePlay0 {
   preGame = true;
 
   nextPlayer(plyr: Player = this.curPlayer) {
-    const nxt = (plyr.index + 1) % Player.allPlayers.length;
-    return Player.allPlayers[nxt];
+    return plyr.nthPlayer();
   }
 
   forEachPlayer(f: (p: Player, index: number, players: Player[]) => void) {
     this.allPlayers.forEach((p, index, players) => f(p, index, players));
   }
 
+  /** table.logText(line, from) ONLY-IF instanceof GamePlay */
   logText(line: string, from = '') {
     if (this instanceof GamePlay) this.table.logText(line, from);
   }
@@ -129,20 +129,6 @@ export class GamePlay0 {
   newTurnNumber(turnNumber: number) {}
 
   /**
-   * invoked by GamePlay0.setNextPlayer(turnNumber);
-   * after curPlayer & curPlayer.newTurn(),
-   * before showCurPlayer
-   * */
-  logNextPlayer() {
-    const fileName = this.gameSetup.logWriter.fileName;
-    const [logName, ext] = (fileName ?? this.gameSetup.logTime_js)?.split('.');
-    const backLog = this.logWriter.fileName ? '' : ' **';
-    const logAt = `${logName}@${this.turnNumber}${backLog}`;
-    this.logText(`&file=${logAt} ${this.curPlayer.Aname} ${stime.fs()}`, `GamePlay.setNextPlayer`);
-    ; (document.getElementById('readFileName') as HTMLTextAreaElement).value = logAt;
-  }
-
-  /**
    * Advance to given turnNumber
    * @param turnNumber [undefined -> auto-incr; newTurn()]
    */
@@ -153,12 +139,10 @@ export class GamePlay0 {
       this.turnNumber = turnNumber;
     }
     this.turnNumber = turnNumber;
-    const index = (turnNumber % this.allPlayers.length);
     this.preGame = false;
-    this.curPlayerNdx = index;
-    this.curPlayer = this.allPlayers[index];
+    this.curPlayer = Player.allPlayers[0].nthPlayer(turnNumber);
+    this.curPlayerNdx = this.curPlayer.index;
     this.curPlayer.newTurn();
-    this.logNextPlayer();
   }
 
   isEndOfGame() {
@@ -476,17 +460,40 @@ export class GamePlay extends GamePlay0 {
     super.endTurn();
   }
 
+  /** parse logWriter: fileName, turnNumber, backLog.
+   *
+   * if logWriter.fileName not set, use gameSetup.logTime_js
+   */
+  logWriterInfo() {
+    const fileName = this.logWriter.fileName;
+    const [logName, ext] = (fileName ?? this.gameSetup.logTime_js)?.split('.');
+    const backLog = fileName ? '' : ' **';
+    const logAt = `${logName}@${this.turnNumber}${backLog}`;
+    return { fileName, logName, ext, backLog, logAt, }
+  }
+  /**
+   * invoked by GamePlay.setNextPlayer(turnNumber);
+   * after super.setNextPlayer: {set curPlayer & curPlayer.newTurn() }
+   * before showCurPlayer()
+   */
+  logNextPlayer(from: string) {
+    const { logAt } = this.logWriterInfo();
+    this.table.logText(`&file=${logAt} ${this.curPlayer.Aname} ${stime.fs()}`, from);
+    ; (document.getElementById('readFileName') as HTMLTextAreaElement).value = logAt;
+  }
+
   override setNextPlayer(turnNumber?: number) {
     this.curPlayer.panel.showPlayer(false);
     super.setNextPlayer(turnNumber); // update player.coins
+    this.logNextPlayer(`GamePlay.setNextPlayer`);
     this.curPlayer.panel.showPlayer(true);
-    this.paintForPlayer();
-    this.updateCounters(); // beginning of round...
+    this.paintForPlayer(); // hextowns repaints the AuctionTiles
+    this.updateCounters(); // hextowns recomputes econ, expense, vp (hexcity: range, etc)
     this.curPlayer.panel.visible = true;
-    this.table.showNextPlayer(); // get to nextPlayer, waitPaused when Player tries to make a move.?
+    this.table.showNextPlayer(); // logCurPlayer, update redo/undo counts
+    this.startTurn();            // hook function
     this.hexMap.update();
-    this.startTurn();
-    this.makeMove();
+    this.makeMove();             // runRedo or playerMove(useRobo) [planner or GUI-drop]
   }
 
   /** After setNextPlayer() */

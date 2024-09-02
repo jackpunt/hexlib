@@ -19,6 +19,7 @@ export class Player {
     public readonly gamePlay: GamePlay, // for headless, allow GamePlay0
   ) {
     Player.allPlayers[index] = this;
+    TP.numPlayers = Player.allPlayers.length;
     this.color = Player.colorScheme[index];
     this.Aname = `P${index}:${this.color}`;
     console.log(stime(this, `.new:`), this.Aname);
@@ -53,8 +54,9 @@ export class Player {
   get coins() { return this.coinCounter?.getValue(); }
   set coins(v: number) { this.coinCounter?.updateValue(v); }
 
-  /** @deprecated only works for 2-players */
+  /** @deprecated only works for 2-players; use nthPlayer() */
   get otherPlayer() { return Player.allPlayers[1 - this.index] }
+  nthPlayer(nth = 1) { return Player.allPlayers[(this.index + nth) % Player.allPlayers.length] }
 
   planner?: IPlanner;
   /** if true then invoke plannerMove */

@@ -2,7 +2,7 @@ import { Shape } from "@thegraid/easeljs-module";
 import type { NamedObject } from "./game-play";
 import type { Hex1, IHex2 } from "./hex";
 import type { Player } from "./player";
-import { C1, PaintableShape } from "./shapes";
+import { C1, Paintable, PaintableShape } from "./shapes";
 import type { DragContext, Table } from "./table";
 import { TP } from "./table-params";
 import { Tile } from "./tile";
@@ -75,7 +75,7 @@ export class Meeple extends Tile {
 
   override get radius() { return TP.meepleRad } // 31.578 vs 60*.4 = 24
   override textVis(v: boolean) { super.textVis(true); }
-  override makeShape() { return new MeepleShape(this.player as Player, this.radius); }
+  override makeShape(): Paintable { return new MeepleShape(this.player as Player, this.radius); }
   declare baseShape: MeepleShape;
 
   /** location at start-of-turn; for Meeples.unMove() */

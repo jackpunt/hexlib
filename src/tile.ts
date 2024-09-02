@@ -5,7 +5,7 @@ import type { GamePlay } from "./game-play";
 import { Hex1, IHex2 } from "./hex";
 import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
-import { C1, HexShape, PaintableShape, TileShape } from "./shapes";
+import { C1, HexShape, Paintable, PaintableShape, TileShape } from "./shapes";
 import type { DragContext, Dragable, Table } from "./table";
 import { PlayerColor, TP } from "./table-params";
 import { TileSource } from "./tile-source";
@@ -39,13 +39,13 @@ class Tile0 extends Container {
   }
 
   get radius() { return TP.hexRad };
-  baseShape: PaintableShape = this.makeShape();
+  baseShape: Paintable = this.makeShape();
 
   /** Default is TileShape; a HexShape with translucent disk.
    * add more graphics with paint(colorn)
    * also: addImageBitmap() to add child image from AliasLoader
    */
-  makeShape(): PaintableShape {
+  makeShape(): Paintable {
     return new TileShape(this.radius);
   }
 

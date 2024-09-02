@@ -109,6 +109,7 @@ export class GameSetup {
   set playerId(val: string) { this.table.netGUI?.selectValue('PlayerId', val ?? '     ') }
 
   logTime_js: string;
+  /** Generally accessed as: gamePlay.logWriter! */
   readonly logWriter = this.makeLogWriter();
   makeLogWriter() {
     const logTime_js = this.logTime_js = `log_${stime.fs('MM-DD_Lkk_mm')}.js`;
@@ -259,9 +260,9 @@ export class GameSetup {
    * @param qParams [this.qParams] typically obtained from URL
    */
   startup(qParams: Params = this.qParams) {
-    Tile.allTiles = [];
-    Meeple.allMeeples = [];
-    Player.allPlayers = [];
+    Tile.allTiles.length = 0;
+    Meeple.allMeeples.length = 0;
+    Player.allPlayers.length = 0;
 
     this.nPlayers = this.getNPlayers();        // Scenario may override?
     this.hexMap = this.makeHexMap();           // only reference is in GamePlay constructor!
