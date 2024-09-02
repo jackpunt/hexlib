@@ -22,7 +22,10 @@ stime.anno = (obj: string | { constructor: { name: string; }, stage?: Stage, tab
   return !!stage ? (!!stage.canvas ? ' C' : ' R') : ' -' as string;
 }
 
-export interface Scenario { turn: number, Aname: string };
+/** configuration of HexMap */
+export interface HexAspect { mh?: number, nh?: number, hexRad?: number }
+/** Specify and initial or current state of game */
+export interface Scenario { turn: number, Aname: string, };
 
 interface MultiItem extends DropdownItem { }
 class MultiChoice extends DropdownChoice {
@@ -117,8 +120,8 @@ export class GameSetup {
   /** C-s ==> kill game, start a new one, possibly with new stateInfo
    * @param stateInfo typically TP fields like {hexRad: 60, nHexes: 7, mHexes: 1}
    */
-  restart(stateInfo: any) {
-    if (!this.restartable) return;
+  restart(stateInfo: Scenario | HexAspect) {
+    if (!this.restartable) return;  // ignore call from within makeGUI
     let netState = this.netState
     // this.gamePlay.closeNetwork('restart')
     // this.gamePlay.logWriter?.closeFile()
@@ -138,9 +141,9 @@ export class GameSetup {
     setTimeout(() => this.netState = netState, 100) // onChange-> ('new', 'join', 'ref') initiate a new connection
   }
 
-  /** override: invoked by restart(); with stateInfo JSON5_parse(stateText) */
-  resetState(stateInfo: any) {
-    const { mh, nh, hexRad } = stateInfo as { mh?: number, nh: number, hexRad: number }; // for example
+  /** reset GameState and/or Table/TableParams before startup() */
+  resetState(stateInfo: Scenario | HexAspect) {
+    const { mh, nh, hexRad } = stateInfo as HexAspect;
     TP.mHexes = mh ?? TP.mHexes;
     TP.nHexes = nh ?? TP.nHexes;
     TP.hexRad = hexRad ?? TP.hexRad;
@@ -152,7 +155,7 @@ export class GameSetup {
     const parseStateText = document.getElementById('parseStateText') as HTMLInputElement;
     parseStateButton.onclick = () => {
       const stateText = parseStateText.value;
-      const state = JSON5_parse(stateText);
+      const state = JSON5_parse(stateText) as Scenario;
       state.Aname = state.Aname ?? `parseStateText`;
       blinkAndThen(this.gamePlay.hexMap.mapCont.markCont, () => this.restart(state))
     }
@@ -170,12 +173,19 @@ export class GameSetup {
     const readFileName = readFileNameElt.value;
     const [fname, turnstr] = readFileName.split('@'); // fileName@turn
     const turn = Number.parseInt(turnstr);
-    const state = this.extractStateFromString(fileName, fileText, turn);
+    const stateInfo = this.extractStateFromString(fileText, fileName, turn);
     this.setupToReadFileState();   // another thread to wait for next click
-    this.restart(state);
+    this.restart(stateInfo);
   }
 
-  extractStateFromString(fileName: string, fileText: string, turn: number) {
+  /**
+   *
+   * @param fileText contents of the file
+   * @param fileName the file that was read
+   * @param turn extracted from fileName\@turn
+   * @returns stateInfo suitable for restart(stateInfo)
+   */
+  extractStateFromString(fileText: string, fileName: string, turn: number) {
     const logArray = JSON5_parse(fileText) as Scenario[];
     const [, ...stateArray] = logArray;
     const state = stateArray.find(state => state.turn === turn) ?? {}  as Scenario;
@@ -246,7 +256,7 @@ export class GameSetup {
    * - initialScenario()
    * - makeGamePlay(scenario)
    * - startScenario(scenario)
-   * @param qParams from URL
+   * @param qParams [this.qParams] typically obtained from URL
    */
   startup(qParams: Params = this.qParams) {
     Tile.allTiles = [];
@@ -256,7 +266,7 @@ export class GameSetup {
     this.nPlayers = this.getNPlayers();        // Scenario may override?
     this.hexMap = this.makeHexMap();           // only reference is in GamePlay constructor!
     this.table = this.makeTable();
-    const scenario = this.initialScenario();
+    const scenario = this.initialScenario(qParams);
     // Inject Table into GamePlay;
     // GameState, mouse/keyboard->GamePlay,
     this.gamePlay = this.makeGamePlay(scenario);
@@ -290,7 +300,7 @@ export class GameSetup {
     this.gamePlay.logWriterLine0();
 
     gamePlay.forEachPlayer(p => p.newGame(gamePlay))        // make Planner *after* table & gamePlay are setup
-    this.restartable = false;
+    this.restartable = false;  // block makeGUIs from reentrant restarting
     this.table.makeGUIs();
     this.restartable = true;   // *after* makeLines has stablilized selectValue
     table.scaleCont.addChild(table.overlayCont); // now at top of the list.

@@ -27,11 +27,13 @@ export class Player {
   _color: string;
   get color() { return this._color; }
   set color(c: string) { this._color = c; }
-  /** much useful context about this Player. */
-  panel: PlayerPanel;
-  get colorn(): string { return this._color; }
+  /** now used as 'nominal' in log to identify player, never used as a COLOR */
+  get plyrId(): string { return `Plyr${this.index}`; }
   // Player shall paint their pieces to their color as necessary;
   // Other code shall operate using player.index;
+
+  /** much useful context about this Player. */
+  panel: PlayerPanel;
 
   allOf<T extends Tile>(claz: Constructor<T>) { return (Tile.allTiles as T[]).filter(t => t instanceof claz && t.player === this); }
   allOnMap<T extends Tile>(claz: Constructor<T>) { return this.allOf(claz).filter(t => t.hex?.isOnMap); }
@@ -64,6 +66,7 @@ export class Player {
   makePlayerBits() {
   }
 
+  /** Player has no MapTile on map */
   get isDestroyed() {
     return this.allOnMap(MapTile).length == 0;
   }
@@ -102,7 +105,7 @@ export class Player {
     let running = this.plannerRunning
     // feedback for KeyMove:
 
-    TP.log > 0 && console.log(stime(this, `(${this.colorn}).playerMove(${useRobo}): useRobo=${this.useRobo}, running=${running}`))
+    TP.log > 0 && console.log(stime(this, `(${this.plyrId}).playerMove(${useRobo}): useRobo=${this.useRobo}, running=${running}`))
     if (running) return
     if (useRobo || this.useRobo) {
     // start plannerMove from top of stack:

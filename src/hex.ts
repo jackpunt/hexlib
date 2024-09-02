@@ -202,12 +202,12 @@ export class Hex1 extends Hex {
 
   get occupied(): [Tile | undefined, Meeple | undefined] | undefined { return (this.tile || this.meep) ? [this.tile, this.meep] : undefined; }
 
-  /** COLOR@[r,c]; COLOR = this.(tile??meep).player.color ?? Empty */
-  override toString(color = (this.tile ?? this.meep)?.player?.color ?? 'Empty') {
+  /** PLYRID@[r,c]; PLYRID = this.(tile??meep).player.plyrId ?? Empty */
+  override toString(color = (this.tile ?? this.meep)?.player?.plyrId ?? 'Empty') {
     return `${color}@${this.rcs}` // hex.toString => COLOR@[r,c] | COLOR@Skip , COLOR@Resign
   }
-  /** COLOR@[ r, c] or COLOR@Name */
-  override rcspString(color = (this.tile ?? this.meep)?.player?.color ?? 'Empty') {
+  /** PLYRID@[ r, c] or PLYRID@Name */
+  override rcspString(color = (this.tile ?? this.meep)?.player?.plyrId ?? 'Empty') {
     return `${color}@${this.rcsp}`
   }
 }

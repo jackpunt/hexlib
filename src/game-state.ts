@@ -27,7 +27,9 @@ export class GameState {
   }
 
   // [eventName, eventSpecial, phase, args]
-  saveState() {
+  /** create gameState component of ScenarioParser.SetupElt */
+  saveState(): any[] {
+    return []
   }
 
   parseState(args: any[]) {

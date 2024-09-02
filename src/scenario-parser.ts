@@ -4,17 +4,16 @@ import { KeyBinder } from "@thegraid/easeljs-lib";
 import type { GamePlay } from "./game-play";
 import { Hex, HexMap, IHex2 } from "./hex";
 
-// TODO: namespace or object for GameState names ?
-
 export interface SetupElt {
-  Aname?: string;        // {orig-scene}@{turn}
+  Aname?: string;        // {orig-scene}@{turn} or {filename}@{turn} ?
   turn?: number;         // default to 0; (or 1...)
+  coins?: number[];      // Player has some coins, maybe also some VPs?
   gameState?: any[];     // GameState contribution
-  coins?: number[];
-  scores?: number[];
 }
-export type StartElt = { start: { time: string, scene: string, turn: number } };
+/** Reading from a file, first element is a StartElt with start: {...},
+ * then follows normal SetupElt[] */
 export type LogElts = [ StartElt, ...SetupElt[]];
+export type StartElt = { start: { time: string, scene: string, turn: number } };
 
 export class ScenarioParser {
 
@@ -42,14 +41,19 @@ export class ScenarioParser {
     this.gamePlay.hexMap.update();
   }
 
-  saveState(gamePlay: GamePlay, silent = false) { // TODO: save Bastet 'deployed' state, so start: does not redploy; also: save conflictRegion! when current-event/phase is Conflict
+  /** add the optional bit to SetupElt */
+  addStateElements(setupElt: SetupElt) {
+    setupElt.gameState = this.gamePlay.gameState.saveState();
+  }
+
+  /** override/replace to create a SetupElt and logState(logWriter) */
+  saveState(gamePlay: GamePlay, logWriter = this.gamePlay.logWriter): SetupElt {
     const turn = Math.max(0, gamePlay.turnNumber);
     const coins = gamePlay.allPlayers.map(p => p.coins);
     const time = stime.fs();
-
-    const gameState = this.gamePlay.gameState.saveState();
-    const setupElt = { turn, time, coins, gameState, } as SetupElt;
-    this.logState(setupElt);
+    const setupElt = { turn, time, coins, } as SetupElt;
+    this.addStateElements(setupElt)
+    if (logWriter) this.logState(setupElt, logWriter);
     return setupElt;
   }
 

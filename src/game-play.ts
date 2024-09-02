@@ -120,12 +120,37 @@ export class GamePlay0 {
     // console.log(stime(this, `.endGame: Winner = ${winner.Aname}`), scores);
   }
 
-  newTurn() {}
+  /**
+   * hook invoked by GamePlay0.setNextPlayer() increments turnNumber.
+   *
+   * override to [for ex] saveState at beginning of this turn.
+   * @param the NEW turnNumber
+   */
+  newTurnNumber(turnNumber: number) {}
 
+  /**
+   * invoked by GamePlay0.setNextPlayer(turnNumber);
+   * after curPlayer & curPlayer.newTurn(),
+   * before showCurPlayer
+   * */
+  logNextPlayer() {
+    const fileName = this.gameSetup.logWriter.fileName;
+    const [logName, ext] = (fileName ?? this.gameSetup.logTime_js)?.split('.');
+    const backLog = this.logWriter.fileName ? '' : ' **';
+    const logAt = `${logName}@${this.turnNumber}${backLog}`;
+    this.logText(`&file=${logAt} ${this.curPlayer.Aname} ${stime.fs()}`, `GamePlay.setNextPlayer`);
+    ; (document.getElementById('readFileName') as HTMLTextAreaElement).value = logAt;
+  }
+
+  /**
+   * Advance to given turnNumber
+   * @param turnNumber [undefined -> auto-incr; newTurn()]
+   */
   setNextPlayer(turnNumber?: number): void {
     if (turnNumber === undefined) {
-      this.turnNumber = turnNumber = this.turnNumber + 1;
-      this.newTurn();  // override calls saveState()
+      turnNumber = this.turnNumber + 1;
+      this.newTurnNumber(turnNumber);
+      this.turnNumber = turnNumber;
     }
     this.turnNumber = turnNumber;
     const index = (turnNumber % this.allPlayers.length);
@@ -133,6 +158,7 @@ export class GamePlay0 {
     this.curPlayerNdx = index;
     this.curPlayer = this.allPlayers[index];
     this.curPlayer.newTurn();
+    this.logNextPlayer();
   }
 
   isEndOfGame() {
@@ -292,7 +318,7 @@ export class GamePlay extends GamePlay0 {
   }
 
   /** when turnNumber auto-increments. */
-  override newTurn(): void {
+  override newTurnNumber(): void {
   }
 
   readFileState() {
@@ -349,21 +375,21 @@ export class GamePlay extends GamePlay0 {
     this.hexMap.update()
     let isPaused = !(p.planner as Planner).pauseP.resolved
     if (isPaused) {
-      console.log(stime(this, `.waitPaused: ${p.colorn} ${ident} waiting...`))
+      console.log(stime(this, `.waitPaused: ${p.plyrId} ${ident} waiting...`))
       await p.planner?.waitPaused(ident)
-      console.log(stime(this, `.waitPaused: ${p.colorn} ${ident} running`))
+      console.log(stime(this, `.waitPaused: ${p.plyrId} ${ident} running`))
     }
     this.hexMap.update();
   }
   pauseGame(p = this.curPlayer) {
     p.planner?.pause();
     this.hexMap.update();
-    console.log(stime(this, `.pauseGame: ${p.colorn}`))
+    console.log(stime(this, `.pauseGame: ${p.plyrId}`))
   }
   resumeGame(p = this.curPlayer) {
     p.planner?.resume();
     this.hexMap.update();
-    console.log(stime(this, `.resumeGame: ${p.colorn}`))
+    console.log(stime(this, `.resumeGame: ${p.plyrId}`))
   }
   /** tell [robo-]Player to stop thinking and make their Move; also set useRobo = false */
   stopPlayer() {
@@ -412,7 +438,7 @@ export class GamePlay extends GamePlay0 {
   roboPlay(pid = 0, useRobo = true) {
     let p = this.allPlayers[pid]
     p.useRobo = useRobo
-    console.log(stime(this, `.autoPlay: ${p.colorn}.useRobo=`), p.useRobo)
+    console.log(stime(this, `.autoPlay: ${p.plyrId}.useRobo=`), p.useRobo)
   }
   /** when true, run all the redoMoves. */
   set runRedo(val: boolean) { (this._runRedo = val) && this.makeMove() }
@@ -453,12 +479,6 @@ export class GamePlay extends GamePlay0 {
   override setNextPlayer(turnNumber?: number) {
     this.curPlayer.panel.showPlayer(false);
     super.setNextPlayer(turnNumber); // update player.coins
-    const fileName = this.gameSetup.logWriter.fileName;
-    const [logName, ext] = (fileName ?? this.gameSetup.logTime_js)?.split('.');
-    const backLog = this.logWriter.fileName ? '' : ' **';
-    const logAt = `${logName}@${this.turnNumber}${backLog}`;
-    this.logText(`&file=${logAt} ${this.curPlayer.Aname} ${stime.fs()}`, `GamePlay.setNextPlayer`);
-    ; (document.getElementById('readFileName') as HTMLTextAreaElement).value = logAt;
     this.curPlayer.panel.showPlayer(true);
     this.paintForPlayer();
     this.updateCounters(); // beginning of round...

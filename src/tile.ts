@@ -50,10 +50,9 @@ class Tile0 extends Container {
   }
 
   /** paint with PlayerColor; updateCache()
-   * @param pColor the 'short' PlayerColor
-   * @param colorn the actual color (default = TP.colorScheme[pColor])
+   * @param colorn [pColor ?? grey] color for this Tile
    */
-  paint(pColor = this.player?.color, colorn = pColor ?? C1.grey) {
+  paint(colorn = this.pColor ?? C1.grey) {
     this.baseShape.paint(colorn); // set or update baseShape.graphics
     this.updateCache();           // push graphics to bitmapCache
   }
@@ -167,9 +166,10 @@ export class Tile extends Tile0 implements Dragable {
     super.updateCache(compositeOperation)
   }
 
+  /** Tile is owned by Player: color it */
   setPlayerAndPaint(player: Player | undefined) {
     this.player = player;
-    this.paint(undefined, player?.color);
+    this.paint(player?.color);
     return this;
   }
 
@@ -394,7 +394,7 @@ export class Tile extends Tile0 implements Dragable {
   logRecycle(verb: string) {
     const cp = this.gamePlay.curPlayer;
     const loc = this.hex?.isOnMap ? 'onMap' : 'offMap';
-    const info = { Aname: this.Aname, fromHex: this.fromHex?.Aname, cp: cp.colorn, tile: {...this} }
+    const info = { Aname: this.Aname, fromHex: this.fromHex?.Aname, cp: cp.plyrId, tile: {...this} }
     console.log(stime(this, `.recycleTile[${loc}]: ${verb}`), info);
     this.gamePlay.logText(`${cp.Aname} ${verb} ${this}`, `GamePlay.recycle`);
   }
@@ -405,8 +405,9 @@ export class WhiteTile extends Tile {
   // TileShape does not work here:
   override makeShape() { return new HexShape(this.radius); }
 
-  override paint(pColor?: PlayerColor, colorn?: string): void {
-    super.paint(pColor, C.WHITE); // TODO: using cgf
+  /** always C.WHITE */
+  override paint(colorn?: string): void {
+    super.paint(C.WHITE); // TODO: using cgf
   }
 }
 
