@@ -41,7 +41,7 @@ export interface DragContext {
 }
 
 class TextLog extends NamedContainer {
-  constructor(Aname: string, nlines = 6, public size: number = 30, public lead = 3) {
+  constructor(Aname: string, nlines = 6, public size: number = TP.hexRad / 2, public lead = 3) {
     super(Aname);
     this.lines = new Array<Text>(nlines);
     for (let ndx = 0; ndx < nlines; ndx++) this.lines[ndx] = this.newText(`//0:`)
@@ -525,7 +525,7 @@ export class Table {
     hex.cont.visible = false;
   }
 
-  makeCircleButton(color = C.WHITE, rad = 20, c?: string, fs = 30) {
+  makeCircleButton(color = C.WHITE, rad = TP.hexRad / 3, c?: string, fs = rad * 3 / 2) {
     const button = new Container(); button.name = 'circle';
     const shape = new CircleShape(color, rad, '');
     button.addChild(shape);
@@ -538,7 +538,7 @@ export class Table {
     return button;
   }
 
-  makeSquareButton(color = C.WHITE, xywh: XYWH, c?: string, fs = 30) {
+  makeSquareButton(color = C.WHITE, xywh: XYWH, c?: string, fs = TP.hexRad / 2) {
     const button = new Container(); button.name = 'square';
     const shape = new RectShape(xywh, color, '');
     button.addChild(shape);
@@ -651,11 +651,11 @@ export class Table {
    */
   addDoneButton(cont: Container = this.scaleCont, cx = 0, cy = 0, align = 'center') {
     const doneButton = this.doneButton = new UtilButton('Done', 'lightgreen');
-    const { width: w, height: h } = doneButton.getBounds()
+    doneButton.disp.textAlign = align; // Note: baseline is still 'middle'
+    const { x, y, width: w, height: h } = doneButton.getBounds()
     doneButton.name = 'doneButton';
     doneButton.x = cx - 0;     // XY is the top-right corner, align extends to left
-    doneButton.y = cy - h / 2; // XY is the top-right corner, align extends to left
-    doneButton.disp.textAlign = align; // Note: baseline is still 'middle'
+    doneButton.y = cy - y;     // XY is the top-right corner, align extends to left
     doneButton.on(S.click, this.doneClicked, this);
     cont.addChild(doneButton);
 

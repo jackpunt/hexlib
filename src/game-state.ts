@@ -14,7 +14,15 @@ export interface Phase {
 
 export class GameState {
 
-  constructor(public gamePlay: GamePlay) {
+  constructor(public gamePlay: GamePlay, states?: Record<string,Phase>, purge: boolean | string[] = false) {
+    if (states) this.defineStates(states, purge);
+  }
+  defineStates(states = this.states, purge: boolean | string[] = false) {
+    if (purge) {
+      const keys = (purge === true) ? Object.keys(this.states) : purge;
+      keys.forEach((key) => delete this.states[key]);
+    }
+    Object.keys(states).forEach(key => this.states[key] = states[key])
     Object.keys(this.states).forEach((key) => this.states[key].Aname = key);
   }
 
@@ -45,13 +53,16 @@ export class GameState {
   /** set state and start with given args. */
   phase(phase: string, ...args: any[]) {
     console.log(stime(this, `.phase: ${this.state?.Aname ?? 'Initialize'} -> ${phase}`));
-    this.state = this.states[phase];
-    this.state.start(...args);
+    const state = this.state = this.states[phase];
+    if (!state) { alert(`no state named ${phase}`); debugger; }
+    state.start(...args);
   }
 
-  /** set label & paint button with color;
-   * empty label hides & disables.
-   * optional continuation function on 'drawend'.
+  /**
+   * Set label_text, visible, and paint(color).
+   * @param label [undefined] set label; set visible = !!label
+   * @param color [curPlayer.color] color to paint button
+   * @param afterPopup continuation after stage.update()
    */
   doneButton(label?: string, color = this.curPlayer.color, afterPopup?: () => void) {
     const doneButton = this.table.doneButton;
@@ -61,9 +72,21 @@ export class GameState {
     afterUpdate(doneButton, afterPopup)
   }
 
-  /** invoked when 'Done' button clicked. [or whenever phase is 'done' by other means] */
+  /** proceed to phase(this.donePhase)(...args) if state.done() is not defined */
+  donePhase = 'EndAction';
+  /**
+   * Invoked when 'Done' button clicked. [or whenever phase is 'done' by other means]
+   *
+   * Call this.state.done(...args);
+   *
+   * If this.state.done is not defined, proceed to phase(this.donePhase, ...args)
+   */
   done(...args: any[]) {
-    (this.state.done ?? ((...args: any[]) => { alert('no done method') }))(...args);
+    if (this.state.done) {
+      this.state.done(...args)
+    } else {
+      this.phase(this.donePhase, ...args); // start next Phase
+    }
   }
   undoAction() {
     // const action = this.selectedAction;
@@ -89,38 +112,15 @@ export class GameState {
         this.phase('EndAction')
       },
     },
-    Summon: { // recruit
-      start: () => {
-        this.doneButton('Summon done');
-      },
-      done: () => {
-        this.phase('EndAction');
-      },
-    },
     EndAction: {
       nextPhase: 'ChooseAction',
       start: () => {
-        const nextPhase = this.state.nextPhase = 'Event';
+        const nextPhase = this.state.nextPhase = 'EndTurn';
         this.phase(nextPhase);     // directl -> nextPhase
       },
       done: () => {
         this.phase(this.state.nextPhase ?? 'Start'); // TS want defined...
       }
-    },
-    Conflict: {
-      start: () => {
-      },
-    },
-    ConflictRegionDone: {
-      start: () => {
-        this.phase('ConflictNextRegion');
-      }
-    },
-    ConflictDone: {
-      start: () => {
-        this.phase('EventDone');
-      },
-      // TODO: coins from Scales to Toth, add Devotion(Scales)
     },
     EndTurn: {
       start: () => {
@@ -128,10 +128,6 @@ export class GameState {
         this.phase('BeginTurn');
       },
     },
-    /** Hathor: after addFollowers() Ankh-Event, BuildMonument, Worshipful, Summon-AnubisRansom */
   };
 
-  setup() {
-
-  }
 }

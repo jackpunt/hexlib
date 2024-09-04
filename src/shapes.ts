@@ -374,7 +374,7 @@ export class LegalMark extends Shape { // TODO: maybe someday CircleShape?
 
 /** Container with a colored RectShape behind the given DisplayObject. */
 export class RectWithDisp extends Container implements Paintable {
-  /** draws a RectShape around label_text, with border, no strokec */
+  /** draws a RectShape around disp, with border, no strokec */
   rectShape: RectShape = new RectShape({ x: 0, y: 0, w: 8, h: 8, r: 0 }, C.WHITE, '');
   /** DisplayObject displayed above a RectShape of color  */
   readonly disp: DisplayObject;
@@ -405,11 +405,11 @@ export class RectWithDisp extends Container implements Paintable {
    */
   constructor(disp: DisplayObject, color = C.WHITE, border = 5, corner = 0, cgf?: CGF) {
     super();                             // ISA new Container()
-    if (cgf) this.rectShape._cgf = cgf;  // HasA RectShape & Text
+    if (cgf) this.rectShape._cgf = cgf;  // HasA RectShape & DisplayObject
     this.disp = disp;
     this.border = border;
     this.corner = corner;               // _rShape._cRad = corner
-    this.setBounds(undefined, 0, 0, 0); // calc (Text + border) -> rectShape -> this
+    this.setBounds(undefined, 0, 0, 0); // calc (disp + border) -> rectShape -> this
     this.rectShape.paint(color);        // set initial color, Graphics
     this.addChild(this.rectShape, this.disp);
   }
@@ -428,8 +428,8 @@ export class RectWithDisp extends Container implements Paintable {
   // override here if you don't like (label.bounds + border)
   calcBounds(): XYWH {
     const { x, y, width: w, height: h } = this.disp.getBounds();
-    const db = this.border;
-    const b = { x: x - db, y: y - db, w: w + 2 * db, h: h + 2 * db };
+    const db = this.border, { x: dx, y: dy } = this.disp;
+    const b = { x: dx + x - db, y: dy + y - db, w: w + 2 * db, h: h + 2 * db };
     return b;
   }
 
@@ -496,14 +496,6 @@ export class TextInRect extends RectWithDisp implements Paintable {
   constructor(label: Text, color?: string, border = .3, corner = 0, cgf?: CGF) {
     super(label, color, border, corner, cgf);  // ISA new Container()
   }
-
-  // override here if you don't like (label.bounds + border)
-  calcBounds(): XYWH {
-    const { x, y, width: w, height: h } = this.disp.getBounds();
-    const db = this.border; // scaled by lineHeight
-    const b = { x: x - db, y: y - db, w: w + 2 * db, h: h + 2 * db };
-    return b;
-  }
 }
 
 // From ankh, 'done' button to move to next phase or action.
@@ -516,16 +508,20 @@ export class UtilButton extends TextInRect {
    * on(rollover|rollout, this.rollover(mouseIn))
    *
    * initially visible & mouseEnabled, but deactivated.
-   * @param text label
+   * @param label if not instanceof Text: new CenterText(label, fontSize, textColor)
    * @param color [C.WHITE] of background RectShape.
-   * @param fontSize [TP.hexRad/2]
-   * @param textColor [C.black]
+   * @param fontSize [TP.hexRad/2] or text.getMeasuredLineHeight()
+   * @param textColor [C.black] or text.color
    * @param border [.3]
    * @param cgf [tscgf] CGF for the RectShape
    */
-  constructor(text: string, color?: string, public fontSize = TP.hexRad / 2, public textColor = C.black, border = .3, cgf?: CGF) {
-    const label = new CenterText(text, fontSize, textColor);
-    super(label, color, border, 0, cgf)
+  constructor(label: string | Text, color?: string, public fontSize = TP.hexRad / 2, public textColor = C.black, border = .3, cgf?: CGF) {
+    const text = (label instanceof Text) ? label : new CenterText(label, fontSize, textColor);
+    super(text, color, border, 0, cgf)
+    if (label instanceof Text) {
+      this.fontSize = label.getMeasuredLineHeight()
+      this.textColor = label.color;
+    }
     this.on('rollover', () => this._active && this.rollover(true), this);
     this.on('rollout', () => this._active && this.rollover(false), this);
   }
