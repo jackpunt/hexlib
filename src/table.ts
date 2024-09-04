@@ -74,7 +74,7 @@ class TextLog extends NamedContainer {
 
   /** convert line to single-line; inc count if same line; insert & scroll up */
   log(line: string, from = '', toConsole = true) {
-    line = line.replace('/\n/g', '-');
+    line = line.replace(/\n/g, '-');
     toConsole && console.log(stime(`${from}:`), line);
     if (line === this.lastLine) {
       this.lines[this.lines.length - 1].text = `[${++this.nReps}] ${line}`;
@@ -641,25 +641,34 @@ export class Table {
     this.gamePlay.phaseDone();   // <--- main doneButton does not supply 'panel'
   }
 
-  addDoneButton(actionCont: Container, rh: number) {
-    const w = 90, h = 56;
-    const doneButton = this.doneButton = new UtilButton('lightgreen', 'Done', 36, C.black);
+  /**
+   * May be contained or placed with ActionSelection buttons.
+   * @param cont [scaleCont] a Container to hold the DoneButton
+   * @param cx [0] offset in Container (to 'center', 'left', 'right' per align)
+   * @param cy [0] offset in Container (to top of text box)
+   * @param align ['center'] left or right
+   * @returns actionCont
+   */
+  addDoneButton(cont: Container = this.scaleCont, cx = 0, cy = 0, align = 'center') {
+    const doneButton = this.doneButton = new UtilButton('Done', 'lightgreen');
+    const { width: w, height: h } = doneButton.getBounds()
     doneButton.name = 'doneButton';
-    doneButton.x = -(w);
-    doneButton.y = 3 * rh;
-    doneButton.label.textAlign = 'right';
+    doneButton.x = cx - 0;     // XY is the top-right corner, align extends to left
+    doneButton.y = cy - h / 2; // XY is the top-right corner, align extends to left
+    doneButton.disp.textAlign = align; // Note: baseline is still 'middle'
     doneButton.on(S.click, this.doneClicked, this);
-    actionCont.addChild(doneButton);
+    cont.addChild(doneButton);
 
-    // prefix advice: set text color
+    // prefix advice: set text color to contrast with RectShape color
+    // TODO: add as option to UtilButton
     const o_cgf = doneButton.rectShape.cgf;
     const cgf = (color: string) => {
-      const tcolor = (C.dist(color, C.WHITE) < C.dist(color, C.black)) ? C.black : C.white;
-      doneButton.label.color = tcolor;
-      return o_cgf(color);
+      const tcolor = (C.dist(color, C.WHITE) < C.dist(color, C.BLACK)) ? C.black : C.white;
+      doneButton.disp.color = tcolor;
+      return o_cgf.call(doneButton.rectShape, color);
     }
     doneButton.rectShape.cgf = cgf; // invokes shape.paint(cgf) !!
-    return actionCont;
+    return cont;
   }
 
   /** show player player score on table */

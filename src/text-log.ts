@@ -35,7 +35,7 @@ export class TextLog extends Container {
   }
 
   log(line: string, from = '', toConsole = true) {
-    line = line.replace('/\n/g', '-');
+    line = line.replace(/\n/g, '-');
     toConsole && console.log(stime(`${from}:`), line);
     if (line === this.lastLine) {
       this.lines[this.lines.length - 1].text = `[${++this.nReps}] ${line}`;

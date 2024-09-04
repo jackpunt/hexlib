@@ -103,8 +103,7 @@ export class PaintableShape extends Shape implements Paintable {
   override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
     if (x === undefined) {
       const cached = this.cacheID; // undefined | number >= 1
-      this.uncache();
-      // setBounds(null, 0, 0, 0);   // not nec'sary/useful
+      this.uncache();              // setBounds(null, 0, 0, 0);   // not nec'sary/useful
       const { x, y, w, h } = this.calcBounds()
       super.setBounds(x, y, w, h);
       if (cached) this.cache(x, y, w, h); // recache if previously cached
@@ -308,7 +307,7 @@ export class RectShape extends PaintableShape {
   override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
     if (x === undefined) {
       const b = this._rect;
-      this.setBounds(b.x, b.y, b.w, b.h)
+      this.setBounds(b.x, b.y, b.w, b.h) // TODO: include strokeSize, which we don't have.. being in user-supplied g0
     } else {
       super.setBounds(x, y, width, height) // can be different from _rect
     }
@@ -373,87 +372,137 @@ export class LegalMark extends Shape { // TODO: maybe someday CircleShape?
   }
 }
 
-// TODO: Mixin base class PaintableShape? and override everything except setBounds()?
+/** Container with a colored RectShape behind the given DisplayObject. */
+export class RectWithDisp extends Container implements Paintable {
+  /** draws a RectShape around label_text, with border, no strokec */
+  rectShape: RectShape = new RectShape({ x: 0, y: 0, w: 8, h: 8, r: 0 }, C.WHITE, '');
+  /** DisplayObject displayed above a RectShape of color  */
+  readonly disp: DisplayObject;
+
+  _border: number;
+  /** extend RectShape around DisplayObject bounds. */
+  get border() { return this._border; }
+  set border(b: number) {
+    this._border = b;
+    this.setBounds(undefined, 0, 0, 0)
+  }
+
+  _corner: number;
+  /** corner radius, does not repaint/recache */
+  get corner() { return this._corner; }
+  set corner(r: number) {
+    this._corner = r;
+    this.rectShape.setRectRad({ r })
+  }
+
+  /**
+   * Create Container a RectShape behind the given DisplayOBject.
+   * @param disp a DisplayObject
+   * @param color [WHITE] of background RectShape.
+   * @param border [5] extend RectShape around Text
+   * @param corner [0] corner radius
+   * @param cgf [tscgf] CGF for the RectShape
+   */
+  constructor(disp: DisplayObject, color = C.WHITE, border = 5, corner = 0, cgf?: CGF) {
+    super();                             // ISA new Container()
+    if (cgf) this.rectShape._cgf = cgf;  // HasA RectShape & Text
+    this.disp = disp;
+    this.border = border;
+    this.corner = corner;               // _rShape._cRad = corner
+    this.setBounds(undefined, 0, 0, 0); // calc (Text + border) -> rectShape -> this
+    this.rectShape.paint(color);        // set initial color, Graphics
+    this.addChild(this.rectShape, this.disp);
+  }
+
+  /** RectWithDisp.paint(color) paints new color for the backing RectShape. */
+  paint(color = this.rectShape.colorn, force = false ) {
+    this.rectShape.rscgf;
+    return this.rectShape.paint(color, force);
+  }
+
+  /** uses PaintableShape.setCacheID. */
+  setCacheID() {
+    this.rectShape.setCacheID.call(this); //invoke from a PaintableShape
+  }
+
+  // override here if you don't like (label.bounds + border)
+  calcBounds(): XYWH {
+    const { x, y, width: w, height: h } = this.disp.getBounds();
+    const db = this.border;
+    const b = { x: x - db, y: y - db, w: w + 2 * db, h: h + 2 * db };
+    return b;
+  }
+
+  // Bounds = calcBounds (disp.bounds + border) -> rectShape._rect [& cRad] -> this._bounds
+  /**
+   * Note: if you addChild() to this Container, setBounds(undefined) won't consider them
+   * unless you override calcBounds() to do a Rectangle.union()
+   */
+  override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
+    if (x === undefined) {
+      const cached = this.cacheID;
+      this.uncache();
+      const { x, y, w, h } = this.calcBounds();
+      this.rectShape.setRectRad({ x, y, w, h });
+      this.rectShape.setBounds(x, y, w, h); // setBounds to _rect
+      super.setBounds(x, y, w, h);
+      if (cached) this.cache(x, y, w, h); // recache if previously cached
+    } else {
+      super.setBounds(x as any as number, y, width, height);
+    }
+  }
+}
+
 /** A Text label above a colored RectShape.
  *
  * Configure the border width [.3] and corner radius [0].
  */
-export class TextInRect extends Container implements Paintable {
-  /** draws a RectShape around label_text, with border, no strokec */
-  rectShape: RectShape = new RectShape({ x: 0, y: 0, w: 8, h: 8, r: 0 }, C.WHITE, '');
-  /** Text object to be displayed above an RectShape of color */
-  label: Text;
+export class TextInRect extends RectWithDisp implements Paintable {
+  declare disp: Text;
+  /** Text object displayed above a RectShape of color */
+  get label() { return this.disp; }
 
-  _border: number;
   /** extend RectShape around Text bounds; fraction of line height. */
-  get border() { return this._border; }
-  set border(b: number) { this._border = b; }
+  override get border() { return this._border * this.disp.getMeasuredLineHeight(); }
+  override set border(tb: number) {
+    this._border = tb;
+    this.setBounds(undefined, 0, 0, 0);
+  }
 
-  _corner: number;
   /** corner radius; fraction of line height. */
-  get corner() { return this._corner; }
-  set corner(rc: number) {
-    this._corner = rc;
-    const r = rc * this.label.getMeasuredLineHeight();
+  override get corner() { return this._corner; }
+  override set corner(tr: number) {
+    this._corner = tr;     // get corner() returns this unscaled value
+    // but internally, _cRad is scaled by lineHeight
+    const r = tr * this.disp.getMeasuredLineHeight();
     this.rectShape.setRectRad({ r })
   }
   /** the string inside the Text label. */
-  get label_text() { return this.label.text; }
+  get label_text() { return this.disp.text; }
   set label_text(txt: string | undefined) {
-    this.label.text = txt as string;
+    this.disp.text = txt as string;
     this.setBounds(undefined, 0, 0, 0)
     this.paint(undefined, true);
   }
 
   /**
    * Create Container with Text above a RectShape.
-   * @param color of background RectShape.
    * @param text label
+   * @param color [C.WHITE] of background RectShape.
    * @param border [.3] extend RectShape around Text; fraction of fontSize
    * @param corner [0] corner radius as fraction of fontSize
-   * @param cgf [new Graphics()]
+   * @param cgf [tscgf] CGF for the RectShape
    */
-  constructor(color: string, label: Text, border = .3, corner = 0, cgf?: CGF) {
-    super();                             // ISA new Container()
-    if (cgf) this.rectShape._cgf = cgf;  // HasA RectShape & Text
-    this.label = label;
-    this.border = border;
-    this.corner = corner;               // _rShape._cRad = corner
-    this.setBounds(undefined, 0, 0, 0); // calc (Text + border) -> rectShape -> this
-    this.rectShape.paint(color);        // set initial color, Graphics
-    this.addChild(this.rectShape, this.label);
-  }
-
-  /** TextInRect.paint(color) paints new color for the backing RectShape. */
-  paint(color = this.rectShape.colorn, force = false ) {
-    this.rectShape.rscgf;
-    return this.rectShape.paint(color, force);
+  constructor(label: Text, color?: string, border = .3, corner = 0, cgf?: CGF) {
+    super(label, color, border, corner, cgf);  // ISA new Container()
   }
 
   // override here if you don't like (label.bounds + border)
   calcBounds(): XYWH {
-    const tb = this.label.getBounds(), db = this.label.getMeasuredLineHeight() * this._border;
-    const b = { x: tb.x - db, y: tb.y - db, w: tb.width + 2 * db, h: tb.height + 2 * db };
+    const { x, y, width: w, height: h } = this.disp.getBounds();
+    const db = this.border; // scaled by lineHeight
+    const b = { x: x - db, y: y - db, w: w + 2 * db, h: h + 2 * db };
     return b;
-  }
-
-  setCacheID() {
-    this.rectShape.setCacheID.call(this); //invoke from a PaintableShape
-  }
-
-  // Bounds = (label:Text + border) -> rectShape._rect [& cRad] -> this._bounds
-  // Copied from/to PaintableShape.setBounds()
-  override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
-    if (x === undefined) {
-      const { x, y, w, h } = this.calcBounds(), cached = this.cacheID;
-      this.rectShape.setRectRad({ x, y, w, h });
-      this.rectShape.setBounds(x, y, w, h); // setBounds to _rect
-      this.uncache();
-      super.setBounds(x, y, w, h);
-      if (cached) this.cache(x, y, w, h); // recache if previously cached
-    } else {
-      super.setBounds(x as any as number, y, width, height);
-    }
   }
 }
 
@@ -463,31 +512,66 @@ export class UtilButton extends TextInRect {
 
   /**
    * Create Container with CenterText above a RectShape.
-   * @param color of background RectShape.
+   *
+   * on(rollover|rollout, this.rollover(mouseIn))
+   *
+   * initially visible & mouseEnabled, but deactivated.
    * @param text label
+   * @param color [C.WHITE] of background RectShape.
    * @param fontSize [TP.hexRad/2]
    * @param textColor [C.black]
    * @param border [.3]
-   * @param cgf [trcsf]
+   * @param cgf [tscgf] CGF for the RectShape
    */
-  constructor(color: string, text: string, public fontSize = TP.hexRad / 2, public textColor = C.black, border = .3, cgf?: CGF) {
+  constructor(text: string, color?: string, public fontSize = TP.hexRad / 2, public textColor = C.black, border = .3, cgf?: CGF) {
     const label = new CenterText(text, fontSize, textColor);
-    super(color, label, border, 0, cgf)
+    super(label, color, border, 0, cgf)
+    this.on('rollover', () => this._active && this.rollover(true), this);
+    this.on('rollout', () => this._active && this.rollover(false), this);
+  }
+  /** When activated, this.rollover(mouseIn) is invoked when mouse enter/exits this button. */
+  rollover(mouseIn: boolean) {}
+  /** If defined, paint(hlColor) & position over this button when activated. */
+  highlight: PaintableShape;
+  /** indicates if this button is currently activated. */
+  _active = false;
+  /** When activated: display highlight, visible, mouseEnabled, enable rollover(mouseIn).
+   *
+   * @param hlColor [C.WHITE] highlight?.paint(hlColor)
+   * @returns
+   */
+  activate(hlColor = C.WHITE) {
+    const hl = this.highlight;
+    if (hl) {
+      hl.paint(hlColor);
+      hl.x = this.x; // a common hightlight will move between buttons
+      hl.y = this.y;
+      hl.visible = true;
+    }
+    this.mouseEnabled = this._active = true;
+    this.stage?.update();
+    return this;
+  }
+  /** deactivate this button, not visible, not mouseEnabled. */
+  deactivate() {
+    this.highlight && (this.highlight.visible = false);
+    this.mouseEnabled = this._active = false;
+    this.stage?.update();
   }
 
   /**
    * Repaint the stage with button visible or not.
    *
-   * Allow Chrome to finish stage.update before proceeding with afterUpdate().
+   * Allow Chrome to finish stage.update before proceeding with after().
    *
    * Other code can watch this.blocked; then call updateWait(false) to reset.
-   * @param after callback on('drawend') when stage.update is done [none]
-   * @param scope thisArg for after [this UtilButton]
-   * @param hide [false] true to hide and disable this UtilButton
+   * @param after [() => {}] callback on('drawend') when stage.update is done [none]
+   * @param scope [this] thisArg for after [this UtilButton]
+   * @param hide [false] true to deactivate this UtilButton
    * @deprecated use easeljs-lib.afterUpdate(cont, after, scope) directly
    */
   updateWait(after?: () => void, scope: any = this, hide = false) {
-    this.visible = this.mouseEnabled = !hide
+    if (hide) this.deactivate()
     // using @thegraid/easeljs-module@^1.1.8: on(once=true) will now 'just work'
     // using @thegraid/common-lib@^1.3.12: afterUpdate will always update
     afterUpdate(this, after, scope)
