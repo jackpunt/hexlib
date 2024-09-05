@@ -87,8 +87,8 @@ export class PlayerPanel extends NamedContainer {
     const label = `${query}\n${msg}`;
     const bgColor = 'rgba(240,240,240,.6)';
     const tir = conf.textInRect = new TextInRect(new CenterText(label), bgColor);
-    const button1 = conf.buttonYes = new UtilButton(a1, c1, fSize*1);
-    const button2 = conf.buttonCan = new UtilButton(a2, c2, fSize*1);
+    const button1 = conf.buttonYes = new UtilButton(a1, c1, { fontSize: fSize });
+    const button2 = conf.buttonCan = new UtilButton(a2, c2, { fontSize: fSize });
     tir.addChild(button1, button2);
     const { y: y, height: th } = tir.getBounds();
     const { height: bh } = button1.getBounds()

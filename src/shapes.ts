@@ -280,18 +280,18 @@ export class RectShape extends PaintableShape {
   /**
    * Paint a rectangle (possibly with rounded corners) with fillc and stroke.
    * @param rect \{ x=0, y=0, w=hexRad, h=hexRad, r=0 } origin, extent and corner radius of Rectangle
-   * @param fillc [C.white] color to fill the rectangle, '' for no fill
+   * @param fillc [C.white] color to paint the rectangle, '' for no fill
    * @param strokec [C.black] stroke color, '' for no stroke
    * @param g0 [new Graphics()] Graphics to clone and extend during paint()
    */
   constructor(
     { x = 0, y = 0, w = TP.hexRad, h = TP.hexRad, r = 0 }: {x?: number, y?: number, w?: number, h?: number, r?: number },
-    public fillc = C.white,
+    fillc = C.white,
     public strokec = C.black,
     g0?: Graphics,
   ) {
     super((fillc) => this.rscgf(fillc), fillc, g0);
-    this._cgf = this.rscgf;
+    this._cgf = this.rscgf;     // replace ()=>{} with direct function (now that we can say 'this')
     this._cRad = r;
     this._rect = { x, y, w, h };
     this.setBounds(x, y, w, h);
@@ -410,7 +410,7 @@ export class RectWithDisp extends Container implements Paintable {
     this.border = border;
     this.corner = corner;               // _rShape._cRad = corner
     this.setBounds(undefined, 0, 0, 0); // calc (disp + border) -> rectShape -> this
-    this.rectShape.paint(color);        // set initial color, Graphics
+    this.paint(color);                  // set initial color, Graphics
     this.addChild(this.rectShape, this.disp);
   }
 
@@ -498,10 +498,18 @@ export class TextInRect extends RectWithDisp implements Paintable {
   }
 }
 
+export type UtilButtonOptions = {
+  fontSize?: number,
+  textColor?: string,
+  border?: number,
+  corner?: number,
+  rollover?: (mouseIn: boolean) => void,
+  active?: boolean,
+  visible?: boolean,
+}
 // From ankh, 'done' button to move to next phase or action.
 /** Construct a CenterText for a TextInRect. */
 export class UtilButton extends TextInRect {
-
   /**
    * Create Container with CenterText above a RectShape.
    *
@@ -509,50 +517,52 @@ export class UtilButton extends TextInRect {
    *
    * initially visible & mouseEnabled, but deactivated.
    * @param label if not instanceof Text: new CenterText(label, fontSize, textColor)
-   * @param color [C.WHITE] of background RectShape.
-   * @param fontSize [TP.hexRad/2] or text.getMeasuredLineHeight()
-   * @param textColor [C.black] or text.color
-   * @param border [.3]
+   * @param color [undefined = C.WHITE] of the background
+   * @param options
+   * * border: [undefined = .3] for background, fraction of fontSize
+   * * corner: [undefined = 0] corner radius of background
+   * * fontSize: [TP.hexRad/2] if Text not supplied
+   * * textColor: [C.BLACK] if Text not supplied
+   * * visible: [false] initial visibility
+   * * active: [false] supply true|false to activate(active, visible) including stage?.update()
    * @param cgf [tscgf] CGF for the RectShape
    */
-  constructor(label: string | Text, color?: string, public fontSize = TP.hexRad / 2, public textColor = C.black, border = .3, cgf?: CGF) {
+  constructor(label: string | Text, color?: string, options: UtilButtonOptions = {}, cgf?: CGF) {
+    const { fontSize, textColor, border, corner, rollover } =
+      { fontSize: TP.hexRad / 2, textColor: C.BLACK, ...options }
     const text = (label instanceof Text) ? label : new CenterText(label, fontSize, textColor);
-    super(text, color, border, 0, cgf)
-    if (label instanceof Text) {
-      this.fontSize = label.getMeasuredLineHeight()
-      this.textColor = label.color;
-    }
+    super(text, color, border, corner, cgf)
+    this.rollover = rollover ?? (() => {});
+
     this.on('rollover', () => this._active && this.rollover(true), this);
     this.on('rollout', () => this._active && this.rollover(false), this);
-  }
-  /** When activated, this.rollover(mouseIn) is invoked when mouse enter/exits this button. */
-  rollover(mouseIn: boolean) {}
-  /** If defined, paint(hlColor) & position over this button when activated. */
-  highlight: PaintableShape;
-  /** indicates if this button is currently activated. */
-  _active = false;
-  /** When activated: display highlight, visible, mouseEnabled, enable rollover(mouseIn).
-   *
-   * @param hlColor [C.WHITE] highlight?.paint(hlColor)
-   * @returns
-   */
-  activate(hlColor = C.WHITE) {
-    const hl = this.highlight;
-    if (hl) {
-      hl.paint(hlColor);
-      hl.x = this.x; // a common hightlight will move between buttons
-      hl.y = this.y;
-      hl.visible = true;
+    this.mouseEnabled = this.mouseChildren = this._active = false;
+    if (options.active !== undefined) {
+      this.activate(options.active, !!options.visible); // this.stage?.update()
+    } else {
+      this.visible = !!options.visible;
     }
-    this.mouseEnabled = this._active = true;
+  }
+  get fontSize() { return this.label.getMeasuredLineHeight() }
+  /** When activated, this.rollover(mouseIn) is invoked when mouse enter/exits this button. */
+  rollover: (mouseIn: boolean) => void;
+  _active = false;
+  /** indicates if this button is currently activated. */
+  get isActive() { return this._active; }
+  /**
+   * Activate (or deactivate) this UtilButton.
+   *
+   * When activated: visible, mouseEnabled, enable rollover(mouseIn).
+   *
+   * @param active [true] false to deactivate
+   * @param visible [active] true or false to set this.visible
+   * @returns this
+   */
+  activate(active = true, visible = active) {
+    this.mouseEnabled = this._active = active;
+    this.visible = visible;
     this.stage?.update();
     return this;
-  }
-  /** deactivate this button, not visible, not mouseEnabled. */
-  deactivate() {
-    this.highlight && (this.highlight.visible = false);
-    this.mouseEnabled = this._active = false;
-    this.stage?.update();
   }
 
   /**
@@ -567,7 +577,7 @@ export class UtilButton extends TextInRect {
    * @deprecated use easeljs-lib.afterUpdate(cont, after, scope) directly
    */
   updateWait(after?: () => void, scope: any = this, hide = false) {
-    if (hide) this.deactivate()
+    if (hide) this.activate(false)
     // using @thegraid/easeljs-module@^1.1.8: on(once=true) will now 'just work'
     // using @thegraid/common-lib@^1.3.12: afterUpdate will always update
     afterUpdate(this, after, scope)
