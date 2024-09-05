@@ -87,8 +87,8 @@ export class PlayerPanel extends NamedContainer {
     const label = `${query}\n${msg}`;
     const bgColor = 'rgba(240,240,240,.6)';
     const tir = conf.textInRect = new TextInRect(new CenterText(label), bgColor);
-    const button1 = conf.buttonYes = new UtilButton(a1, c1, { fontSize: fSize });
-    const button2 = conf.buttonCan = new UtilButton(a2, c2, { fontSize: fSize });
+    const button1 = conf.buttonYes = new UtilButton(a1, c1, { fontSize: fSize, active: true });
+    const button2 = conf.buttonCan = new UtilButton(a2, c2, { fontSize: fSize, active: true });
     tir.addChild(button1, button2);
     const { y: y, height: th } = tir.getBounds();
     const { height: bh } = button1.getBounds()
@@ -123,8 +123,10 @@ export class PlayerPanel extends NamedContainer {
 
   /** popup the confirmContainer, take yes() or cancel() action */
   areYouSure(msg: string, yes: () => void, cancel?: () => void, afterPopup: () => void = () => {}) {
-    const { panel, table } = this.objects, doneVis = table.doneButton.visible;
-    table.doneButton.mouseEnabled = table.doneButton.visible = false;
+    const { panel, table } = this.objects;
+    // save state of doneButton, then disable it:
+    const doneVis = table.doneButton.visible;
+    table.doneButton.visible = false;
     const conf = this.confirmContainer as ConfirmCont;
     const { textInRect: tir, buttonYes, buttonCan} = conf;
 
@@ -132,7 +134,8 @@ export class PlayerPanel extends NamedContainer {
       conf.visible = false;
       buttonYes.removeAllEventListeners();
       buttonCan.removeAllEventListeners();
-      table.doneButton.mouseEnabled = table.doneButton.visible = doneVis;
+      // restore state of doneButton:
+      table.doneButton.visible = doneVis;
       afterUpdate(conf, func, this);
     }
     buttonCan.visible = !!cancel;
@@ -140,9 +143,9 @@ export class PlayerPanel extends NamedContainer {
     const query = !!cancel ? 'Are your sure?' : 'Click to Confirm';
     const label = `${query}\n${msg}`;
     const { x, y, width: w, height: h } = tir.rectShape.getBounds(); // as extended above
-    tir.label_text = label;             // calcBounds: shrink to text+border
-    // const { x, y } = tir.rectShape.getBounds();
-    tir.rectShape.setRectRad({x, y, w, h})
+    tir.label_text = label;  // calcBounds: shrink to text+border
+    // reset to original-extended rectShape:
+    tir.rectShape.setRectRad({ x, y, w, h })
     tir.rectShape.setBounds(undefined, 0, 0, 0)
     tir.setBounds(x, y, w, h)
     tir.rectShape.paint(undefined, true)

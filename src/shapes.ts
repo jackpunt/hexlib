@@ -397,9 +397,11 @@ export class RectWithDisp extends Container implements Paintable {
 
   /**
    * Create Container a RectShape behind the given DisplayOBject.
+   *
+   * The RectShape extends around (disp.getBounds() ?? { 0, 0, 10, 10 })
    * @param disp a DisplayObject
    * @param color [WHITE] of background RectShape.
-   * @param border [5] extend RectShape around Text
+   * @param border [5] extend RectShape around disp
    * @param corner [0] corner radius
    * @param cgf [tscgf] CGF for the RectShape
    */
@@ -425,9 +427,12 @@ export class RectWithDisp extends Container implements Paintable {
     this.rectShape.setCacheID.call(this); //invoke from a PaintableShape
   }
 
-  // override here if you don't like (label.bounds + border)
+  /** Extend around (disp.getBound() ?? {0, 0, 10, 10})
+   *
+   * override if (disp.bounds +/- border) is not what you want.
+   */
   calcBounds(): XYWH {
-    const { x, y, width: w, height: h } = this.disp.getBounds();
+    const { x, y, width: w, height: h } = this.disp.getBounds() ?? { x: 0, y: 0, width: 10, height: 10 };
     const db = this.border, { x: dx, y: dy } = this.disp;
     const b = { x: dx + x - db, y: dy + y - db, w: w + 2 * db, h: h + 2 * db };
     return b;
@@ -528,7 +533,7 @@ export class UtilButton extends TextInRect {
    * @param cgf [tscgf] CGF for the RectShape
    */
   constructor(label: string | Text, color?: string, options: UtilButtonOptions = {}, cgf?: CGF) {
-    const { fontSize, textColor, border, corner, rollover } =
+    const { fontSize, textColor, border, corner, rollover, active, visible } =
       { fontSize: TP.hexRad / 2, textColor: C.BLACK, ...options }
     const text = (label instanceof Text) ? label : new CenterText(label, fontSize, textColor);
     super(text, color, border, corner, cgf)
@@ -537,8 +542,8 @@ export class UtilButton extends TextInRect {
     this.on('rollover', () => this._active && this.rollover(true), this);
     this.on('rollout', () => this._active && this.rollover(false), this);
     this.mouseEnabled = this.mouseChildren = this._active = false;
-    if (options.active !== undefined) {
-      this.activate(options.active, !!options.visible); // this.stage?.update()
+    if (active !== undefined) {
+      this.activate(active, visible); // this.stage?.update()
     } else {
       this.visible = !!options.visible;
     }
