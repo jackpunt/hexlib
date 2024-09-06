@@ -500,11 +500,11 @@ export class MapCont extends Container {
   }
 
   /** initial, default, readonly Container names, fieldNames */
-  static cNames = ['resaCont', 'hexCont', 'tileCont', 'markCont', 'counterCont'] as const;
+  static cNames = ['backCont', 'hexCont', 'tileCont', 'markCont', 'counterCont'] as const;
   /** actual cNames being used for this MapCont, set in addContainers() */
   private _cNames: string[] = MapCont.cNames.concat();
   get cNames() { return this._cNames; }
-  resaCont: Container    // playerPanels
+  backCont: Container    // playerPanels
   hexCont: Container     // hex shapes on bottom stats: addChild(dsText), parent.rotation
   // infCont: Container  // infMark below tileCont; Hex2.showInf
   tileCont: Container    // Tiles & Meeples on Hex2/HexMap.
@@ -662,7 +662,12 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return mark;
   }
 
-  /** create/attach Graphical components for HexMap */
+  /**
+   * create/attach Graphical components for HexMap
+   * @param hexC constructor for graphical Hex
+   * @param cNames names for Containers to be added & aligned with map; MapCont.cNames.concat() as string[]
+   * @returns this
+   */
   addToMapCont(hexC?: Constructor<T>, cNames?: readonly string[]): this {
     if (hexC) this.hexC = hexC;
     this.mapCont.addContainers(cNames);

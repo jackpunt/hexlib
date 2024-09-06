@@ -1,15 +1,26 @@
 import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
 import { CenterText } from "@thegraid/easeljs-lib";
-import { Container, MouseEvent, Rectangle, Text } from "@thegraid/easeljs-module";
+import { Container, DisplayObject, MouseEvent, Rectangle, Text } from "@thegraid/easeljs-module";
 import type { GamePlay } from "./game-play";
 import { Hex1, IHex2 } from "./hex";
 import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
 import { C1, HexShape, Paintable, PaintableShape, TileShape } from "./shapes";
 import type { DragContext, Dragable, Table } from "./table";
-import { PlayerColor, TP } from "./table-params";
+import { TP } from "./table-params";
 import { TileSource } from "./tile-source";
 
+export function rightClickable(dobj: DisplayObject, onRightClick: (evt: MouseEvent) => void) {
+  const ifRightClick = (evt: MouseEvent) => {
+    const nevt = evt.nativeEvent;
+    if (nevt.button === 2) {
+      onRightClick(evt);
+      nevt.preventDefault();           // evt is non-cancelable, but stop the native event...
+      nevt.stopImmediatePropagation(); // TODO: prevent Dragger.clickToDrag() when button !== 0
+    }
+  };
+  dobj.on(S.click, ifRightClick as any, dobj, false, {}, true); // TS fails with overload
+}
 
 /** Someday refactor: all the cardboard bits (Tiles, Meeples & Coins) */
 class Tile0 extends Container {
@@ -31,8 +42,8 @@ class Tile0 extends Container {
    * @param size [TP.hexRad] bitmap.scale = size / max(img.width, img.height)
    * @return new Bitmap() containing the named image (no image if name was not loaded)
    */
-  addImageBitmap(name: string, at = this.numChildren - 1, size = TP.hexRad) {
-    const bm = AliasLoader.loader.getBitmap(name);
+  addImageBitmap(name: string, at = this.numChildren - 1, size?: number) {
+    const bm = AliasLoader.loader.getBitmap(name, size);
     bm.y -= Tile.textSize / 2;
     this.addChildAt(bm, at);
     return bm;      // bm.image undefined if image not loaded!
@@ -200,27 +211,15 @@ export class Tile extends Tile0 implements Dragable {
     this.updateCache()
   }
 
-  /** Install onRightClick(evt) handler.
-   * @example
-   * when (button === 2) {
-   *   this.onRightClick(evt)
-   *   evt.nativeEvent.preventDefault()
-   *   evt.nativeEvent.stopImmediatePropagation()
-   * }
+  /**
+   * Install onRightClick(evt) handler on this Tile.
+   * @param onRightClick [(evt)=this.onRightClick(evt)]
    */
   rightClickable(onRightClick = (evt: MouseEvent) => this.onRightClick(evt)) {
-    const ifRightClick = (evt: MouseEvent) => {
-      const nevt = evt.nativeEvent;
-      if (nevt.button === 2) {
-        onRightClick(evt);
-        nevt.preventDefault();           // evt is non-cancelable, but stop the native event...
-        nevt.stopImmediatePropagation(); // TODO: prevent Dragger.clickToDrag() when button !== 0
-      }
-    };
-    this.on(S.click, ifRightClick as any, this, false, {}, true); // TS fails with overload
+    rightClickable(this, onRightClick);
   }
 
-  /** rightClick handler for this Tile. */
+  /** default rightClick handler for this Tile. */
   onRightClick(evt: MouseEvent) {
     console.log(stime(this, `.rightclick: ${this}`), this);
   }

@@ -38,7 +38,7 @@ export class PlayerPanel extends NamedContainer {
     public dir = -1
   ) {
     super(player.Aname);              // for debugger
-    table.hexMap.mapCont.resaCont.addChild(this);
+    table.hexMap.mapCont.backCont.addChild(this);
     table.setToRowCol(this, row, col);
     this.setOutline();
     this.makeConfirmation();
