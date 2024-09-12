@@ -1,13 +1,13 @@
 import { Shape } from "@thegraid/easeljs-module";
 import type { NamedObject } from "./game-play";
-import type { Hex1, IHex2 } from "./hex";
+import type { Hex1 } from "./hex";
 import type { Player } from "./player";
 import { C1, Paintable, PaintableShape } from "./shapes";
-import type { DragContext, Table } from "./table";
+import type { DragContext } from "./table";
 import { TP } from "./table-params";
 import { Tile } from "./tile";
 
-class MeepleShape extends PaintableShape {
+export class MeepleShape extends PaintableShape {
   static fillColor = 'rgba(225,225,225,.7)';
   static backColor = 'rgba(210,210,120,.5)'; // transparent light green
 
@@ -15,17 +15,17 @@ class MeepleShape extends PaintableShape {
     super((color) => this.mscgf(color));
     this.y = TP.meepleY0;
     this.setMeepleBounds();
-    this.backSide = this.makeOverlay(this.y);
+    this.backSide = this.makeOverlay();
   }
   setMeepleBounds(r = this.radius) {
     this.setBounds(-r, -r, 2 * r, 2 * r);
   }
 
   backSide: Shape;  // visible when Meeple is 'faceDown' after a move.
-  makeOverlay(y0: number) {
-    const { x, width: w } = this.getBounds();
+  makeOverlay(y0 = this.y) {
+    const { x, width: r2 } = this.getBounds(); // x at left edge
     const over = new Shape();
-    over.graphics.f(MeepleShape.backColor).dc(x + w / 2, y0, w / 2);
+    over.graphics.f(MeepleShape.backColor).dc(x + r2 / 2, y0, r2 / 2);
     over.visible = false;
     over.name = (over as NamedObject).Aname = 'backSide';
     return over;
@@ -49,7 +49,6 @@ export class Meeple extends Tile {
    * Meeple - Leader, Police, Criminal
    * @param Aname
    * @param player (undefined for Chooser)
-   * @param civicTile Tile where this Meeple spawns
    */
   constructor(
     Aname: string,
@@ -73,6 +72,7 @@ export class Meeple extends Tile {
     if (hex !== undefined) hex.meep = this;
   }
 
+  /** Meeple.radius == TP.meepleRad; same for all instances */
   override get radius() { return TP.meepleRad } // 31.578 vs 60*.4 = 24
   override textVis(v: boolean) { super.textVis(true); }
   override makeShape(): Paintable { return new MeepleShape(this.player as Player, this.radius); }
@@ -114,11 +114,6 @@ export class Meeple extends Tile {
     this.faceUp(!(hex?.isOnMap && fromHex?.isOnMap && hex !== this.startHex));
   }
 
-  override cantBeMovedBy(player: Player, ctx: DragContext) {
-    const reason1 = super.cantBeMovedBy(player, ctx);
-    if (reason1 || reason1 === false) return reason1;
-    return undefined;
-  }
   /**
    * For Meeples that are constrained to move along a line from current hex.
    * @param toHex

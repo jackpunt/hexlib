@@ -25,12 +25,18 @@ export function rightClickable(dobj: DisplayObject, onRightClick: (evt: MouseEve
 /** Someday refactor: all the cardboard bits (Tiles, Meeples & Coins) */
 class Tile0 extends Container {
   static gamePlay: GamePlay;
-  // constructor() { super(); }
+  constructor() {
+    super();
+    this.baseShape = this.makeShape();
+  }
 
   public gamePlay = Tile.gamePlay;
   public player?: Player;
   get pColor() { return this.player?.color }
   get recycleVerb(): string { return 'demolished'; }
+
+  get radius() { return TP.hexRad };
+  baseShape: Paintable;
 
   /**
    * this.addChildAt(new Bitmap(loader.getImage(name)), at);
@@ -48,9 +54,6 @@ class Tile0 extends Container {
     this.addChildAt(bm, at);
     return bm;      // bm.image undefined if image not loaded!
   }
-
-  get radius() { return TP.hexRad };
-  baseShape: Paintable = this.makeShape();
 
   /** Default is TileShape; a HexShape with translucent disk.
    * add more graphics with paint(colorn)

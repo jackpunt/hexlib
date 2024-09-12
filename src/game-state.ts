@@ -9,7 +9,7 @@ export interface Phase {
   start(...args: any[]): void; // what to do in this phase
   done?: (...args: any[]) => void;          // for async; when done clicked: proceed
   undo?: () => void;
-  nextPhase?: string,  // for BastetDeploy
+  nextPhase?: string,  // for phase as a subroutine...
 }
 
 export class GameState {
@@ -75,7 +75,7 @@ export class GameState {
   /** proceed to phase(this.donePhase)(...args) if state.done() is not defined */
   donePhase = 'EndAction';
   /**
-   * Invoked when 'Done' button clicked. [or whenever phase is 'done' by other means]
+   * Invoked when 'Done' button clicked. [or whenever gamePlay.phaseDone() is invoked]
    *
    * Call this.state.done(...args);
    *
@@ -116,7 +116,7 @@ export class GameState {
       nextPhase: 'ChooseAction',
       start: () => {
         const nextPhase = this.state.nextPhase = 'EndTurn';
-        this.phase(nextPhase);     // directl -> nextPhase
+        this.phase(nextPhase);     // direct -> nextPhase
       },
       done: () => {
         this.phase(this.state.nextPhase ?? 'Start'); // TS want defined...

@@ -111,8 +111,8 @@ export class TP {
   static trapNotDropTarget: boolean = true; // warn & alert when D&D to non-DropTarget
 
   static hexRad = 60;
-  static meepleRad = 45;
-  static meepleY0 = 15;
+  static meepleRad = TP.hexRad * .75;
+  static meepleY0 = TP.hexRad * .25;
 
   // for AI control:
   static maxPlys = 3;

@@ -393,7 +393,7 @@ export class GamePlay extends GamePlay0 {
    * Current Player takes action.
    *
    * after setNextPlayer: enable Player (GUI or Planner) to respond
-   * with playerMove() [table.moveStoneToHex()]
+   * with playerMove() [table.moveTileToHex()]
    *
    * Note: 1st move: player = otherPlayer(curPlayer)
    * @param auto this.runRedo || undefined -> player.useRobo

@@ -123,7 +123,7 @@ export class Player {
     // let ihexPromise = this.planner.makeMove(sc, iHistory, incb)
     // ihexPromise.then((ihex: IHex) => {
     //   this.plannerRunning = false
-    //   this.table.moveStoneToHex(ihex, sc)
+    //   this.table.moveTileToHex(ihex, sc)
     // })
   }
 }
