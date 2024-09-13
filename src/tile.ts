@@ -1,7 +1,7 @@
 import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
-import { CenterText } from "@thegraid/easeljs-lib";
-import { Container, DisplayObject, MouseEvent, Rectangle, Text } from "@thegraid/easeljs-module";
-import type { GamePlay } from "./game-play";
+import { CenterText, NamedContainer } from "@thegraid/easeljs-lib";
+import { DisplayObject, MouseEvent, Rectangle, Text } from "@thegraid/easeljs-module";
+import { type GamePlay } from "./game-play";
 import { Hex1, IHex2 } from "./hex";
 import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
@@ -23,10 +23,12 @@ export function rightClickable(dobj: DisplayObject, onRightClick: (evt: MouseEve
 }
 
 /** Someday refactor: all the cardboard bits (Tiles, Meeples & Coins) */
-class Tile0 extends Container {
+class Tile0 extends NamedContainer {
+  /** Easy access to single/current GamePlay. */
   static gamePlay: GamePlay;
-  constructor() {
-    super();
+
+  constructor(Aname: string) {
+    super(Aname);
     this.baseShape = this.makeShape();
   }
 
@@ -128,11 +130,11 @@ export class Tile extends Tile0 implements Dragable {
   // Tile
   constructor(
     /** typically: className-serial; may be supplied as 'name' or undefined */
-    public readonly Aname?: string,
+    Aname: string,
     /** the owning Player. */
     player?: Player,
   ) {
-    super()
+    super(Aname)
     Tile.allTiles.push(this);
     const cName = Aname?.split('-')[0] ?? className(this); // className is subject to uglification!
     this.name = cName;  // used for saveState!

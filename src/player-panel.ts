@@ -1,6 +1,5 @@
-import { afterUpdate, CenterText, S, stime } from "@thegraid/easeljs-lib";
+import { afterUpdate, CenterText, NamedContainer, S, stime } from "@thegraid/easeljs-lib";
 import { Graphics, MouseEvent } from "@thegraid/easeljs-module";
-import { NamedContainer } from "./game-play";
 import { Player } from "./player";
 import { RectShape, TextInRect, UtilButton } from "./shapes";
 import { Table } from "./table";

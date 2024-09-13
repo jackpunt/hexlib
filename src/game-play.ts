@@ -1,6 +1,6 @@
-import { Constructor, json } from "@thegraid/common-lib";
-import { KeyBinder, S, Undo, blinkAndThen, stime } from "@thegraid/easeljs-lib";
-import { Container, Event } from "@thegraid/easeljs-module";
+import { json } from "@thegraid/common-lib";
+import { KeyBinder, NamedObject, S, Undo, blinkAndThen, stime } from "@thegraid/easeljs-lib";
+import { Event } from "@thegraid/easeljs-module";
 import type { GameSetup, Scenario } from "./game-setup";
 import { GameState } from "./game-state";
 import { Hex, Hex1, HexMap, IdHex } from "./hex";
@@ -11,16 +11,6 @@ import { SetupElt } from "./scenario-parser";
 import { Table } from "./table";
 import { PlayerColor, TP } from "./table-params";
 import { Tile } from "./tile";
-
-export type NamedObject = { name?: string, Aname?: string };
-export class NamedContainer extends Container implements NamedObject {
-  Aname: string;
-  constructor(name: string, cx = 0, cy = 0) {
-    super();
-    this.Aname = this.name = name;
-    this.x = cx; this.y = cy;
-  }
-}
 
 /**
  * Event indicating a Tile has been placed on a Hex.

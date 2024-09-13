@@ -1,5 +1,5 @@
+import type { NamedObject } from "@thegraid/easeljs-lib";
 import { Shape } from "@thegraid/easeljs-module";
-import type { NamedObject } from "./game-play";
 import type { Hex1 } from "./hex";
 import type { Player } from "./player";
 import { C1, Paintable, PaintableShape } from "./shapes";

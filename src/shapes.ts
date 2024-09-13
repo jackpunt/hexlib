@@ -1,8 +1,8 @@
-import { C, F, XYWH, className } from "@thegraid/common-lib";
-import { afterUpdate, CenterText } from "@thegraid/easeljs-lib";
-import { Container, DisplayObject, Graphics, Rectangle, Shape, Text } from "@thegraid/easeljs-module";
+import { C, className, XYWH } from "@thegraid/common-lib";
+import { afterUpdate, CenterText, NamedContainer } from "@thegraid/easeljs-lib";
+import { DisplayObject, Graphics, Rectangle, Shape, Text } from "@thegraid/easeljs-module";
 import type { IHex2 } from "./hex";
-import { H, HexDir } from "./hex-intfs";
+import { H } from "./hex-intfs";
 import { TP } from "./table-params";
 
 export class C1 {
@@ -373,7 +373,7 @@ export class LegalMark extends Shape { // TODO: maybe someday CircleShape?
 }
 
 /** Container with a colored RectShape behind the given DisplayObject. */
-export class RectWithDisp extends Container implements Paintable {
+export class RectWithDisp extends NamedContainer implements Paintable {
   /** draws a RectShape around disp, with border, no strokec */
   rectShape: RectShape = new RectShape({ x: 0, y: 0, w: 8, h: 8, r: 0 }, C.WHITE, '');
   /** DisplayObject displayed above a RectShape of color  */
@@ -406,7 +406,7 @@ export class RectWithDisp extends Container implements Paintable {
    * @param cgf [tscgf] CGF for the RectShape
    */
   constructor(disp: DisplayObject, color = C.WHITE, border = 5, corner = 0, cgf?: CGF) {
-    super();                             // ISA new Container()
+    super('rectWithDisp');               // ISA new Container()
     if (cgf) this.rectShape._cgf = cgf;  // HasA RectShape & DisplayObject
     this.disp = disp;
     this.border = border;

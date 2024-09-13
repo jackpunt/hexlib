@@ -1,7 +1,6 @@
 import { XY, XYWH } from '@thegraid/common-lib';
-import { C, CenterText, Constructor, F, RC } from "@thegraid/easeljs-lib";
+import { C, CenterText, Constructor, F, NamedContainer, RC } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
-import { NamedContainer } from "./game-play";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
 import type { Meeple } from "./meeple";
 import { HexShape, LegalMark } from "./shapes";
@@ -491,7 +490,7 @@ export class HexMark extends HexShape {
   }
 }
 
-type ContName = 'hexCont' | 'markCont';
+export type MapContName = 'hexCont' | 'markCont';
 /** MapCont is an empty Container until .addContainers(cNames) */
 export class MapCont extends Container {
   constructor() {
@@ -519,9 +518,15 @@ export class MapCont extends Container {
     this.removeAllChildren(); // TODO: remove all the field references also
     this.cNames.forEach(cname => {
       const cont = new NamedContainer(cname);
-      this[cname as ContName] = cont;
+      this[cname as MapContName] = cont;
       this.addChild(cont);
     })
+  }
+  isContName(cname: string): cname is MapContName {
+    return this.cNames.includes(cname)
+  }
+  getCont(cname: MapContName) {
+    return this[cname]; // Assert: this._cNames.includes(cname)
   }
 
   /**
@@ -537,7 +542,7 @@ export class MapCont extends Container {
     const { x, y, width, height } = bounds;
     const x0 = x + width / 2, y0 = y + height / 2;
     this.cNames.forEach(cname => {
-      const cont = this[cname as ContName];
+      const cont = this[cname as MapContName];
       cont.x = -x0; cont.y = -y0
     })
   }

@@ -1,6 +1,6 @@
-import { S, stime } from "@thegraid/common-lib";
+import { stime } from "@thegraid/common-lib";
+import type { NamedObject } from "@thegraid/easeljs-lib";
 import { Bitmap } from "@thegraid/easeljs-module";
-import { NamedObject } from "./game-play";
 import { TP } from "./table-params";
 
 /** Simple async Image loader [from ImageReveal.loadImage()]

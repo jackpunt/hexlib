@@ -1,7 +1,7 @@
-import { afterUpdate, AT, C, CenterText, Constructor, Dragger, DragInfo, DropdownStyle, F, KeyBinder, ParamGUI, ParamItem, S, ScaleableContainer, stime, XY } from "@thegraid/easeljs-lib";
+import { afterUpdate, AT, C, CenterText, Constructor, Dragger, DragInfo, DropdownStyle, F, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, S, ScaleableContainer, stime, XY } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
-import { NamedContainer, NamedObject, TileEvent, type GamePlay } from "./game-play";
+import { TileEvent, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
 import type { GameState } from "./game-state";
 import { Hex, HexM, HexMap, IdHex, IHex2, RecycleHex } from "./hex";
@@ -432,20 +432,19 @@ export class Table {
    */
   makeGUIs(scale = TP.hexRad / 60, cx = -200, cy = 250, dy = 20) {
     const scaleCont = this.scaleCont;
-    let lmax = 0, ymax = 0;
-    const align = (gui: ParamGUI) => {
+    let wmax = 0, ymax = 0;
+    const guiWYmax = (gui: ParamGUI) => {
       ymax += (gui.ymax + dy);
-      lmax = Math.max(lmax, (gui.children[0] as RectShape).getBounds().width)
+      wmax = Math.max(wmax, (gui.children[0] as RectShape).getBounds().width)
+      return gui;
     }
     const guis = [this.makeNetworkGUI, this.makeParamGUI, this.makeParamGUI2].map(mgf => {
-      const gui = this.gpanel(mgf, cx, cy + ymax, scale)
-      align(gui)
-      return gui;
+      return guiWYmax(this.gpanel(mgf, cx, cy + ymax, scale))
     })
+    guis.forEach(gui => gui.x -= wmax)
     scaleCont.addChild(...guis.reverse()); // lower y values ABOVE to dropdown is not obscured
-    guis.forEach(gui => gui.x -= lmax)
     // TODO: dropdown to use given 'top' container!
-    guis[0].stage.update();
+    scaleCont.stage.update();
   }
 
   get panelHeight() { return (2 * TP.nHexes - 1) / 3 - .2; }
