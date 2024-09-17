@@ -103,7 +103,7 @@ export class PaintableShape extends Shape implements Paintable {
   override setBounds(x: number | undefined | null, y: number, width: number, height: number): void {
     if (x === undefined) {
       const cached = this.cacheID; // undefined | number >= 1
-      this.uncache();              // setBounds(null, 0, 0, 0);   // not nec'sary/useful
+      this.uncache();              // setBoundsNull();   // not nec'sary/useful
       const { x, y, w, h } = this.calcBounds()
       super.setBounds(x, y, w, h);
       if (cached) this.cache(x, y, w, h); // recache if previously cached

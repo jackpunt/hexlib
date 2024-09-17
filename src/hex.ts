@@ -1,5 +1,5 @@
-import { XY, XYWH } from '@thegraid/common-lib';
-import { C, CenterText, Constructor, F, NamedContainer, RC } from "@thegraid/easeljs-lib";
+import { C, Constructor, F, RC, XY, XYWH } from '@thegraid/common-lib';
+import { CenterText, NamedContainer } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
 import type { Meeple } from "./meeple";

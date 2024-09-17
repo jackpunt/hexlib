@@ -1,4 +1,4 @@
-import { stime } from '@thegraid/easeljs-lib';
+import { stime } from '@thegraid/common-lib';
 import { Container, Text } from '@thegraid/easeljs-module';
 import { F } from '@thegraid/common-lib';
 

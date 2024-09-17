@@ -81,7 +81,7 @@ class Tile0 extends NamedContainer {
    */
   setCache(b?: Rectangle, uncached = false ) {
     const rad = this.radius;
-    this.setBounds(null as any as number, 0, 0, 0); // remove old bounds
+    this.setBoundsNull(); // remove old bounds
     if (this.cacheID) {
       this.uncache();             // remove bounds from old cache
     }

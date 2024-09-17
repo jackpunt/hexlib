@@ -1,5 +1,5 @@
-import { Constructor } from "@thegraid/common-lib";
-import { DropdownChoice, DropdownItem, blinkAndThen, makeStage, stime } from "@thegraid/easeljs-lib";
+import { Constructor, stime } from "@thegraid/common-lib";
+import { DropdownChoice, DropdownItem, blinkAndThen, makeStage } from "@thegraid/easeljs-lib";
 import { Container, Stage } from "@thegraid/easeljs-module";
 import { parse as JSON5_parse } from 'json5';
 import { GamePlay } from "./game-play";

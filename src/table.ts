@@ -1,4 +1,5 @@
-import { afterUpdate, AT, C, CenterText, Constructor, Dragger, DragInfo, DropdownStyle, F, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, S, ScaleableContainer, stime, XY } from "@thegraid/easeljs-lib";
+import { AT, C, Constructor, F, S, stime, XY } from "@thegraid/common-lib";
+import { afterUpdate, CenterText, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, ScaleableContainer } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
 import { TileEvent, type GamePlay } from "./game-play";
@@ -261,7 +262,7 @@ export class Table {
     console.log(stime('GamePlay', `.reCacheTiles: TP.cacheTiles=`), TP.cacheTiles, this.scaleCont.scaleX);
     Tile.allTiles.forEach(tile => {
       const rad = tile.radius
-      tile.setBounds(null as any as number, 0, 0, 0)
+      tile.setBoundsNull();
       if (tile.cacheID) {
         tile.uncache();
         const { x, y, width, height } = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
@@ -934,8 +935,7 @@ export class Table {
     KeyBinder.keyBinder.setKey('t', () => this.toggleText());
 
     // of dubious utility...
-    const getOop = () => { this.stage.getObjectsUnderPoint(500, 100, 1) }
-    KeyBinder.keyBinder.setKey("p", { func: () => getOop(), thisArg: this });
+    KeyBinder.keyBinder.setKey("p", () => this.stage.getObjectsUnderPoint(500, 100, 1));
 
   }
 
@@ -977,9 +977,9 @@ export class Table {
       views = [this.viewA, this.viewZ];
     }
     views.forEach(view => {
-      KeyBinder.keyBinder.setKey(view.isk, { func: () => invokeView(view) });
+      KeyBinder.keyBinder.setKey(view.isk, () => invokeView(view));
       if (view.ssk)
-        KeyBinder.keyBinder.setKey(view.ssk, { func: () => saveView(view) });
+        KeyBinder.keyBinder.setKey(view.ssk, () => saveView(view));
     })
     if (views?.[0]) KeyBinder.keyBinder.dispatchChar(views[0].isk)
 

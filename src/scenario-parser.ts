@@ -78,12 +78,10 @@ export class ScenarioParser {
         map.update();
       });
     });
-    KeyBinder.keyBinder.setKey('x', {
-      func: () => {
-        const cells = map.filterEachHex(hex => hex.isLegal);
-        const list = cells.map(hex => `${hex.rcs},`);
-        console.log(''.concat(...list));
-      }
+    KeyBinder.keyBinder.setKey('x', () => {
+      const cells = map.filterEachHex(hex => hex.isLegal);
+      const list = cells.map(hex => `${hex.rcs},`);
+      console.log(''.concat(...list));
     });
   }
 }
