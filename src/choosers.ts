@@ -24,14 +24,24 @@ export class NC extends DropdownChoice {
 /** Chooser with an EditBox
  *
  * Bind M-v to pasteClipboard()
+ *
+ *
  */
 export class EBC extends Chooser {
   editBox: EditBox;
-  constructor(items: ChoiceItem[], item_w: number, item_h: number, style: ChoiceStyle & TextStyle = {}) {
+  /**
+   *
+   * @param items
+   * @param item_w width of EditBox
+   * @param item_h height of EditBox
+   * @param style [textColor: BLACK] fillColor -> EditBox.bgColor
+   */
+  constructor(items: ChoiceItem[], item_w: number, item_h: number, style: ChoiceStyle = {}) {
     super(items, item_w, item_h, style)
-    style && (style.bgColor = style.fillColor)
-    style && (style.textColor = C.BLACK)
-    this.editBox = new EditBox({ x: 0, y: 0, w: item_w, h: item_h * 1 }, style)
+    const ebStyle = { textColor: C.BLACK, bgColor: style.fillColor, ...style }
+    const eb = this.editBox = new EditBox('', ebStyle); // Note: eb.border = 0
+    eb.rectShape.setRectRad({ x: 0, y: 0, w: item_w, h: item_h })
+    eb.setBounds(undefined, 0, 0, 0)
     this.addChild(this.editBox)
     const scope = this.editBox.keyScope
     KeyBinder.keyBinder.setKey('M-v', () => this.pasteClipboard, scope)

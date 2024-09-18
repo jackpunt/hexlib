@@ -1,9 +1,9 @@
 import { RC } from "@thegraid/common-lib";
+// export { XYWH } from "@thegraid/common-lib";
 
 /** Hexagonal canonical directions */
 export enum Dir { C, NE, E, SE, SW, W, NW }
 export type HexDir = 'NE' | 'EN' | 'E' | 'ES' | 'SE' | 'S' | 'SW' | 'WS' | 'W' | 'WN' | 'NW' | 'N';
-export type XYWH = { x: number, y: number, w: number, h: number } // like a Rectangle
 export type EwDir = Exclude<HexDir, 'N' | 'S' | 'EN' | 'WN' | 'ES' | 'WS'>;
 export type NsDir = Exclude<HexDir, 'E' | 'W' | 'NE' | 'NW' | 'SE' | 'SW'>;
 

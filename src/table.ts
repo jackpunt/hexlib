@@ -1,15 +1,14 @@
-import { AT, C, Constructor, F, S, stime, XY } from "@thegraid/common-lib";
-import { afterUpdate, CenterText, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, ScaleableContainer } from "@thegraid/easeljs-lib";
+import { AT, C, Constructor, F, S, stime, XY, XYWH } from "@thegraid/common-lib";
+import { afterUpdate, CenterText, CircleShape, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
 import { TileEvent, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
 import type { GameState } from "./game-state";
 import { Hex, HexM, HexMap, IdHex, IHex2, RecycleHex } from "./hex";
-import { XYWH } from "./hex-intfs";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
-import { CircleShape, HexShape, RectShape, UtilButton } from "./shapes";
+import { HexShape, UtilButton } from "./shapes";
 import { playerColor0, playerColor1, TP } from "./table-params";
 import { Tile } from "./tile";
 import { TileSource } from "./tile-source";
@@ -650,7 +649,7 @@ export class Table {
    * @returns actionCont
    */
   addDoneButton(cont: Container = this.scaleCont, cx = 0, cy = 0, align = 'center') {
-    const doneButton = this.doneButton = new UtilButton('Done', 'lightgreen');
+    const doneButton = this.doneButton = new UtilButton('Done', { bgColor: 'lightgreen' });
     doneButton.disp.textAlign = align; // Note: baseline is still 'middle'
     const { x, y, width: w, height: h } = doneButton.getBounds()
     doneButton.name = 'doneButton';

@@ -1,8 +1,8 @@
 import { S, stime } from "@thegraid/common-lib";
-import { afterUpdate, CenterText, NamedContainer } from "@thegraid/easeljs-lib";
+import { afterUpdate, CenterText, NamedContainer, RectShape, TextInRect } from "@thegraid/easeljs-lib";
 import { Graphics, MouseEvent } from "@thegraid/easeljs-module";
 import { Player } from "./player";
-import { RectShape, TextInRect, UtilButton } from "./shapes";
+import { UtilButton } from "./shapes";
 import { Table } from "./table";
 import { TP } from "./table-params";
 
@@ -58,14 +58,15 @@ export class PlayerPanel extends NamedContainer {
 
   /**
    *
-   * @param t1 stroke width (2)
+   * @param ss1 stroke width (2 or 4)
    * @param bgc fill color
    */
-  setOutline(t1 = 2, bgc = this.bg0) {
+  setOutline(ss1 = 2, bgc = this.bg0) {
     const { wide, high, } = this.metrics;
-    const t2 = t1 * 2 + 1, g = new Graphics().ss(t2);
+    const ss2 = ss1 * 2 + 1, g = new Graphics().ss(ss2); // our own ss calcs
     this.removeChild(this.outline);
-    this.outline = new RectShape({ x: -t1, y: -t1, w: wide + t2, h: high + t2 }, bgc, this.player.color, g);
+    // this.outline = new RectShape({ x: -ss1, y: -ss1, w: wide + ss2, h: high + ss2, s: 0 }, bgc, this.player.color, g);
+    this.outline = new RectShape({ x: 0, y: 0, w: wide, h: high, s: ss1 }, bgc, this.player.color);
     this.addChildAt(this.outline, 0);
   }
   bg0 = 'rgba(255,255,255,.3)';
@@ -86,9 +87,9 @@ export class PlayerPanel extends NamedContainer {
     const msg = 'Some explanation';
     const label = `${query}\n${msg}`;
     const bgColor = 'rgba(240,240,240,.6)';
-    const tir = conf.textInRect = new TextInRect(new CenterText(label), bgColor);
-    const button1 = conf.buttonYes = new UtilButton(a1, c1, { fontSize: fSize, active: true });
-    const button2 = conf.buttonCan = new UtilButton(a2, c2, { fontSize: fSize, active: true });
+    const tir = conf.textInRect = new TextInRect(new CenterText(label), { bgColor });
+    const button1 = conf.buttonYes = new UtilButton(a1, { bgColor: c1, fontSize: fSize, active: true });
+    const button2 = conf.buttonCan = new UtilButton(a2, { bgColor: c2, fontSize: fSize, active: true });
     tir.addChild(button1, button2);
     const { y: y, height: th } = tir.getBounds();
     const { height: bh } = button1.getBounds()

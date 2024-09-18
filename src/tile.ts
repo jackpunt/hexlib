@@ -1,11 +1,11 @@
 import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
-import { CenterText, NamedContainer } from "@thegraid/easeljs-lib";
+import { CenterText, NamedContainer, Paintable, PaintableShape } from "@thegraid/easeljs-lib";
 import { DisplayObject, MouseEvent, Rectangle, Text } from "@thegraid/easeljs-module";
 import { type GamePlay } from "./game-play";
 import { Hex1, IHex2 } from "./hex";
 import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
-import { C1, HexShape, Paintable, PaintableShape, TileShape } from "./shapes";
+import { C1, HexShape, TileShape } from "./shapes";
 import type { DragContext, Dragable, Table } from "./table";
 import { TP } from "./table-params";
 import { TileSource } from "./tile-source";

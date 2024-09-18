@@ -1,8 +1,8 @@
-import type { NamedObject } from "@thegraid/easeljs-lib";
+import { PaintableShape, type NamedObject, type Paintable } from "@thegraid/easeljs-lib";
 import { Shape } from "@thegraid/easeljs-module";
 import type { Hex1 } from "./hex";
 import type { Player } from "./player";
-import { C1, Paintable, PaintableShape } from "./shapes";
+import { C1 } from "./shapes";
 import type { DragContext } from "./table";
 import { TP } from "./table-params";
 import { Tile } from "./tile";
