@@ -1,6 +1,6 @@
 import { AT, C, Constructor, F, S, stime, XY, XYWH } from "@thegraid/common-lib";
-import { afterUpdate, CenterText, CircleShape, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer } from "@thegraid/easeljs-lib";
-import { Container, DisplayObject, EventDispatcher, Graphics, MouseEvent, Shape, Stage, Text } from "@thegraid/easeljs-module";
+import { afterUpdate, CenterText, CircleShape, Dispatcher, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer } from "@thegraid/easeljs-lib";
+import { Container, DisplayObject, Graphics, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
 import { TileEvent, type GamePlay } from "./game-play";
 import { Scenario } from "./game-setup";
@@ -26,8 +26,6 @@ class TablePlanner {
 interface StageTable extends Stage {
   table: Table;
 }
-
-type MinDragInfo = { first?: boolean, event?: MouseEvent };
 
 export interface DragContext {
   targetHex: IHex2;     // last isLegalTarget() or fromHex; with showMark()
@@ -94,16 +92,10 @@ class TextLog extends NamedContainer {
  *
  * uses a HexMap\<IHex2\>
  */
-export class Table {
+export class Table extends Dispatcher {
   static table: Table
   static stageTable(obj: DisplayObject) {
     return (obj.stage as StageTable).table
-  }
-
-  disp: EventDispatcher = this as any as EventDispatcher;
-  namedOn(Aname: string, type: string, listener: (eventObj: any) => boolean, scope?: Object, once?: boolean, data?: any, useCapture = false) {
-    const list2 = this.disp.on(type, listener, scope, once, data, useCapture) as NamedObject;
-    list2.Aname = Aname;
   }
 
   gamePlay: GamePlay;
@@ -134,8 +126,7 @@ export class Table {
 
   readonly overlayCont = new NamedContainer('overlay');
   constructor(stage: Stage) {
-    // super();
-    EventDispatcher.initialize(this);
+    super();
     // backpointer so Containers can find their Table (& curMark)
     Table.table = (stage as StageTable).table = this;
     this.stage = stage
@@ -900,7 +891,7 @@ export class Table {
   moveTileToHex(tile: Tile, ihex: IdHex) {
     const hex = this.hexMap.getHex(ihex);
     this.hexMap.showMark(hex);
-    this.disp.dispatchEvent(new TileEvent(S.add, tile, hex)) // -> GamePlay.playerMoveEvent(hex, sc)
+    this.dispatchEvent(new TileEvent(S.add, tile, hex)) // -> GamePlay.playerMoveEvent(hex, sc)
   }
 
   /** default scaling-up value */

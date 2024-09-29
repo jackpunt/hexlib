@@ -66,6 +66,7 @@ export class Player {
 
   /** make Civics, Leaders & Police; also makeLeaderHex() */
   makePlayerBits() {
+    this.coinCounter = new NumCounter('coins', 0)
   }
 
   /** Player has no MapTile on map */
