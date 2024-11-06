@@ -1,6 +1,6 @@
 {
   "name": "@thegraid/hexlib",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "library for hex-based games",
   "main": "dist/index.js",
   "type": "module",

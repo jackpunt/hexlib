@@ -1,7 +1,7 @@
 import { Constructor, stime } from "@thegraid/common-lib";
 import { DropdownChoice, DropdownItem, blinkAndThen, makeStage } from "@thegraid/easeljs-lib";
 import { Container, Stage } from "@thegraid/easeljs-module";
-import { parse as JSON5_parse } from 'json5';
+import JSON5 from 'json5';
 import { GamePlay } from "./game-play";
 import { Hex, Hex2, HexMap, MapCont } from "./hex";
 import { AliasLoader } from "./image-loader";
@@ -156,7 +156,7 @@ export class GameSetup {
     const parseStateText = document.getElementById('parseStateText') as HTMLInputElement;
     parseStateButton.onclick = () => {
       const stateText = parseStateText.value;
-      const state = JSON5_parse(stateText) as Scenario;
+      const state = JSON5.parse(stateText) as Scenario;
       state.Aname = state.Aname ?? `parseStateText`;
       blinkAndThen(this.gamePlay.hexMap.mapCont.markCont, () => this.restart(state))
     }
@@ -187,7 +187,7 @@ export class GameSetup {
    * @returns stateInfo suitable for restart(stateInfo)
    */
   extractStateFromString(fileText: string, fileName: string, turn: number) {
-    const logArray = JSON5_parse(fileText) as Scenario[];
+    const logArray = JSON5.parse(fileText) as Scenario[];
     const [, ...stateArray] = logArray;
     const state = stateArray.find(state => state.turn === turn) ?? {}  as Scenario;
     state.Aname = `${fileName}@${turn}`;
