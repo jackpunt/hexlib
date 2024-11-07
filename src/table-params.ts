@@ -30,6 +30,10 @@ export function playerColorRecordF<T>(f: (sc: PlayerColor) => T) {
 declare type Params = Record<string, any>;
 
 export class TP {
+  /** number of hexes in a metaHex of order n; number of districts(n=TP.mHexes)
+   * @return an odd number: 1, 7, 19, 37, 61, 97, ... */
+  static ftHexes(n: number): number { return (n <= 1) ? n : 6 * (n-1) + TP.ftHexes(n - 1) }
+
   /** compose a URL of form wss://host.domain:port/path.
    *
    * @param scheme ['wss']

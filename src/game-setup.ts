@@ -124,8 +124,8 @@ export class GameSetup {
   restart(stateInfo: Scenario | HexAspect) {
     if (!this.restartable) return;  // ignore call from within makeGUI
     let netState = this.netState
-    // this.gamePlay.closeNetwork('restart')
-    // this.gamePlay.logWriter?.closeFile()
+    // this.gamePlay.closeNetwork('restart') // See: hexcity [aka: CityMap, BoomTown], CgClient
+    // this.gamePlay.logWriter?.closeFile()  // maybe put in NetClient, vs GamePlay
     this.gamePlay.forEachPlayer(p => p.endGame())
     Tile.allTiles.forEach(tile => tile.hex = undefined)
     let deContainer = (cont: Container) => {

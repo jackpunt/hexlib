@@ -599,10 +599,11 @@ export class Table extends Dispatcher {
     gui.makeParamSpec("Network", [" ", "new", "join", "no", "ref", "cnx"], { fontColor: "red" })
     gui.makeParamSpec("PlayerId", ["     ", 0, 1, 2, 3, "ref"], { chooser: PidChoice, fontColor: "red" })
     gui.makeParamSpec("networkGroup", [TP.networkGroup], { chooser: EBC, name: 'gid', fontColor: C.GREEN, style: { textColor: C.BLACK } }); TP.networkGroup
+    const netGroupChooser = gui.findLine('networkGroup').chooser as EBC;
 
     gui.spec("Network").onChange = (item: ParamItem) => {
       if (['new', 'join', 'ref'].includes(item.value)) {
-        const group = (gui.findLine('networkGroup').chooser as EBC).editBox.innerText
+        const group = netGroupChooser.editBox.innerText;
         // this.gamePlay.closeNetwork()
         // this.gamePlay.network(item.value, gui, group)
       }
@@ -610,7 +611,7 @@ export class Table extends Dispatcher {
     }
     (this.stage.canvas as HTMLCanvasElement)?.parentElement?.addEventListener('paste', (ev) => {
       const text = ev.clipboardData?.getData('Text');
-      ; (gui.findLine('networkGroup').chooser as EBC).setValue(text)
+      netGroupChooser.setValue(text);
     });
     this.showNetworkGroup()
     parent.addChild(gui)
