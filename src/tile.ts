@@ -102,8 +102,9 @@ export class Tile extends Tile0 implements Dragable {
   static textSize = 20 * TP.hexRad / 60;
   // static source: any[] = [];
 
+  /** base method: SubClass.makeSource(...) { Tile.makeSource0(...)} */
   static makeSource0<T extends Tile, TS extends TileSource<T>>(
-    unitSource: new (type: Constructor<Tile>, p: Player, hex: IHex2) => TS,
+    unitSource: new (type: Constructor<T>, p: Player, hex: IHex2) => TS,
     // IF (per-player) static source: TileSource[] ELSE static source: TileSource
     type: Constructor<T> & { source: TileSource<T>[] | TileSource<T> },
     player: Player,
@@ -148,6 +149,7 @@ export class Tile extends Tile0 implements Dragable {
   }
 
   nameText: Text;
+  /** update nameText; replace(/-/g, '\n'); adjust y for nlines */
   setNameText(name: string) {
     this.nameText.text = name.replace(/-/g, '\n');
     const nlines = this.nameText.text.split('\n').length - 1;
@@ -203,6 +205,10 @@ export class Tile extends Tile0 implements Dragable {
     return bm;
   }
 
+  /** addChild(new CenterText(text, size)); y = y0; visible = vis.
+   *
+   * from Ankh: text = Aname.replace(/-/g, '\n'); [Andro-sphinx, Cat-Mum]
+   */
   addTextChild(y0 = this.radius / 2, text = this.Aname?.replace(/-/g, '\n'), size = Tile.textSize, vis = false) {
     const nameText = new CenterText(text, size);
     nameText.y = y0;         // Meeple overrides in constructor!

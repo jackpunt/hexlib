@@ -1,8 +1,7 @@
 import { S, stime } from "@thegraid/common-lib";
-import { afterUpdate, CenterText, NamedContainer, RectShape, TextInRect } from "@thegraid/easeljs-lib";
+import { afterUpdate, CenterText, NamedContainer, RectShape, TextInRect, UtilButton } from "@thegraid/easeljs-lib";
 import { Graphics, MouseEvent } from "@thegraid/easeljs-module";
 import { Player } from "./player";
-import { UtilButton } from "./shapes";
 import { Table } from "./table";
 import { TP } from "./table-params";
 
@@ -22,11 +21,11 @@ export class PlayerPanel extends NamedContainer {
    *
    * @param table
    * @param player
-   * @param high
-   * @param wide
-   * @param row
-   * @param col
-   * @param dir
+   * @param high hex-rows high
+   * @param wide hex-cols wide
+   * @param row  row at center
+   * @param col  col at center
+   * @param dir  1: Left->Right; -1: Right->Left
    */
   constructor(
     public table: Table,

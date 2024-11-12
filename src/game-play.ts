@@ -496,7 +496,7 @@ export class GamePlay extends GamePlay0 {
   /**
    * Update board/game-state to accont for player's move (tile->hex)
    *
-   * terminates this player's turn: closeUndo()
+   * if terminating this player's turn: closeUndo()
    * @param hex
    * @param tile
    * @returns

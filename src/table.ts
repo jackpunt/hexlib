@@ -1,5 +1,5 @@
 import { AT, C, Constructor, F, S, stime, XY, XYWH } from "@thegraid/common-lib";
-import { afterUpdate, CenterText, CircleShape, Dispatcher, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer } from "@thegraid/easeljs-lib";
+import { afterUpdate, CenterText, CircleShape, Dispatcher, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer, UtilButton } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Graphics, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
 import { TileEvent, type GamePlay } from "./game-play";
@@ -8,7 +8,7 @@ import type { GameState } from "./game-state";
 import { Hex, HexM, HexMap, IdHex, IHex2, RecycleHex } from "./hex";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
-import { HexShape, UtilButton } from "./shapes";
+import { HexShape } from "./shapes";
 import { playerColor0, playerColor1, TP } from "./table-params";
 import { Tile } from "./tile";
 import { TileSource } from "./tile-source";
@@ -164,7 +164,21 @@ export class Table extends Dispatcher {
     this.turnLog.log(line, 'table.logTurn', false); // in top two lines
   }
 
-  setupUndoButtons(xOffs: number, bSize: number, skipRad: number, bgr: XYWH, row = 8, col = -7) {
+  /**
+   * also: enableHexInspector(this.undoCont)
+   *
+   * @param bgr bgRect
+   * @param row placement of UndoCont [8]
+   * @param col placement of UndoCont [-7]
+   *
+   * @param undoButtons [false] build the undo/redo buttons:
+   * @param xOffs offset to Red & Green arrows [55]
+   * @param bSize size of Red & Green arrows [60]
+   * @param skipRad size of Skip button/square [45]
+   *
+     * @returns
+   */
+  setupUndoButtons(bgr: XYWH, row = 8, col = -7, undoButtons = false, xOffs = 55, bSize = 60, skipRad = 45) {
     const undoC = this.undoCont; // holds the undo buttons.
     this.setToRowCol(undoC, row, col);
     const progressBg = new Shape(), bgw = 200, bgym = 140, y0 = 0; // bgym = 240
@@ -173,7 +187,7 @@ export class Table extends Dispatcher {
     undoC.addChildAt(progressBg, 0)
     this.enableHexInspector()
     this.dragger.makeDragable(undoC)
-    if (true && xOffs > 0) return
+    if (!undoButtons) return
 
     this.skipShape.graphics.f("white").dp(0, 0, 40, 4, 0, skipRad)
     this.undoShape.graphics.f("red").dp(-xOffs, 0, bSize, 3, 0, 180);
@@ -361,7 +375,7 @@ export class Table extends Dispatcher {
     this.layoutTable2(); // supply args (mapCont?) if necessary;
     this.makePerPlayer();
 
-    this.setupUndoButtons(55, 60, 45, xywh) // & enableHexInspector()
+    this.setupUndoButtons(xywh) // & enableHexInspector()
 
     this.layoutTurnlog();
 
@@ -438,11 +452,13 @@ export class Table extends Dispatcher {
     scaleCont.stage.update();
   }
 
+  /** height allocated for PlayerPanel scaled in hex height [map.rows/3-.2] */
   get panelHeight() { return (2 * TP.nHexes - 1) / 3 - .2; }
-  get panelOffset() { return TP.nHexes + 2; }
+  /** width of PlayerPanel, scaled in hex width [4.5] */
+  get panelWidth() { return 4.5; }
 
   /**
-   * six panel locations [row, col, dir][].
+   * Center of each Panel location: [row, col, dir][].
    *
    * col==0 is on left edge of hexMap; The *center* hex is col == (nHexes-1)
    * @example
@@ -450,17 +466,18 @@ export class Table extends Dispatcher {
    * P1 --C-- P4
    * P2  ---  P5
    */
-  getPanelLocs() {
-    const r0 = this.hexMap.centerHex.row, dr = this.panelHeight + .2;
-    const cc = this.hexMap.centerHex.col, coff = this.panelOffset;
-    const c0 = cc - coff, c1 = cc + coff;
-    const locs = [
-      [r0 - dr, c0, +1], [r0, c0, +1], [r0 + dr, c0, +1],
-      [r0 - dr, c1, -1], [r0, c1, -1], [r0 + dr, c1, -1]];
+  getPanelLocs(): [row: number, col: number, dir: 1 | -1][] {
+    const rC = this.hexMap.centerHex.row, ph = this.panelHeight + .2;
+    const cc = this.hexMap.centerHex.col, coff = TP.nHexes + (this.panelWidth / 2);
+    // Left of map (dir: +1), Right of map (dir: -1)
+    const cL = cc - coff, cR = cc + coff;
+    const locs: [row: number, col: number, dir: 1 | -1][] = [
+      [rC - ph, cL, +1], [rC, cL, +1], [rC + ph, cL, +1],
+      [rC - ph, cR, -1], [rC, cR, -1], [rC + ph, cR, -1]];
     return locs;
   }
   /**
-   * Which PanelLocs to use for a given number of Players
+   * Which PanelLocs to use (in order) for a given number of Players
    * @param np number of Players
    * @returns array of indices into PanelLocs (one for each Player)
    */
@@ -475,23 +492,47 @@ export class Table extends Dispatcher {
    * @param panelLocs [getPanelLocs] potential panel locations
    * @return panelLocs[panelLocsForNp(nPlayers)][pIndex]
    */
-  panelLoc(pIndex: number, nPlayers = Math.min(TP.numPlayers, 6), panelLocs = this.getPanelLocs()) {
-    const seqn = this.panelLocsForNp(nPlayers);
-    const ndx = seqn[Math.min(pIndex, nPlayers - 1)];
+  panelLoc(pIndex: number, nPlayers = TP.numPlayers, panelLocs = this.getPanelLocs()) {
+    const np = Math.min(nPlayers, TP.maxPlayers, panelLocs.length);
+    const locs = this.panelLocsForNp(np);
+    const ndx = locs[Math.min(pIndex, np - 1)];
     return panelLocs[ndx];
   }
+
+  /**
+   *
+   * @param table
+   * @param player
+   * @param high panelHeight
+   * @param wide adjust to suit
+   * @param row from panelLoc
+   * @param col from panelLoc
+   * @param dir from panelLoc
+   * @returns new PlayerPanel(table, player, high, wide, row - high / 2, col - wide / 2, dir = -1)
+   */
+  makePlayerPanel(
+    table: Table,
+    player: Player,
+    high: number,
+    wide: number,
+    row: number,
+    col: number,
+    dir = -1) {
+      return new PlayerPanel(table, player, high, wide, row - high / 2, col - wide / 2, dir = -1)
+    }
 
   readonly allPlayerPanels: PlayerPanel[] = [];
   /** make player panels, placed at panelLoc... */
   makePerPlayer() {
     this.allPlayerPanels.length = 0; // TODO: maybe deconstruct
-    const high = this.panelHeight, wide = 4.5;
-    const np = Math.min(TP.numPlayers, 6), locs = this.getPanelLocs();
+    const high = this.panelHeight, wide = this.panelWidth;
+    const locs = this.getPanelLocs();
     this.gamePlay.forEachPlayer((player, pIndex) => {
-      const [row, col, dir] = this.panelLoc(pIndex, np, locs);
-      this.allPlayerPanels[pIndex] = player.panel = new PlayerPanel(this, player, high, wide, row - high / 2, col - wide / 2, dir);
+      const [row, col, dir] = this.panelLoc(pIndex, TP.numPlayers, locs);
+      const panel = this.makePlayerPanel(this, player, high, wide, row, col, dir);
+      this.allPlayerPanels[pIndex] = player.panel = panel;
       player.makePlayerBits();
-      this.setPlayerScore(player, 0);
+      this.setPlayerScore(player);
     });
   }
 
@@ -509,12 +550,14 @@ export class Table extends Dispatcher {
     }
   }
 
+  /** display source [and legalMark] on given hex [Ankh] */
   sourceOnHex(source: TileSource<Tile>, hex: IHex2) {
     if (source?.counter) source.counter.mouseEnabled = false;
     hex.legalMark.setOnHex(hex);
     hex.cont.visible = false;
   }
 
+  /** @deprecated use UtilButton (change cgf on RectShape) [legacy from Ankh] */
   makeCircleButton(color = C.WHITE, rad = TP.hexRad / 3, c?: string, fs = rad * 3 / 2) {
     const button = new Container(); button.name = 'circle';
     const shape = new CircleShape(color, rad, '');
@@ -528,6 +571,7 @@ export class Table extends Dispatcher {
     return button;
   }
 
+  /** @deprecated use UtilButton [from Ankh] */
   makeSquareButton(color = C.WHITE, xywh: XYWH, c?: string, fs = TP.hexRad / 2) {
     const button = new Container(); button.name = 'square';
     const shape = new RectShape(xywh, color, '');
@@ -540,6 +584,7 @@ export class Table extends Dispatcher {
     return button;
   }
 
+  /** @deprecated [legacy from hextowns] */
   makeRecycleHex(row = TP.nHexes + 3.2, col = 0, claz = RecycleHex) {
     const name = 'Recycle'
     const image = new Tile(name).addImageBitmap(name); // ignore Tile, get image.
@@ -599,11 +644,11 @@ export class Table extends Dispatcher {
     gui.makeParamSpec("Network", [" ", "new", "join", "no", "ref", "cnx"], { fontColor: "red" })
     gui.makeParamSpec("PlayerId", ["     ", 0, 1, 2, 3, "ref"], { chooser: PidChoice, fontColor: "red" })
     gui.makeParamSpec("networkGroup", [TP.networkGroup], { chooser: EBC, name: 'gid', fontColor: C.GREEN, style: { textColor: C.BLACK } }); TP.networkGroup
-    const netGroupChooser = gui.findLine('networkGroup').chooser as EBC;
 
     gui.spec("Network").onChange = (item: ParamItem) => {
       if (['new', 'join', 'ref'].includes(item.value)) {
-        const group = netGroupChooser.editBox.innerText;
+        const chooser = gui.findLine('networkGroup').chooser as EBC;
+        const group = chooser.editBox.innerText
         // this.gamePlay.closeNetwork()
         // this.gamePlay.network(item.value, gui, group)
       }
@@ -611,7 +656,8 @@ export class Table extends Dispatcher {
     }
     (this.stage.canvas as HTMLCanvasElement)?.parentElement?.addEventListener('paste', (ev) => {
       const text = ev.clipboardData?.getData('Text');
-      netGroupChooser.setValue(text);
+      const chooser = gui.findLine('networkGroup').chooser as EBC;
+      chooser.setValue(text);
     });
     this.showNetworkGroup()
     parent.addChild(gui)
@@ -647,7 +693,7 @@ export class Table extends Dispatcher {
     doneButton.name = 'doneButton';
     doneButton.x = cx - 0;     // XY is the top-right corner, align extends to left
     doneButton.y = cy - y;     // XY is the top-right corner, align extends to left
-    doneButton.on(S.click, this.doneClicked, this);
+    doneButton.on(S.click, (evt) => this.doneClicked(evt), this);
     cont.addChild(doneButton);
 
     // prefix advice: set text color to contrast with RectShape color
@@ -663,7 +709,7 @@ export class Table extends Dispatcher {
   }
 
   /** show player player score on table */
-  setPlayerScore(plyr: Player, score: number, rank?: number) {
+  setPlayerScore(plyr: Player, score = 0, rank?: number) {
   }
 
   /** update table when a new Game is started.

@@ -19,7 +19,7 @@ export class Player {
     public readonly gamePlay: GamePlay, // for headless, allow GamePlay0
   ) {
     Player.allPlayers[index] = this;
-    TP.numPlayers = Player.allPlayers.length;
+    TP.numPlayers = Player.allPlayers.length; // incrementing up to gamePlay.nPlayers
     this.color = Player.colorScheme[index];
     this.Aname = `P${index}:${this.color}`;
     console.log(stime(this, `.new:`), this.Aname);

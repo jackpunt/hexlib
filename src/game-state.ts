@@ -15,7 +15,7 @@ export interface Phase {
 export class GameState {
 
   constructor(public gamePlay: GamePlay, states?: Record<string,Phase>, purge: boolean | string[] = false) {
-    if (states) this.defineStates(states, purge);
+    this.defineStates(states, purge);
   }
   defineStates(states = this.states, purge: boolean | string[] = false) {
     if (purge) {
@@ -66,6 +66,7 @@ export class GameState {
    */
   doneButton(label?: string, color = this.curPlayer.color, afterPopup?: () => void) {
     const doneButton = this.table.doneButton;
+    if (!doneButton) return;
     doneButton.visible = !!label;
     doneButton.label_text = label;
     doneButton.paint(color, true);
@@ -102,6 +103,15 @@ export class GameState {
       },
       done: () => {
         this.phase('ChooseAction');
+      }
+    },
+    ChooseAction: {
+      start: () => {
+        this.doneButton(`Choice Done`); // ???
+
+      },
+      done: (ok?: boolean) => {
+        this.phase('EndTurn');
       }
     },
     Move: {

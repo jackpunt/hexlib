@@ -1,9 +1,9 @@
 import { C, Constructor, F, RC, XY, XYWH } from '@thegraid/common-lib';
 import { CenterText, NamedContainer } from "@thegraid/easeljs-lib";
-import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
+import { Container, DisplayObject, Point, Shape, Text } from "@thegraid/easeljs-module";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
 import type { Meeple } from "./meeple";
-import { HexShape, LegalMark } from "./shapes";
+import { HexShape } from "./shapes";
 import { TP } from "./table-params";
 import type { MapTile, Tile } from "./tile";
 
@@ -29,6 +29,22 @@ export class HexCont extends Container {
   }
 }
 function nf(n: number) { return `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`; }
+
+export class LegalMark extends Shape { // TODO: maybe someday Paintable.CircleShape?
+  hex2: IHex2;
+  /** position circular LegalMark over hex; hitArea, mouseEnabled */
+  setOnHex(hex: IHex2) {
+    this.hex2 = hex;
+    const parent = hex.mapCont.markCont;
+    this.graphics.f(C.legalGreen).dc(0, 0, hex.radius/2);
+    hex.cont.parent.localToLocal(hex.x, hex.y, parent, this);
+    this.hitArea = hex.hexShape; // legal mark is used for hexUnderObject, so need to cover whole hex.
+    this.mouseEnabled = true;
+    this.visible = false;
+    parent.addChild(this);
+    return this;
+  }
+}
 
 /**
  * Minimal Hex, with topological links to adjacent hex objects,
@@ -330,25 +346,45 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
     override get meep() { return super.meep; }
     override set meep(meep: Meeple | undefined) { this.setUnit(meep as Tile, true) }
 
-    constructorCode(map: HexM<IHex2>, row: number, col: number, name?: string) {
+    /**
+     * initCont(r,c); rcText; distText; legalMark; showText(true)
+     * @param map addChild(hex.cont) to map?.mapCont.hexCont (can force map to undefined)
+     * @param row compute y offset from xywh using radius & topo
+     * @param col compute x offset from xywh using radius & topo
+     * @param name [''] initial distText
+     */
+    constructorCode(map: HexM<IHex2>, row: number, col: number, name = '') {
       this.initCont(row, col);
       map?.mapCont.hexCont.addChild(this.cont);
       this.hexShape.name = this.Aname;
-      const nf = (n: number) => `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`;
-      const rc = `${nf(row)},${nf(col)}`, rcf = 26 * TP.hexRad / 60;
-      const rct = this.rcText = new CenterText(rc, F.fontSpec(rcf), 'white');
-      rct.y -= rcf / 2; // raise it up
-      this.cont.addChild(rct);
-
-      const dtf = 20 * TP.hexRad / 60;
-      this.distText = new CenterText(``, F.fontSpec(dtf));
-      this.distText.y += dtf;   // push it down
-      this.cont.addChild(this.distText);
+      this.setRcText(row, col);
+      this.setDistText(name);
       this.legalMark.setOnHex(this);
       this.showText(true); // & this.cache()
     }
 
-    /** set visibility of rcText & distText */
+    /** set rcText to identify 'row,col'
+     * @param rcf fontSize and (y -= rcf/2);
+     */
+    setRcText(row: number, col: number, rcf = 26 * TP.hexRad / 60) {
+      const nf = (n: number) => `${n !== undefined ? (n === Math.floor(n) ? n : n.toFixed(1)) : ''}`;
+      const rcs = `${nf(row)},${nf(col)}`;
+      const rct = this.rcText = new CenterText(rcs, F.fontSpec(rcf), 'white');
+      rct.y -= rcf / 2; // raise it up
+      this.cont.addChild(rct);
+    }
+    /**
+     * Place distText on this.cont
+     * @param name distText
+     * @param size fontSize & y-offset from center of hex
+     */
+    setDistText(name = '', size = 20 * TP.hexRad / 60) {
+      this.distText = new CenterText(name, F.fontSpec(size));
+      this.distText.y += size;   // push it down
+      this.cont.addChild(this.distText);
+    }
+
+    /** set visibility of rcText & distText; updateCache() */
     showText(vis = !this.rcText.visible) {
       this.rcText.visible = this.distText.visible = vis;
       this.cont.updateCache();
@@ -598,7 +634,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param hexC [Hex] HexConstructor\<Hex\> for each element
    * @param Aname ['mainMap'] a name for debugger
    */
-  constructor(radius: number = TP.hexRad, addToMapCont = false,
+  constructor(radius = TP.hexRad, addToMapCont = false,
     public hexC: Constructor<Hex> = Hex,
     public Aname: string = 'mainMap') //
   {

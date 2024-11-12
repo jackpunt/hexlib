@@ -195,9 +195,10 @@ export class GameSetup {
   }
 
   /** compute nPlayers from qParams['n'] */
-  getNPlayers(qParams = this.qParams, nDef = 2) {
+  getNPlayers(qParams = this.qParams, nDef = TP.numPlayers) {
     const n = qParams['n'];
-    return Math.min(TP.maxPlayers, n ? Number.parseInt(n) : nDef);
+    TP.numPlayers = Math.min(TP.maxPlayers, n ? Number.parseInt(n) : nDef);
+    return TP.numPlayers;
   }
 
   /**
