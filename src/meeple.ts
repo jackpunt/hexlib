@@ -1,8 +1,8 @@
+import { C } from "@thegraid/common-lib";
 import { PaintableShape, type NamedObject, type Paintable } from "@thegraid/easeljs-lib";
 import { Shape } from "@thegraid/easeljs-module";
 import type { Hex1 } from "./hex";
 import type { Player } from "./player";
-import { C1 } from "./shapes";
 import type { DragContext } from "./table";
 import { TP } from "./table-params";
 import { Tile } from "./tile";
@@ -32,7 +32,7 @@ export class MeepleShape extends PaintableShape {
   }
 
   /** stroke a ring of colorn, stroke-width = 2, r = radius-2; fill disk with (~WHITE,.7) */
-  mscgf(color = this.player?.color ?? C1.grey, ss = 2, rs = 0) {
+  mscgf(color = this.player?.color ?? C.grey, ss = 2, rs = 0) {
     const r = this.radius;
     const g = this.graphics.c().ss(ss).s(color).f(MeepleShape.fillColor).dc(0, 0, r - rs - ss/2);  // disk & ring
     return g;

@@ -1,15 +1,12 @@
 import { C } from "@thegraid/common-lib";
-import { afterUpdate, PaintableShape, TextInRect, type CGF, type TextInRectOptions, type TextStyle } from "@thegraid/easeljs-lib";
-import { Graphics, Shape, Text } from "@thegraid/easeljs-module";
-import type { IHex2 } from "./hex";
+import { PaintableShape } from "@thegraid/easeljs-lib";
+import { Graphics } from "@thegraid/easeljs-module";
 import { H } from "./hex-intfs";
 import { TP } from "./table-params";
 
 export class C1 {
-  static GREY = 'grey';
-  static grey = 'grey';
   static lightgrey2 = 'rgb(225,225,225)' // needs to contrast with WHITE influence lines
-  static lightgrey_8 = 'rgb(225,225,225,.8)' // needs to contrast with WHITE influence lines
+  static lightgrey_8 = 'rgba(225,225,225,.8)' // needs to contrast with WHITE influence lines
 }
 
 /**

@@ -508,7 +508,7 @@ export class Table extends Dispatcher {
    * @param row from panelLoc
    * @param col from panelLoc
    * @param dir from panelLoc
-   * @returns new PlayerPanel(table, player, high, wide, row - high / 2, col - wide / 2, dir = -1)
+   * @returns new PlayerPanel(table, player, high, wide, row - high / 2, col - wide / 2, dir)
    */
   makePlayerPanel(
     table: Table,
@@ -518,7 +518,7 @@ export class Table extends Dispatcher {
     row: number,
     col: number,
     dir = -1) {
-      return new PlayerPanel(table, player, high, wide, row - high / 2, col - wide / 2, dir = -1)
+      return new PlayerPanel(table, player, high, wide, row - high / 2, col - wide / 2, dir)
     }
 
   readonly allPlayerPanels: PlayerPanel[] = [];
@@ -924,7 +924,7 @@ export class Table extends Dispatcher {
    *
    * TablePlanner.logMove(); then dispatchEvent() --> gamePlay.doPlayerMove()
    *
-   * New: let Ship (Drag & Drop) do this.
+   * New: let Meeple (Drag & Drop) do this.
    */
   doTableMove(ihex: IdHex) {
   }

@@ -38,6 +38,7 @@ class Tile0 extends NamedContainer {
   get recycleVerb(): string { return 'demolished'; }
 
   get radius() { return TP.hexRad };
+  /** set in constructor, can override baseShape!: PaintableShape; */
   baseShape: Paintable;
 
   /**
@@ -68,7 +69,7 @@ class Tile0 extends NamedContainer {
   /** paint with PlayerColor; updateCache()
    * @param colorn [pColor ?? grey] color for this Tile
    */
-  paint(colorn = this.pColor ?? C1.grey) {
+  paint(colorn = this.pColor ?? C.grey) {
     this.baseShape.paint(colorn); // set or update baseShape.graphics
     this.updateCache();           // push graphics to bitmapCache
   }
@@ -126,7 +127,7 @@ export class Tile extends Tile0 implements Dragable {
     return source as TS;
   }
   /** When Tile is associated with a TileSource. */
-  source: TileSource<Tile>;
+  source?: TileSource<Tile>;
 
   // Tile
   constructor(
@@ -163,7 +164,7 @@ export class Tile extends Tile0 implements Dragable {
   // get fR() { return 0; }
 
   /** location at start-of-game & after-Recycle; Meeple & Civic; Policy: sendHome -> sendToBag */
-  homeHex!: Hex1;
+  homeHex?: Hex1;
   /** location at start-of-drag */
   fromHex: IHex2;
   /** override hook to deselect/stopDragging a Tile. */
@@ -182,6 +183,15 @@ export class Tile extends Tile0 implements Dragable {
   override updateCache(compositeOperation?: string): void {
     if (!this.cacheID) return;
     super.updateCache(compositeOperation)
+  }
+
+  /** re-cache Tile if children have changed size or visibility. */
+  reCache() {
+    this.uncache()
+    this.setBoundsNull(); // remove bounds
+    const b = this.getBounds();    // of shipShape & InfoBox (vis or !vis, new Info)
+    this.setBounds(b.x, b.y, b.width, b.height); // record for debugger
+    this.cache(b.x, b.y, b.width, b.height, TP.cacheTiles);
   }
 
   /** Tile is owned by Player: color it */

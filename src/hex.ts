@@ -63,6 +63,33 @@ export class Hex {
       throw err
     }
   }
+
+  /**
+   * Location/size of Hex@[row, col]
+   * @param radius [1] 'size' of hex; radius used in drawPolyStar(radius,,, H.dirRot[tiltDir])
+   * @param ewTopo [true] true -> suitable for ewTopo (has E & W [vertical] sides)
+   * @param row [0]
+   * @param col [0]
+   * @returns \{ x, y, w, h, dxdc, dydr } of cell at [row, col]
+   */
+static xywh(radius = TP.hexRad, ewTopo = TP.useEwTopo, row = 0, col = 0) {
+    if (ewTopo) { // tiltDir = 'NE'; tilt = 30-degrees; nsTOPO
+      const h = 2 * radius, w = radius * H.sqrt3;  // h height of hexagon (long-vertical axis)
+      const dxdc = w;
+      const dydr = 1.5 * radius;
+      const x = (col + Math.abs(Math.floor(row) % 2) / 2) * dxdc;
+      const y = (row) * dydr;   // dist between rows
+      return { x, y, w, h, dxdc, dydr }
+    } else { // tiltdir == 'N'; tile = 0-degrees; ewTOPO
+      const w = 2 * radius, h = radius * H.sqrt3 // radius * 1.732
+      const dxdc = 1.5 * radius;
+      const dydr = h;
+      const x = (col) * dxdc;
+      const y = (row + Math.abs(Math.floor(col) % 2) / 2) * dydr;
+      return { x, y, w, h, dxdc, dydr }
+    }
+  }
+
   static aname(row: number, col: number) {
     return (row >= 0) ? `Hex@[${row},${col}]` : col == -1 ? S_Skip : S_Resign
   }
@@ -81,21 +108,7 @@ export class Hex {
    * @returns \{ x, y, w, h, dxdc, dydr } of cell at [row, col]
    */
   xywh(radius = TP.hexRad, ewTopo = TP.useEwTopo, row = this.row, col = this.col) {
-    if (ewTopo) { // tiltDir = 'NE'; tilt = 30-degrees; nsTOPO
-      const h = 2 * radius, w = radius * H.sqrt3;  // h height of hexagon (long-vertical axis)
-      const dxdc = w;
-      const dydr = 1.5 * radius;
-      const x = (col + Math.abs(Math.floor(row) % 2) / 2) * dxdc;
-      const y = (row) * dydr;   // dist between rows
-      return { x, y, w, h, dxdc, dydr }
-    } else { // tiltdir == 'N'; tile = 0-degrees; ewTOPO
-      const w = 2 * radius, h = radius * H.sqrt3 // radius * 1.732
-      const dxdc = 1.5 * radius;
-      const dydr = h;
-      const x = (col) * dxdc;
-      const y = (row + Math.abs(Math.floor(col) % 2) / 2) * dydr;
-      return { x, y, w, h, dxdc, dydr }
-    }
+    return Hex.xywh(radius, ewTopo, row, col);
   }
   get xywh0() { return this.xywh(TP.hexRad); } // so can see xywh from debugger
 
@@ -318,11 +331,11 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
     distText: Text    // shown on this.cont
     rcText: Text      // shown on this.cont
 
-    setUnit(unit: Tile, meep = false) {
+    setUnit(unit: Tile, isMeep = false) {
       const cont: Container = this.mapCont.tileCont, x = this.x, y = this.y;
       let k = true;     // debug double tile
-      const this_unit = (meep ? this.meep : this.tile)
-      if (unit !== undefined && this_unit !== undefined && !(meep && this_unit.recycleVerb === 'demolished')) {
+      const this_unit = (isMeep ? this.meep : this.tile)
+      if (unit !== undefined && this_unit !== undefined && !(isMeep && this_unit.recycleVerb === 'demolished')) {
         if (this === this_unit.source?.hex && this === unit.source?.hex) {
           // Table.dragStart does moveTo(undefined); which triggers source.nextUnit()
           // so if we drop to the startHex, we have a collision.
@@ -331,7 +344,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
           this_unit.source.availUnit(this_unit as Tile); // Meeple extends Tile, but TS seems confused.
         } else if (k) debugger;
       }
-      meep ? (super.meep = unit as Meeple) : (super.tile = unit); // set _meep or _tile;
+      isMeep ? (super.meep = unit as Meeple) : (super.tile = unit); // set _meep or _tile;
       if (unit !== undefined) {
         unit.x = x; unit.y = y;
         cont.addChild(unit);      // meep will go under tile
@@ -414,7 +427,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       const hs = new shape(this.radius);
       this.cont.addChildAt(hs, 0);
       this.cont.hitArea = hs;
-      hs.paint('grey');
+      hs.paint(C.grey);
       return hs;
     }
 
@@ -718,8 +731,9 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
 
   /** ...stage?.update() */
   update() {
-    this.mapCont?.hexCont?.updateCache()  // when toggleText: hexInspector
-    this.mapCont?.stage?.update()
+    const hexCont = this.mapCont?.hexCont;
+    hexCont?.cacheID && hexCont.updateCache()  // when toggleText: hexInspector
+    hexCont?.stage?.update();
   }
 
   /** to build this HexMap: create Hex (or Hex2) and link it to neighbors. */
