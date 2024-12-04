@@ -5,7 +5,7 @@ import { type GamePlay } from "./game-play";
 import { Hex1, IHex2 } from "./hex";
 import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
-import { C1, HexShape, TileShape } from "./shapes";
+import { HexShape, TileShape } from "./shapes";
 import type { DragContext, Dragable, Table } from "./table";
 import { TP } from "./table-params";
 import { TileSource } from "./tile-source";
@@ -105,14 +105,14 @@ export class Tile extends Tile0 implements Dragable {
 
   /** base method: SubClass.makeSource(...) { Tile.makeSource0(...)} */
   static makeSource0<T extends Tile, TS extends TileSource<T>>(
-    unitSource: new (type: Constructor<T>, p: Player, hex: IHex2) => TS,
+    unitSource: new (type: Constructor<T>, hex: IHex2, p?: Player) => TS,
     // IF (per-player) static source: TileSource[] ELSE static source: TileSource
     type: Constructor<T> & { source: TileSource<T>[] | TileSource<T> },
-    player: Player,
     hex: IHex2,
+    player?: Player,
     n = 0,
   ) {
-    const source = new unitSource(type, player, hex);
+    const source = new unitSource(type, hex, player);
     if (player) {
       (type.source as TileSource<T>[])[player.index] = source;
     } else {

@@ -21,8 +21,8 @@ export class TileSource<T extends Tile> {
 
   constructor(
     public readonly type: Constructor<T>,
-    public readonly player: Player,
     public readonly hex: IHex2,
+    public readonly player?: Player,
     counter?: NumCounter,
   ) {
     this.Aname = `${type.name}Source`;
