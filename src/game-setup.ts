@@ -1,4 +1,4 @@
-import { Constructor, stime } from "@thegraid/common-lib";
+import { Constructor, Random, stime } from "@thegraid/common-lib";
 import { DropdownChoice, DropdownItem, blinkAndThen, makeStage } from "@thegraid/easeljs-lib";
 import { Container, Stage } from "@thegraid/easeljs-module";
 import JSON5 from 'json5';
@@ -61,9 +61,18 @@ export class GameSetup {
     this.loadImagesThenStartup(qParams);
   }
 
+  static random_seed = '';
+  get seed() { return GameSetup.random_seed; }
+  init_random(seed = `${Math.random()}`.slice(2)) {
+    GameSetup.random_seed = seed;
+    console.log(stime(this, `.init_random: rand=${seed}&`))
+    Random.random = Random.mulberry32(seed);
+  }
+
   /** one-time, invoked from new GameSetup(canvasId); typically from StageComponent.ngAfterViewInit2() */
   initialize(canvasId: string) {
     stime.fmt = 'MM-DD kk:mm:ss.SSSL';
+    this.init_random(this.qParams.rand);
     this.stage = makeStage(canvasId, false);
     this.stage.snapToPixel = TP.snapToPixel;
     this.setupToParseState();                 // restart when/if 'SetState' button is clicked
