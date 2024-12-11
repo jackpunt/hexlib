@@ -93,8 +93,15 @@ static xywh(radius = TP.hexRad, ewTopo = TP.useEwTopo, row = 0, col = 0) {
   static aname(row: number, col: number) {
     return (row >= 0) ? `Hex@[${row},${col}]` : col == -1 ? S_Skip : S_Resign
   }
-  constructor(map: HexM<Hex>, row: number, col: number, name = Hex.aname(row, col)) {
-    this.Aname = name
+  /**
+   *
+   * @param map Hex is element of given HexM @ [row, col]
+   * @param row
+   * @param col
+   * @param Aname
+   */
+  constructor(map: HexM<Hex>, row: number, col: number, Aname = Hex.aname(row, col)) {
+    this.Aname = Aname
     this.map = map
     this.row = row
     this.col = col
@@ -300,9 +307,9 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       // Alternative, we could pass the args [] directly, ie: super(args) !not spread!
       // new class constructor could parse/spread to get the bits they want,
       // then edit-in-place the args array to be compatible for this.constructorCode()
-      const [map, row, col, name] = args;
-      super(map, row, col, name);  // invoke the given Base constructor: LocalHex1
-      this.constructorCode(map, row, col, name);
+      const [map, row, col, Aname] = args;
+      super(map, row, col, Aname);  // invoke the given Base constructor: LocalHex1
+      this.constructorCode(map, row, col, Aname);
       return;         // breakpoint able
     }
 
@@ -364,14 +371,14 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
      * @param map addChild(hex.cont) to map?.mapCont.hexCont (can force map to undefined)
      * @param row compute y offset from xywh using radius & topo
      * @param col compute x offset from xywh using radius & topo
-     * @param name [''] initial distText
+     * @param dText [''] initial distText
      */
-    constructorCode(map: HexM<IHex2>, row: number, col: number, name = '') {
+    constructorCode(map: HexM<IHex2>, row: number, col: number, dText = '') {
       this.initCont(row, col);
       map?.mapCont.hexCont.addChild(this.cont);
       this.hexShape.name = this.Aname;
       this.setRcText(row, col);
-      this.setDistText(name);
+      this.setDistText(dText);
       this.legalMark.setOnHex(this);
       this.showText(true); // & this.cache()
     }
@@ -388,11 +395,11 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
     }
     /**
      * Place distText on this.cont
-     * @param name distText
+     * @param dText distText
      * @param size fontSize & y-offset from center of hex
      */
-    setDistText(name = '', size = 20 * TP.hexRad / 60) {
-      this.distText = new CenterText(name, F.fontSpec(size));
+    setDistText(dText = '', size = 20 * TP.hexRad / 60) {
+      this.distText = new CenterText(dText, F.fontSpec(size));
       this.distText.y += size;   // push it down
       this.cont.addChild(this.distText);
     }
@@ -613,7 +620,7 @@ export interface HexM<T extends Hex> {
   radius: number;
   centerHex: T;
   xywh: XYWH & { dxdc: number; dydr: number; }
-  hexC: Constructor<Hex>
+  hexC: Constructor<T>
   hexUnderObj(dragObj: DisplayObject, legalOnly?: boolean): T | undefined
   getHex(id: RC): T;
 }
@@ -648,12 +655,12 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param Aname ['mainMap'] a name for debugger
    */
   constructor(radius = TP.hexRad, addToMapCont = false,
-    public hexC: Constructor<Hex> = Hex,
+    public hexC: Constructor<T>,
     public Aname: string = 'mainMap') //
   {
     super(); // Array<Array<Hex>>()
     this.radius = radius;
-    if (addToMapCont) this.addToMapCont(this.hexC as Constructor<T>);
+    if (addToMapCont) this.addToMapCont(this.hexC);
   }
 
   /** may be obsolete when using IHex2 */
@@ -737,7 +744,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
 
   /** to build this HexMap: create Hex (or Hex2) and link it to neighbors. */
-  addHex(row: number, col: number, district: number | undefined, hexC = <Constructor<T>>this.hexC): T {
+  addHex(row: number, col: number, district: number | undefined, hexC = this.hexC): T {
     // If we have an on-screen Container, then use Hex2: (addToMapCont *before* makeAllDistricts)
     const hex = new hexC(this, row, col);
     hex.district = district // and set Hex2.districtText
@@ -872,6 +879,16 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     const hexc = this.mapCont.hexCont.getObjectUnderPoint(x, y, 1); // 0=all, 1=mouse-enabled (Hex, not Stone)
     if (hexc instanceof HexCont) return hexc.hex2 as any as T;
     return undefined;
+  }
+
+  /** set target.xy to metric [row, col] of this HexMap.hexCont; return the xywh coordinates
+   *
+   * see also: Table.setToRowCol(cont, row, col)
+   */
+  xyFromMap(target: DisplayObject, row = 0, col = 0) {
+    const xywh = Hex2.xywh(undefined, undefined, row, col)
+    const xy = this.mapCont.hexCont.localToLocal(xywh.x, xywh.y, target, xywh); // offset from hexCont to target
+    return xywh;
   }
 
   // not sure if these will be useful:

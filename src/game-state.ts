@@ -45,18 +45,21 @@ export class GameState {
   }
   startPhase = 'BeginTurn';
   startArgs = [];
-  /** Bootstrap the Scenario: set bastetPlayer and then this.phase(startPhase, ...startArgs). */
+  /** Bootstrap the Scenario: this.phase(startPhase, ...startArgs). */
   start() {
     this.phase(this.startPhase, ...this.startArgs);
   }
 
-  /** set state and start with given args. */
+  /** set state and state.start() with given args. */
   phase(phase: string, ...args: any[]) {
     console.log(stime(this, `.phase: ${this.state?.Aname ?? 'Initialize'} -> ${phase}`));
     const state = this.state = this.states[phase];
     if (!state) { alert(`no state named ${phase}`); debugger; }
     state.start(...args);
   }
+
+  /** true if currently in the named state */
+  isPhase(name: string) { return this.state === this.states[name]; }
 
   /**
    * Set label_text, visible, and paint(color).

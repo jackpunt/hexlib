@@ -99,7 +99,7 @@ class Tile0 extends NamedContainer {
  * Two subspecies: MapTile are 'stationary' on the HexMap, Meeple are 'mobile'.
  */
 export class Tile extends Tile0 implements Dragable {
-  static allTiles: Tile[] = [];
+  static readonly allTiles: Tile[] = [];
   static textSize = 20 * TP.hexRad / 60;
   // static source: any[] = [];
 
@@ -142,11 +142,12 @@ export class Tile extends Tile0 implements Dragable {
     this.name = cName;  // used for saveState!
     if (!Aname) this.Aname = `${cName}-${Tile.allTiles.length}`;
     const rad = this.radius;
-    if (TP.cacheTiles > 0) this.cache(-rad, -rad, 2 * rad, 2 * rad, TP.cacheTiles);
+    //if (TP.cacheTiles > 0) this.cache(-rad, -rad, 2 * rad, 2 * rad, TP.cacheTiles);
     this.addChild(this.baseShape);
     this.nameText = this.addTextChild(rad / 2);
     if (player !== undefined)
       this.setPlayerAndPaint(player);  // dubious: subclasses are not yet constructed!
+    this.reCache();// TP.cacheTiles ? use H.HexBounds()
   }
 
   nameText: Text;
@@ -185,14 +186,18 @@ export class Tile extends Tile0 implements Dragable {
     super.updateCache(compositeOperation)
   }
 
-  /** re-cache Tile if children have changed size or visibility. */
-  reCache() {
+  /** re-cache Tile if children have changed size or visibility.
+   *
+   * uncache(), setBoundsNull(), setBounds(getBounds), maybe cache(scale)
+   */
+  reCache(scale = TP.cacheTiles) {
     this.uncache()
     this.setBoundsNull(); // remove bounds
-    const b = this.getBounds();    // of shipShape & InfoBox (vis or !vis, new Info)
+    const b = this.getBounds();    // of tileShape & InfoBox (vis or !vis, new Info)
     this.setBounds(b.x, b.y, b.width, b.height); // record for debugger
-    this.cache(b.x, b.y, b.width, b.height, TP.cacheTiles);
+    if (scale > 0) this.cache(b.x, b.y, b.width, b.height, scale);
   }
+
 
   /** Tile is owned by Player: color it */
   setPlayerAndPaint(player: Player | undefined) {

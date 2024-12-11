@@ -257,24 +257,15 @@ export class Table extends Dispatcher {
    * re-cache all Tiles with alternate cacheScale; improves resolution at high zoom.
    *
    * Alternate invocations return cacheScale to 0 (un-cached)
-   * @param setScale [TP.cacheTiles === 0] set true to force setting, false to toggle
+   * @param setScale [TP.cacheTiles === 0] set true to force setting, undefined to toggle
    * @param cacheScale [max(1, scaleCont.scaleX)] set to use specific scale
    */
-  reCacheTiles(setScale = (TP.cacheTiles === 0), cacheScale?: number) {
+  reCacheTiles(setCache = (TP.cacheTiles === 0), cacheScale?: number) {
     this.cacheScale = cacheScale ?? Math.max(1, this.scaleCont.scaleX); // If zoomed in, use that higher scale
-    TP.cacheTiles = setScale ? this.cacheScale : 1; //
-    console.log(stime('GamePlay', `.reCacheTiles: TP.cacheTiles=`), TP.cacheTiles, this.scaleCont.scaleX);
+    const scale = TP.cacheTiles = setCache ? this.cacheScale : 0;
+    console.log(stime('GamePlay', `.reCacheTiles: `), { setCache: setCache, scale, scaleX: this.scaleCont.scaleX.toFixed(2) });
     Tile.allTiles.forEach(tile => {
-      const rad = tile.radius
-      tile.setBoundsNull();
-      if (tile.cacheID) {
-        tile.uncache();
-        const { x, y, width, height } = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
-        tile.setBounds(x, y , width, height)
-      } else {
-        const { x, y, width, height } = tile.getBounds() ?? { x: -rad, y: -rad, width: 2 * rad, height: 2 * rad };
-        tile.cache(x, y , width, height, TP.cacheTiles)
-      }
+      tile.reCache(scale);  // uncache if (scale == 0)
     });
     this.hexMap.update();
   }
@@ -364,7 +355,7 @@ export class Table extends Dispatcher {
   layoutTable(gamePlay: GamePlay) {
     this.gamePlay = gamePlay;
     this.hexMap = gamePlay.hexMap as HexMap<IHex2>;
-    this.hexC = this.hexMap.hexC as Constructor<IHex2>;
+    this.hexC = this.hexMap.hexC;
 
     const xywh = this.bgXYWH();              // override bgXYHW() to supply default/arg values
     const hexCont = this.hexMap.mapCont.hexCont, hexp = this.scaleCont;
@@ -536,18 +527,18 @@ export class Table extends Dispatcher {
     });
   }
 
-  /** move cont to nominal [row, col] of hexCont */
+  /** move cont to metric [row, col] of hexCont
+   *
+   * see also: HexMap.xyFromMap(target, row, col)
+   */
   setToRowCol(cont: Container, row = 0, col = 0, hexCont = this.hexMap.mapCont.hexCont) {
     if (!cont.parent) this.scaleCont.addChild(cont); // localToLocal requires being on stage
-    //if (cont.parent === hexCont) debugger;
+    //if (cont.parent !== hexCont) debugger;
     const cHex = this.hexMap.centerHex;
     const { x, y, dxdc, dydr } = cHex.xywh(cHex.radius);
     const xx = x + (col - cHex.col) * dxdc;
     const yy = y + (row - cHex.row) * dydr;
     hexCont.localToLocal(xx, yy, cont.parent, cont);
-    if (cont.parent === hexCont) {
-      cont.x = xx; cont.y = yy;
-    }
   }
 
   /** display source [and legalMark] on given hex [Ankh] */
@@ -728,10 +719,13 @@ export class Table extends Dispatcher {
     this.gamePlay.setNextPlayer(this.gamePlay.turnNumber > 0 ? this.gamePlay.turnNumber : 0);
   }
 
-  makeDragable(tile: DisplayObject) {
-    const dragger = this.dragger;
-    dragger.makeDragable(tile, this, this.dragFunc, this.dropFunc);
-    dragger.clickToDrag(tile, true); // also enable clickToDrag;
+  /**
+   * makeDragable & clickToDrag
+   * @param tile a Tile with .dragFunc0() and .markLegal()
+   */
+  makeDragable(tile: Tile) {
+    this.dragger.makeDragable(tile, this, this.dragFunc, this.dropFunc);
+    this.dragger.clickToDrag(tile, true); // also enable clickToDrag;
   }
 
   hexUnderObj(dragObj: DisplayObject, legalOnly = true) {
@@ -849,6 +843,7 @@ export class Table extends Dispatcher {
 
   /** dropFunc for each Dragable/Tile -> tile.dropFunc0(hex, ctx) */
   dropFunc(dobj: DisplayObject, info?: DragInfo, hex = this.hexUnderObj(dobj)) {
+    if (! (dobj instanceof Tile)) { debugger; }
     const tile = dobj as Tile;
     // invoke Tile.dropFunc0() which will delegate to Tile.dropFunc(targetHex, ctx)
     tile.dropFunc0(hex as IHex2, this.dragContext); // generally: hex == ctx.targetHex

@@ -266,11 +266,11 @@ export class GamePlay extends GamePlay0 {
     KeyBinder.keyBinder.setKey('h', () => {this.table.textLog.visible = !this.table.textLog.visible; this.hexMap.update()});
 
     // KeyBinder.keyBinder.setKey('U', { thisArg: this.gameState, func: this.gameState.undoAction, argVal: true })
-    KeyBinder.keyBinder.setKey('p', { thisArg: this, func: this.saveState, argVal: true })
-    KeyBinder.keyBinder.setKey('P', { thisArg: this, func: this.pickState, argVal: true })
-    KeyBinder.keyBinder.setKey('C-p', { thisArg: this, func: this.pickState, argVal: false }) // can't use Meta-P
-    KeyBinder.keyBinder.setKey('k', () => this.logWriter.showBacklog());
-    KeyBinder.keyBinder.setKey('D', () => this.fixit())
+    // KeyBinder.keyBinder.setKey('p', { thisArg: this, func: this.saveState, argVal: true })
+    // KeyBinder.keyBinder.setKey('P', { thisArg: this, func: this.pickState, argVal: true })
+    // KeyBinder.keyBinder.setKey('C-p', { thisArg: this, func: this.pickState, argVal: false }) // can't use Meta-P
+    // KeyBinder.keyBinder.setKey('k', () => this.logWriter.showBacklog());
+    KeyBinder.keyBinder.setKey('D', () => this.debug())
 
     KeyBinder.keyBinder.setKey('C-s', () => {  // C-s START
       blinkAndThen(this.hexMap.mapCont.markCont, () => this.gameSetup.restart({}));
@@ -282,7 +282,7 @@ export class GamePlay extends GamePlay0 {
   }
 
   /** enter debugger, with interesting values in local scope */
-  fixit() {
+  debug() {
     const table = this.table, player = this.curPlayer
     const hexMap = this.hexMap
     console.log(stime(this, `.fixit:`), { player, table, hexMap });
