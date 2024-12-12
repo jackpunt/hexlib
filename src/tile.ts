@@ -105,26 +105,26 @@ export class Tile extends Tile0 implements Dragable {
 
   /** base method: SubClass.makeSource(...) { Tile.makeSource0(...)} */
   static makeSource0<T extends Tile, TS extends TileSource<T>>(
-    unitSource: new (type: Constructor<T>, hex: IHex2, p?: Player) => TS,
+    UnitSource: new (type: Constructor<T>, hex: IHex2, p?: Player) => TS,
     // IF (per-player) static source: TileSource[] ELSE static source: TileSource
     type: Constructor<T> & { source: TileSource<T>[] | TileSource<T> },
     hex: IHex2,
     player?: Player,
     n = 0,
   ) {
-    const source = new unitSource(type, hex, player);
+    const unitSource = new UnitSource(type, hex, player);
     if (player) {
-      (type.source as TileSource<T>[])[player.index] = source;
+      (type.source as TileSource<T>[])[player.index] = unitSource;
     } else {
-      (type.source as TileSource<T>) = source;
+      (type.source as TileSource<T>) = unitSource;
     }
     // Create initial Tile/Units:
     for (let i = 0; i < n; i++) {
       const unit = new type(player, i + 1, );
-      source.availUnit(unit);
+      unitSource.availUnit(unit);
     }
-    source.nextUnit();  // unit.moveTo(source.hex)
-    return source as TS;
+    unitSource.nextUnit();  // unit.moveTo(source.hex)
+    return unitSource as TS;
   }
   /** When Tile is associated with a TileSource. */
   source?: TileSource<Tile>;

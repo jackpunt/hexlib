@@ -1,4 +1,4 @@
-import { Constructor } from "@thegraid/common-lib";
+import { Constructor, permute } from "@thegraid/common-lib";
 import { ValueEvent } from "@thegraid/easeljs-lib";
 import { NumCounter } from "./counters";
 import type { IHex2 } from "./hex";
@@ -63,6 +63,11 @@ export class TileSource<T extends Tile> {
     return this.hex.tile === unit;
   }
 
+  /** shuffle the available units; nextUnit() will get a random unit. */
+  permuteAvailable() {
+    permute(this.available);
+  }
+
   /** move unit to undefined, remove from parent container, remove from available and allUnits. */
   deleteUnit(unit: T) {
     if (unit && this.isAvailable(unit)) {
@@ -101,7 +106,9 @@ export class TileSource<T extends Tile> {
     return (this.hex.tile || this.hex.meep) as T; // moveTo puts it somewhere...
   }
 
-  /** programmatic, vs Table.dragStart */
+  /** programmatic, vs Table.dragStart
+   * @return sourceHexUnit, replacing it with nextUnit
+  */
   takeUnit() {
     const unit = this.sourceHexUnit;
     unit?.moveTo(undefined);
@@ -109,7 +116,7 @@ export class TileSource<T extends Tile> {
     return unit;
   }
 
-  /** move next available unit to source.hex, make visible */
+  /** move [next available] unit to source.hex, make visible */
   nextUnit(unit = this.available.shift()) {
     if (unit) {
       unit.visible = true;
