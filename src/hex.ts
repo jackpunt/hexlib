@@ -52,7 +52,7 @@ export class LegalMark extends Shape { // TODO: maybe someday Paintable.CircleSh
  */
 export class Hex {
   /** Identify Hex instance derived from Hex2Mixin; and so implements IHex2. */
-  static isIHex2(hex: Hex): hex is IHex2 { return (hex as any).implementsIHex2 as boolean; }
+  static isIHex2(hex: Hex): hex is IHex2 { return (hex as any)?.implementsIHex2 as boolean; }
 
   /** return indicated Hex from otherMap */
   static ofMap(ihex: IdHex, otherMap: HexMap<Hex>) {
@@ -72,7 +72,7 @@ export class Hex {
    * @param col [0]
    * @returns \{ x, y, w, h, dxdc, dydr } of cell at [row, col]
    */
-static xywh(radius = TP.hexRad, ewTopo = TP.useEwTopo, row = 0, col = 0) {
+  static xywh(radius = TP.hexRad, ewTopo = TP.useEwTopo, row = 0, col = 0) {
     if (ewTopo) { // tiltDir = 'NE'; tilt = 30-degrees; nsTOPO
       const h = 2 * radius, w = radius * H.sqrt3;  // h height of hexagon (long-vertical axis)
       const dxdc = w;
@@ -228,12 +228,12 @@ export class Hex1 extends Hex {
 
   _tile: MapTile | undefined;
   get tile() { return this._tile; }
-  set tile(tile: Tile | undefined) { this._tile = tile; } // override in Hex2!
+  set tile(tile: Tile | undefined) { this.setUnit(tile as Tile, false) }
   // Note: set hex.tile mostly invoked from: tile.hex = hex;
 
   _meep: Meeple | undefined;
   get meep() { return this._meep; }
-  set meep(meep: Meeple | undefined) { this._meep = meep }
+  set meep(meep: Meeple | undefined) { this.setUnit(meep as Tile, true) }
 
   get occupied(): [Tile | undefined, Meeple | undefined] | undefined { return (this.tile || this.meep) ? [this.tile, this.meep] : undefined; }
 
@@ -245,6 +245,36 @@ export class Hex1 extends Hex {
   override rcspString(color = (this.tile ?? this.meep)?.player?.plyrId ?? 'Empty') {
     return `${color}@${this.rcsp}`
   }
+
+  // 13-dec-2024: decided this belongs in Hex1, where tile/meep:
+  setUnit(unit: Tile, isMeep = false) {
+    const this_unit = (isMeep ? this.meep : this.tile)
+    if (unit !== undefined && this_unit !== undefined) {
+      this.unitCollision(this_unit, unit, isMeep);
+    }
+    isMeep ? (this._meep = unit as Meeple) : (this._tile = unit); // set _meep or _tile;
+    // too much effort to do this in subclass:
+    if (unit !== undefined && Hex.isIHex2(this)) {
+      unit.x = this.x; unit.y = this.y;
+      this.mapCont.tileCont?.addChild(unit);      // meep will go under tile [wut?]
+    }
+  }
+
+  // from 13-dec-2024: projects should override as necessary;
+  // should be handled by isLegal() and override dropFunc()/placeTile()/moveTo()
+  unitCollision(this_unit: Tile, unit: Tile, isMeep = false) {
+    if (isMeep && this_unit.recycleVerb === 'demolished') return; // ok to collide?
+    if (this === this_unit.source?.hex && this === unit.source?.hex) {
+      // Legacy! 13-dec-2024: fixed by removing moveTo() -> source.nextUnit()
+      // Table.dragStart does moveTo(undefined); which triggers source.nextUnit()
+      // so if we drop to the startHex, we have a collision.
+      // Resolve by putting this_unit (the 'nextUnit') back in the source.
+      // (availUnit will recurse to set this.unit = undefined)
+      this_unit.source.availUnit(this_unit);
+    } else if (Hex1.debugCollision) debugger;
+  }
+  static debugCollision = true;
+
 }
 
 /**
@@ -313,7 +343,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       return;         // breakpoint able
     }
 
-    implementsIHex2 = true;
+    readonly implementsIHex2 = true;
     /** Child of mapCont.hexCont: HexCont holds hexShape(color), rcText, distText, capMark */
     readonly cont: HexCont = new HexCont(this); // Hex IS-A Hex0, HAS-A HexCont Container
     readonly radius = TP.hexRad;                // determines width & height
@@ -337,34 +367,6 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
     distColor: string // district color of hexShape (paintHexShape)
     distText: Text    // shown on this.cont
     rcText: Text      // shown on this.cont
-
-    setUnit(unit: Tile, isMeep = false) {
-      const cont: Container = this.mapCont.tileCont, x = this.x, y = this.y;
-      let k = true;     // debug double tile
-      const this_unit = (isMeep ? this.meep : this.tile)
-      if (unit !== undefined && this_unit !== undefined && !(isMeep && this_unit.recycleVerb === 'demolished')) {
-        if (this === this_unit.source?.hex && this === unit.source?.hex) {
-          // Table.dragStart does moveTo(undefined); which triggers source.nextUnit()
-          // so if we drop to the startHex, we have a collision.
-          // Resolve by putting this_unit (the 'nextUnit') back in the source.
-          // (availUnit will recurse to set this.unit = undefined)
-          this_unit.source.availUnit(this_unit as Tile); // Meeple extends Tile, but TS seems confused.
-        } else if (k) debugger;
-      }
-      isMeep ? (super.meep = unit as Meeple) : (super.tile = unit); // set _meep or _tile;
-      if (unit !== undefined) {
-        unit.x = x; unit.y = y;
-        cont.addChild(unit);      // meep will go under tile
-        // after source.hex is set, updateCounter:
-        if (this === unit.source?.hex) unit.source.updateCounter();
-      }
-    }
-
-    override get tile() { return super.tile; }
-    override set tile(tile: Tile | undefined) { this.setUnit(tile as Tile, false) }
-
-    override get meep() { return super.meep; }
-    override set meep(meep: Meeple | undefined) { this.setUnit(meep as Tile, true) }
 
     /**
      * initCont(r,c); rcText; distText; legalMark; showText(true)

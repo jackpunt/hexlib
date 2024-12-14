@@ -66,7 +66,7 @@ export class GameSetup {
   init_random(seed = `${Math.random()}`.slice(2)) {
     GameSetup.random_seed = seed;
     console.log(stime(this, `.init_random: rand=${seed}&`))
-    Random.random = Random.mulberry32(seed);
+    Random.use_random = Random.mulberry32(seed);
   }
 
   /** one-time, invoked from new GameSetup(canvasId); typically from StageComponent.ngAfterViewInit2() */
@@ -269,7 +269,7 @@ export class GameSetup {
    * - startScenario(scenario)
    * @param qParams [this.qParams] typically obtained from URL
    */
-  startup(qParams: Params = this.qParams) {
+  startup(qParams = this.qParams) {
     Tile.allTiles.length = 0;
     Meeple.allMeeples.length = 0;
     Player.allPlayers.length = 0;

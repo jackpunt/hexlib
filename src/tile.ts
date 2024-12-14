@@ -105,14 +105,14 @@ export class Tile extends Tile0 implements Dragable {
 
   /** base method: SubClass.makeSource(...) { Tile.makeSource0(...)} */
   static makeSource0<T extends Tile, TS extends TileSource<T>>(
-    UnitSource: new (type: Constructor<T>, hex: IHex2, p?: Player) => TS,
+    TileSource: new (type: Constructor<T>, hex: IHex2, p?: Player) => TS,
     // IF (per-player) static source: TileSource[] ELSE static source: TileSource
     type: Constructor<T> & { source: TileSource<T>[] | TileSource<T> },
     hex: IHex2,
     player?: Player,
     n = 0,
   ) {
-    const unitSource = new UnitSource(type, hex, player);
+    const unitSource = new TileSource(type, hex, player);
     if (player) {
       (type.source as TileSource<T>[])[player.index] = unitSource;
     } else {
@@ -256,16 +256,14 @@ export class Tile extends Tile0 implements Dragable {
   }
 
   // Tile
-  /** Post-condition: tile.hex == hex; low-level, physical move.
-   *
-   * calls this.source.nextUnit() if tile was dragged from this.source.
-   */
+  /** Post-condition: tile.hex == hex; low-level, physical move. */
   moveTo(hex: Hex1 | undefined) {
-    const fromHex = this.fromHex;
+    // const fromHex = this.fromHex;
     this.hex = hex;       // may collide with source.hex.meep, setUnit, overSet?
-    if (this.source && fromHex === this.source.hex && fromHex !== hex) {
-      this.source.nextUnit()   // shift; moveTo(source.hex); update source counter
-    }
+    // 13-dec-2024: project's tile.dropFunc() { if (!tile.source?.hex) tile.source?.nextUnit() }
+    // if (this.source && fromHex === this.source.hex && fromHex !== hex) {
+    //   this.source.nextUnit()   // shift; moveTo(source.hex); update source counter
+    // }
   }
 
   /** Tile.dropFunc() --> placeTile (to Map, reserve, ~>auction; not Recycle); semantic move/action. */

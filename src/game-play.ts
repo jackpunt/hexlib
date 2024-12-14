@@ -165,13 +165,13 @@ export class GamePlay0 {
   }
 
   /**
-   * Move tile to hex (or recycle).
+   * Move tile to hex
    *
    * - hexline/anhk would check recycleHex; (see placeEither2)
    * - hexline would then update influence;
    *
-   * Tile.dropFunc() -> Tile.placeTile() -> gp.placeEither()
-   * @param tile ignore if undefined
+   * Tile.dropFunc() -> Tile.placeTile() -> gp.placeEither() -> tile.moveTo(toHex)
+   * @param tile ignore if undefined [tile IS defined]
    * @param toHex tile.moveTo(toHex)
    * @param payCost commit and verify payment
    */
@@ -193,12 +193,13 @@ export class GamePlay0 {
     this.updateCounters();
   }
 
+  // pro'ly specific to hextowns or ankh;
   recycleTile(tile: Tile) {
     if (!tile) return;    // no prior reserveTile...
     let verb = tile.recycleVerb ?? 'recycled';
     if (tile.fromHex?.isOnMap) {
       if (tile.player !== this.curPlayer) {
-        verb = 'defeated';
+        verb = 'defeated'; // anhk
       } else if (tile instanceof Meeple) {
       }
     }
