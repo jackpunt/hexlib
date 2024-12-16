@@ -277,17 +277,16 @@ export class Tile extends Tile0 implements Dragable {
 
   /**
    * After Capture or Recycle/Replace.
+   *
    * Post-condition: !tile.hex.isOnMap; tile.hex = this.homeHex may be undefined [UnitSource, AuctionTile, BonusTile]
+   *
+   * Note: v1.3 -- anhk/hextowns need to override to restore:
+   * @example s=this.source && (s.availUnit(this), s.sourceHexUnit || s.nextUnit())
    */
   sendHome() {  // Tile
     this.resetTile();
     this.moveTo(this.homeHex) // override for AuctionTile.tileBag & UnitSource<Meeple>
-    if (!this.homeHex) this.parent?.removeChild(this);
-    const source = this.source;
-    if (source) {
-      source.availUnit(this);
-      if (!source.hex.tile) source.nextUnit();
-    }
+    if (!this.homeHex) this.parent?.removeChild(this); // Hex1.setUnit() --> addChild()
   }
 
   /** map.showMark(ctx.targetHex); override for alternate showMark. */
@@ -380,7 +379,7 @@ export class Tile extends Tile0 implements Dragable {
    * @param setLegal [default: hex.isLegal = false] or countLegalHexes/isLegalTarget
    * @param ctx DragContext if needed
    */
-  markLegal(table: Table, setLegal = (hex: IHex2) => { hex.isLegal = false; }, ctx: DragContext = table.dragContext) {
+  markLegal(table: Table, setLegal = (hex: IHex2) => { hex.isLegal = false; }, ctx = table.dragContext) {
     table.newHexes.forEach(setLegal);
     table.hexMap.forEachHex(setLegal);
   }

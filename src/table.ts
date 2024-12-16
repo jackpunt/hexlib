@@ -753,8 +753,11 @@ export class Table extends Dispatcher {
     if (info?.first) {
       if (ctx?.tile) {
         // clickToDrag intercepting a drag in progress!
+        // click should have hit the drag target to drop it
         // mouse not over drag object! fix XY in call to dragTarget()
-        console.log(stime(this, `.dragFunc: OOPS! adjust XY on dragTarget`), ctx);
+        // OR dragger.dragTarget() invoked while drag in progress...
+        // OR fail to clear stageDrag/stagemousemove
+        console.warn(stime(this, `.dragFunc0: OOPS! maybe adjust XY on dragTarget`), ctx);
         this.stopDragging(ctx.targetHex); // stop original drag
         this.dragger.stopDrag();          // stop new drag;  this.dropFunc(ctx.tile, ctx.info);
         return;
@@ -828,7 +831,7 @@ export class Table extends Dispatcher {
         }
       };
       tile.markLegal(this, countLegalHexes, ctx);           // delegate to check each potential target
-      tile.moveTo(undefined); // notify source Hex, so it can scale; also triggers nextUnit !!
+      tile.moveTo(undefined); // notify source Hex, so it can scale;
       this.hexMap.update();
       if (ctx.nLegal === 0) {
         tile.noLegalTarget(ctx);
