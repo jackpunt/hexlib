@@ -270,7 +270,7 @@ export class GameSetup {
    * @param qParams [this.qParams] typically obtained from URL
    */
   startup(qParams = this.qParams) {
-    Tile.allTiles.length = 0;
+    Tile.clearAllTiles();
     Meeple.allMeeples.length = 0;
     Player.allPlayers.length = 0;
 

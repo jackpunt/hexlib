@@ -823,20 +823,31 @@ export class Table extends Dispatcher {
     } else {
       // mark legal targets for tile; SHIFT for all hexes, if payCost
       tile.dragStart(ctx); // prepare for isLegalTarget
-
-      const countLegalHexes = (hex: IHex2) => {
-        if (hex !== tile.hex && tile.isLegalTarget(hex, ctx)) {
-          hex.isLegal = true;
-          ctx.nLegal += 1;
-        }
-      };
-      tile.markLegal(this, countLegalHexes, ctx);           // delegate to check each potential target
+      ctx.nLegal = this.markLegalHexes(tile, ctx);  // override-able
       tile.moveTo(undefined); // notify source Hex, so it can scale;
       this.hexMap.update();
       if (ctx.nLegal === 0) {
         tile.noLegalTarget(ctx);
       }
     }
+  }
+
+  /** invoked during dragStart(tile, ctx)
+   *
+   * set hex.isLegal = v ==> hex.legalMark.visible = v
+   *
+   * @return number of hexes marked as legal
+   */
+  markLegalHexes(tile: Tile, ctx: DragContext) {
+    let nLegal = 0;
+    const countLegalHexes = (hex: IHex2) => {
+      if (hex !== tile.hex && tile.isLegalTarget(hex, ctx)) {
+        hex.isLegal = true; // ==> legalMark.visible = true;
+        nLegal += 1;
+      }
+    };
+    tile.markLegal(this, countLegalHexes, ctx);           // delegate to check each potential target
+    return nLegal;
   }
 
   /** state of shiftKey has changed during drag. call tile.dragShift(). */

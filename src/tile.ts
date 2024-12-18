@@ -100,10 +100,18 @@ class Tile0 extends NamedContainer {
  */
 export class Tile extends Tile0 implements Dragable {
   static readonly allTiles: Tile[] = [];
+  static clearAllTiles() { Tile.allTiles.length = 0; }
   static textSize = 20 * TP.hexRad / 60;
   // static source: any[] = [];
 
-  /** base method: SubClass.makeSource(...) { Tile.makeSource0(...)} */
+  /** base method: SubClass.makeSource(...) { Tile.makeSource0(...)}
+   *
+   * - Set a new TileSource into [static] TileType.source;
+   *
+   * If a Player is supplied:
+   * - Set a new TileSource into [static] TileType.source[player.index]
+   *
+   */
   static makeSource0<T extends Tile, TS extends TileSource<T>>(
     TileSource: new (type: Constructor<T>, hex: IHex2, p?: Player) => TS,
     // IF (per-player) static source: TileSource[] ELSE static source: TileSource
@@ -114,6 +122,7 @@ export class Tile extends Tile0 implements Dragable {
   ) {
     const unitSource = new TileSource(type, hex, player);
     if (player) {
+      if (!type.source) type.source = [] as TileSource<T>[];
       (type.source as TileSource<T>[])[player.index] = unitSource;
     } else {
       (type.source as TileSource<T>) = unitSource;
@@ -127,7 +136,7 @@ export class Tile extends Tile0 implements Dragable {
     return unitSource as TS;
   }
   /** When Tile is associated with a TileSource. */
-  source?: TileSource<Tile>;
+  source!: TileSource<Tile>;
 
   // Tile
   constructor(

@@ -1,5 +1,5 @@
 import { C, Constructor, F, RC, XY, XYWH } from '@thegraid/common-lib';
-import { CenterText, NamedContainer } from "@thegraid/easeljs-lib";
+import { CenterText, CircleShape, NamedContainer } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Point, Shape, Text } from "@thegraid/easeljs-module";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
 import type { Meeple } from "./meeple";
@@ -30,13 +30,17 @@ export class HexCont extends Container {
 }
 function nf(n: number) { return `${n !== undefined ? (n === Math.floor(n)) ? n : n.toFixed(1) : ''}`; }
 
-export class LegalMark extends Shape { // TODO: maybe someday Paintable.CircleShape?
+export class LegalMark extends Container {
   hex2: IHex2;
+  doGraphics() {
+    this.removeAllChildren();
+    this.addChild(new CircleShape(C.legalGreen, this.hex2.radius / 2, '')); // @(0,0)
+  }
   /** position circular LegalMark over hex; hitArea, mouseEnabled */
   setOnHex(hex: IHex2) {
     this.hex2 = hex;
+    this.doGraphics();
     const parent = hex.mapCont.markCont;
-    this.graphics.f(C.legalGreen).dc(0, 0, hex.radius/2);
     hex.cont.parent.localToLocal(hex.x, hex.y, parent, this);
     this.hitArea = hex.hexShape; // legal mark is used for hexUnderObject, so need to cover whole hex.
     this.mouseEnabled = true;
@@ -381,7 +385,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       this.hexShape.name = this.Aname;
       this.setRcText(row, col);
       this.setDistText(dText);
-      this.legalMark.setOnHex(this);
+      this.legalMark = this.makeLegalMark().setOnHex(this);
       this.showText(true); // & this.cache()
     }
 
@@ -412,7 +416,8 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       this.cont.updateCache();
     }
 
-    readonly legalMark = new LegalMark();
+    makeLegalMark() { return new LegalMark() }
+    legalMark!: LegalMark;
     override get isLegal() { return this._isLegal; }
     override set isLegal(v: boolean) {
       super.isLegal = v;
