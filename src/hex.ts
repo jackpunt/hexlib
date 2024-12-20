@@ -23,7 +23,7 @@ type TopoNS = { [key in NsDir]: DCR }
 type Topo = TopoEW | TopoNS
 
 /** to recognize this class in hexUnderPoint and obtain the associated hex2: IHex2 */
-export class HexCont extends Container {
+export class HexCont extends NamedContainer {
   constructor(public hex2: IHex2) {
     super()
   }
@@ -413,7 +413,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
     /** set visibility of rcText & distText; updateCache() */
     showText(vis = !this.rcText.visible) {
       this.rcText.visible = this.distText.visible = vis;
-      this.cont.updateCache();
+      this.reCache();
     }
 
     makeLegalMark() { return new LegalMark() }
@@ -431,10 +431,16 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       cont.x = x;
       cont.y = y;
       // initialize cache bounds:
-      cont.setBounds(-w / 2, -h / 2, w, h);
-      const b = cont.getBounds();
-      cont.cache(b.x, b.y, b.width, b.height);
-      // cont.rotation = this.map.topoRot;
+      this.reCache();
+    }
+
+    reCache(scale = TP.cacheTiles) {
+      const cont = this.cont;
+      if (cont.cacheID) cont.uncache()
+      cont.setBoundsNull(); // remove bounds
+      const b = cont.getBounds();    // of hexShape & others?
+      cont.setBounds(b.x, b.y, b.width, b.height); // record for debugger
+      if (scale > 0) cont.cache(b.x, b.y, b.width, b.height, scale);
     }
 
     makeHexShape(shape: Constructor<HexShape> = HexShape) {
@@ -453,7 +459,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       if (district !== undefined) this.district = district // hex.setHexColor update district
       this.distColor = color;
       this.hexShape.paint(color);
-      this.cont.updateCache();
+      this.reCache();
     }
 
     // The following were created for the map in hexmarket:
@@ -517,7 +523,7 @@ export class HexMark extends HexShape {
   constructor(radius: number, radius0 = 0, cm = 'rgba(127,127,127,.3)') {
     super(radius);
     this.graphics.f(cm).dp(0, 0, this.radius, 6, 0, this.tilt);
-    this.cache(-radius, -radius, 2 * radius, 2 * radius)
+    this.cache(-radius, -radius, 2 * radius, 2 * radius); // oversize; see Hex.xywh()
     this.graphics.c().f(C.BLACK).dc(0, 0, radius0)
     this.updateCache('destination-out')
     this.setHexBounds();      // bounds are based on readonly, should be const
@@ -538,14 +544,14 @@ export class HexMark extends HexShape {
     if (ohex) {
       this.visible = false;
       if (!ohex.cont.cacheID) debugger;
-      ohex.cont.updateCache();
+      ohex.reCache();
       map = ohex.map;
     }
     if (hex) {
       this.visible = true;
       hex.cont.addChild(this);
       if (!hex.cont.cacheID) debugger;
-      hex.cont.updateCache();
+      hex.reCache();
       map = hex.map;
     }
     this.hex = hex;
@@ -627,6 +633,7 @@ export interface HexM<T extends Hex> {
   radius: number;
   centerHex: T;
   xywh: XYWH & { dxdc: number; dydr: number; }
+  xyFromMap(target: DisplayObject, row: number, col: number): XYWH;
   hexC: Constructor<T>
   hexUnderObj(dragObj: DisplayObject, legalOnly?: boolean): T | undefined
   getHex(id: RC): T;

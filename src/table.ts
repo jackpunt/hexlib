@@ -246,9 +246,9 @@ export class Table extends Dispatcher {
   toggleText(vis: boolean = !this.isVisible) {
     if (this.downClick) { this.downClick = false; return } // skip one 'click' when pressup/dropfunc
     this.isVisible = vis;
-    Tile.allTiles.forEach(tile => tile.textVis(vis));
-    this.hexMap.forEachHex(hex => hex.showText(vis))
-    this.hexMap.update()               // after toggleText & updateCache()
+    Tile.allTiles?.forEach(tile => tile.textVis(vis));
+    this.hexMap?.forEachHex(hex => hex.showText(vis))
+    this.hexMap?.update()               // after toggleText & updateCache()
     return;
   }
 
@@ -546,6 +546,36 @@ export class Table extends Dispatcher {
     if (source?.counter) source.counter.mouseEnabled = false;
     hex.legalMark.setOnHex(hex);
     hex.cont.visible = false;
+  }
+  /**
+   * Make a row of hexC that appear above panel at [row0, 0] (but are not children of panel)
+   * Suitable for Tile.makeSource0(...,)
+   *
+   * The row is centered across the width of panel (based on getBounds().width)
+   *
+   * Sets hex.visible = false;
+   * @param panel offset new Hexes to appear above given Container
+   * @param row0 [.75] offset in y direction
+   * @param colN [4] number of Hex to create
+   * @param hexC [this.hexC]
+   * @param vis [false] initial visiblity
+   * @returns hexC[] with each hex.cont.xy offset to appear over panel
+   */
+  hexesOnPanel(panel: Container, row0 = .75, colN = 4, hexC = this.hexC, vis = false) {
+    const rv = [] as IHex2[], map = this.hexMap;
+    const { x: x0, y: y0 } = map.xyFromMap(panel, 0, 0); // offset from hexCont to panel
+    const { width: panelw } = panel.getBounds();
+    const { x: xn, dydr } = Hex.xywh(undefined, undefined, 0, colN - 1); // x of last cell
+    const dx = (panelw - xn) / 2, dy = row0 * dydr; // allocate any extra space (wide-xn) to either side
+    for (let col = 0; col < colN; col++) {
+      const hex = this.newHex2(.01, col, `C${col}`, hexC); // child of map.mapCont.hexCont
+      rv.push(hex);
+      hex.cont.x += (dx - x0);
+      hex.cont.y += (dy - y0);
+      hex.cont.visible = vis;
+      hex.legalMark.setOnHex(hex)
+    }
+    return rv;
   }
 
   /** @deprecated use UtilButton (change cgf on RectShape) [legacy from Ankh] */

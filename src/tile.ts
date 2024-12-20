@@ -102,15 +102,23 @@ export class Tile extends Tile0 implements Dragable {
   static readonly allTiles: Tile[] = [];
   static clearAllTiles() { Tile.allTiles.length = 0; }
   static textSize = 20 * TP.hexRad / 60;
-  // static source: any[] = [];
+  // static source: TileSource<Tile>[]; // base class Tile does not have a 'source'
 
-  /** base method: SubClass.makeSource(...) { Tile.makeSource0(...)}
+  /**
+   * @example
+   * static TileClass.makeSource(hex: IHex2, player?: Player, n = 0) {
+   *   Tile.makeSource0(TileSource<TileClass>, TileClass, hex, player, n);
+   * }
+   * - Set a new TileSource into [static] TileClass.source;
+   * OR: If a Player is supplied:
+   * - Set a new TileSource into [static] TileClass.source[player.index]
    *
-   * - Set a new TileSource into [static] TileType.source;
-   *
-   * If a Player is supplied:
-   * - Set a new TileSource into [static] TileType.source[player.index]
-   *
+   * @param TileSource the generic constructor: TileSource<T>
+   * @param type the class/Constuctor T, the type of Tile/Unit to be sourced
+   * @param hex indicates where nextUnit will place the Unit
+   * @param player [undefined] if supplied place new Source in T.source[player.index]
+   * @param n [0] create n units of type and insert into source
+   * @returns the source; which is also set in T.source
    */
   static makeSource0<T extends Tile, TS extends TileSource<T>>(
     TileSource: new (type: Constructor<T>, hex: IHex2, p?: Player) => TS,
@@ -135,7 +143,7 @@ export class Tile extends Tile0 implements Dragable {
     unitSource.nextUnit();  // unit.moveTo(source.hex)
     return unitSource as TS;
   }
-  /** When Tile is associated with a TileSource. */
+  /** When Tile is associated with a TileSource; availUnit() sets this field. */
   source!: TileSource<Tile>;
 
   // Tile
@@ -200,7 +208,7 @@ export class Tile extends Tile0 implements Dragable {
    * uncache(), setBoundsNull(), setBounds(getBounds), maybe cache(scale)
    */
   reCache(scale = TP.cacheTiles) {
-    this.uncache()
+    if (this.cacheID) this.uncache();
     this.setBoundsNull(); // remove bounds
     const b = this.getBounds();    // of tileShape & InfoBox (vis or !vis, new Info)
     this.setBounds(b.x, b.y, b.width, b.height); // record for debugger
