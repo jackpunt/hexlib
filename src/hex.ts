@@ -1,6 +1,6 @@
 import { C, Constructor, F, RC, XY, XYWH } from '@thegraid/common-lib';
-import { CenterText, CircleShape, NamedContainer } from "@thegraid/easeljs-lib";
-import { Container, DisplayObject, Point, Shape, Text } from "@thegraid/easeljs-module";
+import { CenterText, CircleShape, NamedContainer, type Paintable } from "@thegraid/easeljs-lib";
+import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
 import type { Meeple } from "./meeple";
 import { HexShape } from "./shapes";
@@ -426,7 +426,9 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
 
     /** place this.cont; setBounds(); cont.cache() */
     initCont(row: number, col: number) {
-      const cont = this.cont;
+      const cont = this.cont, hs = this.hexShape;
+      cont.addChildAt(hs, 0);
+      cont.hitArea = hs;
       const { x, y, w, h } = this.xywh(this.radius, TP.useEwTopo, row, col); // include margin space between hexes
       cont.x = x;
       cont.y = y;
@@ -443,17 +445,15 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       if (scale > 0) cont.cache(b.x, b.y, b.width, b.height, scale);
     }
 
-    makeHexShape(shape: Constructor<HexShape> = HexShape) {
-      const hs = new shape(this.radius);
-      this.cont.addChildAt(hs, 0);
-      this.cont.hitArea = hs;
-      hs.paint(C.grey);
+    makeHexShape(colorn = C.grey224): Paintable {
+      const hs = new HexShape(this.radius)
+      hs.paint(colorn);
       return hs;
     }
 
-    /** set hexShape using color: draw border and fill
+    /** this.hexShape.paint(color); optionally set this.district.
      * @param color
-     * @param district if supplied, set this.district
+     * @param district [undefined] if supplied, set this.district number
      */
     setHexColor(color: string, district?: number | undefined) {
       if (district !== undefined) this.district = district // hex.setHexColor update district
@@ -730,9 +730,9 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
 
   rcLinear(row: number, col: number): number { return col + row * (1 + (this.maxCol ?? 0) - (this.minCol ?? 0)) }
 
-  mark: HexMark | undefined                        // a cached DisplayObject, used by showMark
+  mark: DisplayObject         // a cached DisplayObject, used by showMark
 
-  makeMark() {
+  makeMark(): DisplayObject {
     const mark = new HexMark(this.radius, this.radius / 2.5);
     return mark;
   }
@@ -811,9 +811,11 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return rv
   }
 
-  /** make this.mark visible above the given Hex */
-  showMark(hex?: Hex) {
-    const mark = this.mark as HexMark;
+  /** make this.mark visible (or not) above the given Hex
+   * @param hex [undefined] if supplied mark.visible = true; else mark.visible = false
+   * @param mark [this.mark] can supply alternate mark to be moved and visiblized.
+   */
+  showMark(hex?: Hex, mark = this.mark) {
     if (!hex) {  // || hex.Aname === S_Skip || hex.Aname === S_Resign) {
       mark.visible = false;
     } else if (Hex.isIHex2(hex)) {
@@ -1036,7 +1038,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     hex2Ary.forEach((hex, n) => hex.setHexColor((n == 0) ? cColor ?? dcolor : dcolor));
   }
 
-  /** find color not used by hex adjacent to given hexAry */
+  /** find color not used by hex adjacent to given hexAry [hexline] */
   pickColor(hexAry: IHex2[]): string {
     let hex = hexAry[0]
     let adjColor: string[] = [HexMap.distColor[0]] // colors not to use

@@ -439,24 +439,12 @@ export class Tile extends Tile0 implements Dragable {
   }
 }
 
-/** A plain WHITE tile; for Debt */
-export class WhiteTile extends Tile {
-  // TileShape does not work here:
-  override makeShape() { return new HexShape(this.radius); }
-
-  /** always C.WHITE */
-  override paint(colorn?: string): void {
-    super.paint(C.WHITE); // TODO: using cgf
-  }
-}
-
-/** a half-sized Tile. */
+/** a half-sized Tile. [Ankh] */
 export class Token extends Tile {
 
-  override makeShape(): PaintableShape {
-    return new HexShape(this.radius * .5);
+  override makeShape(colorn?: string): PaintableShape {
+    return new HexShape(this.radius * .5, undefined, colorn);
   }
-
 }
 
 /**

@@ -242,7 +242,10 @@ export class Table extends Dispatcher {
 
   downClick = false;
   isVisible = false;
-  /** invoked by enableHexInspector or KeyBinding. */
+  /** invoked by enableHexInspector or KeyBinding:
+   *
+   * Tile.allTiles.textVis(vis); hexMap.hex.showText(vis);
+   */
   toggleText(vis: boolean = !this.isVisible) {
     if (this.downClick) { this.downClick = false; return } // skip one 'click' when pressup/dropfunc
     this.isVisible = vis;
@@ -302,21 +305,29 @@ export class Table extends Dispatcher {
     return bpanel
   }
 
-  /** all the non-map hexes created by newHex2 */
+  /** all the non-map hexes created by newHex2; included in Tile.markLegal() */
   newHexes: IHex2[] = [];
-  newHex2(row = 0, col = 0, name: string, claz: Constructor<IHex2> = this.hexC, sy = 0) {
+  /**
+   * create an off-map Hex2; push to this.newHexes[]
+   * @param row [0] aligned with hexMap
+   * @param col [0] aligned with hexMap
+   * @param name hex.Aname & hex.distText
+   * @param claz extends Hex2
+   * @returns the new Hex2
+   */
+  newHex2(row = 0, col = 0, name: string, claz: Constructor<IHex2> = this.hexC) {
     const hex = new claz(this.hexMap, row, col, name);
     hex.distText.text = name;
-    if (row <= 0) {
-      hex.y += (sy + row * .5 - .75) * (this.hexMap.radius);
-    }
     this.newHexes.push(hex);
     return hex
   }
 
-  noRowHex(name: string, crxy: { row: number, col: number }, claz?: Constructor<IHex2>) {
-    const { row, col } = crxy;
-    const hex = this.newHex2(row, col, name, claz);
+  /** if hextowns/ankh ever want the half-row offset, they can override as follows: */
+  newHex2a(row = 0, col = 0, name: string, claz: Constructor<IHex2> = this.hexC, sy = 0) {
+    const hex = this.newHex2(row, col, name, claz); // super.newHex2(...)
+    if (row <= 0) {
+      hex.y += (sy + row * .5 - .75) * (this.hexMap.radius);
+    }
     return hex;
   }
 
@@ -558,19 +569,24 @@ export class Table extends Dispatcher {
    * @param row0 [.75] offset in y direction
    * @param colN [4] number of Hex to create
    * @param hexC [this.hexC]
-   * @param vis [false] initial visiblity
+   * @param opts
+   * @param - vis [false] initial visiblity
+   * @param - gap [0] space between columns
+   *
    * @returns hexC[] with each hex.cont.xy offset to appear over panel
    */
-  hexesOnPanel(panel: Container, row0 = .75, colN = 4, hexC = this.hexC, vis = false) {
+  hexesOnPanel(panel: Container, row0 = .75, colN = 4, hexC: Constructor<IHex2> = this.hexC, opts?: { vis?: boolean, gap?: number }) {
+    const { vis, gap } = { vis: false, gap: 0, ...opts }
     const rv = [] as IHex2[], map = this.hexMap;
     const { x: x0, y: y0 } = map.xyFromMap(panel, 0, 0); // offset from hexCont to panel
     const { width: panelw } = panel.getBounds();
-    const { x: xn, dydr } = Hex.xywh(undefined, undefined, 0, colN - 1); // x of last cell
-    const dx = (panelw - xn) / 2, dy = row0 * dydr; // allocate any extra space (wide-xn) to either side
+    const { x: xn, dydr, dxdc } = Hex.xywh(undefined, undefined, 0, colN - 1); // x of last cell
+    const gpix = gap < 1 ? gap * dxdc : gap;
+    const dx = (panelw - xn - (colN - 1) * gpix) / 2, dy = row0 * dydr; // allocate any extra space (wide-xn) to either side
     for (let col = 0; col < colN; col++) {
       const hex = this.newHex2(.01, col, `C${col}`, hexC); // child of map.mapCont.hexCont
       rv.push(hex);
-      hex.cont.x += (dx - x0);
+      hex.cont.x += (dx - x0 + col * gpix);
       hex.cont.y += (dy - y0);
       hex.cont.visible = vis;
       hex.legalMark.setOnHex(hex)
@@ -605,9 +621,17 @@ export class Table extends Dispatcher {
     return button;
   }
 
-  /** @deprecated [legacy from hextowns] */
-  makeRecycleHex(row = TP.nHexes + 3.2, col = 0, claz = RecycleHex) {
-    const name = 'Recycle'
+  /**
+   * A newHex2 with the 'Recycle' image on top. [legacy from hextowns]
+   *
+   * Typically: invoke from layoutTable() or layoutTable2()
+   * @param row [TP.nHexes + 3.2] below the centerline
+   * @param col [0] toward the left edge
+   * @param name ['Recycle'] hex.Aname and name of image to use
+   * @param claz [RecycleHex]
+   * @returns
+   */
+  makeRecycleHex(row = TP.nHexes + 3.2, col = 0, name = 'Recycle', claz = RecycleHex) {
     const image = new Tile(name).addImageBitmap(name); // ignore Tile, get image.
     image.y = 0;              // recenter (undo text offset)
 

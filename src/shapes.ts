@@ -23,8 +23,9 @@ export class HexShape extends PaintableShape {
   constructor(
     readonly radius = TP.hexRad,
     readonly tilt = TP.useEwTopo ? 30 : 0,  // ewTopo->30, nsTopo->0
+    fillc?: string,
   ) {
-    super((fillc) => this.hscgf(fillc));
+    super((fillc) => this.hscgf(fillc), fillc);
     this.setBounds(undefined, 0, 0, 0); // ASSERT: radius & tilt are readonly, so bounds never changes!
   }
 
@@ -60,8 +61,8 @@ export class HexShape extends PaintableShape {
 export class TileShape extends HexShape {
   static fillColor = C1.lightgrey_8;// 'rgba(200,200,200,.8)'
 
-  constructor(radius?: number, tilt?: number) {
-    super(radius, tilt); // sets Bounnds & this.cgf
+  constructor(radius?: number, tilt?: number, colorn?: string) {
+    super(radius, tilt, colorn); // sets Bounnds & this.cgf
     this.cgf = this.tscgf;
   }
 
