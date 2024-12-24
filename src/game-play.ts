@@ -200,7 +200,7 @@ export class GamePlay0 {
     if (tile.fromHex?.isOnMap) {
       if (tile.player !== this.curPlayer) {
         verb = 'defeated'; // anhk
-      } else if (tile instanceof Meeple) {
+      } else if (tile.isMeep) {
       }
     }
     tile.logRecycle(verb);

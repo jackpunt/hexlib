@@ -34,6 +34,10 @@ class Tile0 extends NamedContainer {
 
   public gamePlay = Tile.gamePlay;
   public player?: Player;
+  /**
+   * @return [false] override to return true if this to be placed on hex.meep
+   */
+  get isMeep() { return false; }
   get pColor() { return this.player?.color }
   get recycleVerb(): string { return 'demolished'; }
 
@@ -191,11 +195,12 @@ export class Tile extends Tile0 implements Dragable {
   _hex: Hex1 | undefined;
   /** the map Hex on which this Tile sits. */
   get hex() { return this._hex; }
-  /** only one Tile on a Hex, Tile on only one Hex */
+  /** only one Tile on a Hex, each Tile on only one Hex */
   set hex(hex: Hex1 | undefined) {
-    if (this.hex?.tile === this) this.hex.tile = undefined;
+    if (this.isMeep ? (this.hex?.meep === this) : (this.hex?.tile === this))
+      this.hex?.setUnit(undefined, this.isMeep)
     this._hex = hex;
-    if (hex !== undefined) hex.tile = this;
+    hex?.setUnit(this)
   }
 
   override updateCache(compositeOperation?: string): void {
@@ -303,7 +308,7 @@ export class Tile extends Tile0 implements Dragable {
   sendHome() {  // Tile
     this.resetTile();
     this.moveTo(this.homeHex) // override for AuctionTile.tileBag & UnitSource<Meeple>
-    if (!this.homeHex) this.parent?.removeChild(this); // Hex1.setUnit() --> addChild()
+    if (!this.hex) this.parent?.removeChild(this); // Note: Hex1.setUnit() --> addChild()
   }
 
   /** map.showMark(ctx.targetHex); override for alternate showMark. */

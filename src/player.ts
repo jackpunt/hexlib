@@ -69,14 +69,6 @@ export class Player {
     this.coinCounter = new NumCounter('coins', 0)
   }
 
-  /** Player has no MapTile on map */
-  get isDestroyed() {
-    return this.allOnMap(MapTile).length == 0;
-  }
-  get isComplete() {
-    return false;
-  }
-
   endGame(): void {
     this.planner?.terminate()
     this.planner = undefined

@@ -51,8 +51,8 @@ export class LegalMark extends Container {
 }
 
 /**
- * Minimal Hex, with topological links to adjacent hex objects,
- * has no connection to graphics.
+ * Minimal Hex, with topological links to adjacent hex objects;
+ * No tile/meep, no connection to graphics.
  */
 export class Hex {
   /** Identify Hex instance derived from Hex2Mixin; and so implements IHex2. */
@@ -226,20 +226,21 @@ export class Hex {
 }
 
 /**
- * Hex1 may be occupied by [tile?: MapTile, meep?: Meeple].
+ * Hex1 may be occupied by [tile?: MapTile, meep?: Tile.isMeep].
  */
 export class Hex1 extends Hex {
 
   _tile: MapTile | undefined;
   get tile() { return this._tile; }
-  set tile(tile: Tile | undefined) { this.setUnit(tile as Tile, false) }
+  set tile(tile: Tile | undefined) { this.setUnit(tile, false) }
   // Note: set hex.tile mostly invoked from: tile.hex = hex;
 
-  _meep: Meeple | undefined;
+  _meep: Tile | undefined;
   get meep() { return this._meep; }
-  set meep(meep: Meeple | undefined) { this.setUnit(meep as Tile, true) }
+  set meep(meep: Tile | undefined) { this.setUnit(meep, true) }
 
-  get occupied(): [Tile | undefined, Meeple | undefined] | undefined { return (this.tile || this.meep) ? [this.tile, this.meep] : undefined; }
+  /** @return [this.tile, this.meep] | undefined */
+  get occupied(): [Tile | undefined, Tile | undefined] | undefined { return (this.tile || this.meep) ? [this.tile, this.meep] : undefined; }
 
   /** PLYRID@[r,c]; PLYRID = this.(tile??meep).player.plyrId ?? Empty */
   override toString(color = (this.tile ?? this.meep)?.player?.plyrId ?? 'Empty') {
@@ -251,13 +252,13 @@ export class Hex1 extends Hex {
   }
 
   // 13-dec-2024: decided this belongs in Hex1, where tile/meep:
-  setUnit(unit: Tile, isMeep = false) {
+  setUnit(unit?: Tile, isMeep = unit?.isMeep) {
     const this_unit = (isMeep ? this.meep : this.tile)
-    if (unit !== undefined && this_unit !== undefined) {
+    if (unit !== undefined && this_unit !== undefined && unit !== this_unit) {
       this.unitCollision(this_unit, unit, isMeep);
     }
     isMeep ? (this._meep = unit as Meeple) : (this._tile = unit); // set _meep or _tile;
-    // too much effort to do this in subclass:
+    // too much effort to do this in subclass Hex2:
     if (unit !== undefined && Hex.isIHex2(this)) {
       unit.x = this.x; unit.y = this.y;
       this.mapCont.tileCont?.addChild(unit);      // meep will go under tile [wut?]
@@ -278,11 +279,10 @@ export class Hex1 extends Hex {
     } else if (Hex1.debugCollision) debugger;
   }
   static debugCollision = true;
-
 }
 
 /**
- * Mixin hexlib/Hex2 with (LocalHex extends Hex1)
+ * Mixin hexlib/Hex2Impl with (LocalHex extends Hex1)
  *
  * class LocalHex1 extends Hex1Lib { ... }
  *
@@ -303,6 +303,9 @@ export class Hex1 extends Hex {
  * include the following overrides:
  *
  * @example
+  class MyHex2Base extends Hex2Mixin(MyHex1) {}
+  class MyHex2 extends MyHex2Base { ... } // including overrides below:
+
   override forEachLinkHex(func: (hex: this | undefined, dir: HexDir | undefined, hex0: this) => unknown, inclCenter = false) {
     super.forEachLinkHex(func)
   }

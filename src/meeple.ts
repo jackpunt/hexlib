@@ -17,6 +17,7 @@ export class MeepleShape extends PaintableShape {
     this.setMeepleBounds();
     this.backSide = this.makeOverlay();
   }
+  /** extent of mscgf */
   setMeepleBounds(r = this.radius) {
     this.setBounds(-r, -r, 2 * r, 2 * r);
   }
@@ -39,9 +40,13 @@ export class MeepleShape extends PaintableShape {
   }
 }
 
+/**
+ * canonical base class for Meeples; ASSERT (.isMeep === true)
+ */
 export class Meeple extends Tile {
   static allMeeples: Meeple[] = [];
 
+  override get isMeep() { return true; }
   get backSide() { return this.baseShape.backSide; }
   override get recycleVerb() { return 'dismissed'; }
 
@@ -63,14 +68,6 @@ export class Meeple extends Tile {
     Meeple.allMeeples.push(this);
   }
 
-  /** the map Hex on which this Meeple sits. */
-  override get hex() { return this._hex; }
-  /** only one Meep on a Hex, Meep on only one Hex */
-  override set hex(hex: Hex1 | undefined) {
-    if (this.hex?.meep === this) this.hex.meep = undefined
-    this._hex = hex
-    if (hex !== undefined) hex.meep = this;
-  }
 
   /** Meeple.radius == TP.meepleRad; same for all instances */
   override get radius() { return TP.meepleRad } // 31.578 vs 60*.4 = 24
@@ -90,7 +87,7 @@ export class Meeple extends Tile {
   unMove() {
     if (this.hex === this.startHex) return;
     this.placeTile(undefined, false);       // take meepA off the map;
-    this.startHex!.meep?.unMove();          // recurse to move meepB to meepB.startHex
+    ;(this.startHex!.meep as Meeple)?.unMove(); // recurse to move meepB to meepB.startHex
     this.placeTile(this.startHex, false);   // Move & update influence; Note: no unMove for Hire! (sendHome)
     this.faceUp();
   }
@@ -104,7 +101,7 @@ export class Meeple extends Tile {
   }
 
   override moveTo(hex: Hex1) {
-    const destMeep = hex?.meep;
+    const destMeep = hex?.meep as Meeple;
     if (destMeep && destMeep !== this) {
       destMeep.x += 10; // make double occupancy apparent [until this.unMove()][hextowns]
       destMeep.unMove();
