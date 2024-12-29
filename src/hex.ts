@@ -2,7 +2,6 @@ import { C, Constructor, F, RC, XY, XYWH } from '@thegraid/common-lib';
 import { CenterText, CircleShape, NamedContainer, type Paintable } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
 import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
-import type { Meeple } from "./meeple";
 import { HexShape } from "./shapes";
 import { TP } from "./table-params";
 import type { MapTile, Tile } from "./tile";
@@ -12,10 +11,11 @@ export const S_Skip = 'Hex@skip '
 /** serializable Hex ID; identify a Hex by {row, col}, used in Move? see also: RC */
 export type IdHex = { Aname: string, row: number, col: number }
 
-export type HexConstructor<T extends Hex> = new (map: HexMap<T>, row: number, col: number, name?: string) => T;
+export type HexConstructor<T extends Hex> = new (map: HexM<T>, row: number, col: number, name?: string) => T;
 // Note: graphics.drawPolyStar(x,y,radius, sides, pointSize, angle) will do a regular polygon
 
-export type LINKS<T extends Hex> = { [key in HexDir]?: T }
+/** Record<HexDir,T>; if HexDir is mentioned then value is defined */
+export type LINKS<H extends Hex> = Partial<Record<HexDir, H>>; // { [key in HexDir]?: H }
 //type DCR    = { [key in 'dc' | 'dr']: number }  // Delta for Col & Row
 type DCR = { dc: number, dr: number };
 type TopoEW = { [key in EwDir]: DCR }
@@ -171,8 +171,8 @@ export class Hex {
   }
 
   /** convert LINKS object to Array of Hex */
-  get linkHexes() {
-    return (Object.keys(this.links) as HexDir[]).map((dir: HexDir) => this.links[dir])
+  get linkHexes(): this[] {
+    return (Object.keys(this.links) as HexDir[]).map((dir: HexDir) => this.links[dir] as this)
   }
   forEachLinkHex(func: (hex: this | undefined, dir: HexDir | undefined, hex0: this) => unknown, inclCenter = false) {
     if (inclCenter) func(this, undefined, this);
@@ -257,7 +257,7 @@ export class Hex1 extends Hex {
     if (unit !== undefined && this_unit !== undefined && unit !== this_unit) {
       this.unitCollision(this_unit, unit, isMeep);
     }
-    isMeep ? (this._meep = unit as Meeple) : (this._tile = unit); // set _meep or _tile;
+    isMeep ? (this._meep = unit) : (this._tile = unit); // set _meep or _tile;
     // too much effort to do this in subclass Hex2:
     if (unit !== undefined && Hex.isIHex2(this)) {
       unit.x = this.x; unit.y = this.y;

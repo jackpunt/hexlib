@@ -32,10 +32,10 @@ export interface DragContext {
   lastShift?: boolean;  // true if Shift key is down
   lastCtrl?: boolean;   // true if control key is down
   info: DragInfo;       // we only use { first, event }
-  tile?: Tile;          // the Tile being dragged
+  tile?: Tile;          // the Tile being dragged (drop -> undefined)
   nLegal: number;       // number of legal drop tiles (excluding recycle)
-  gameState?: GameState;// gamePlay.gameState
-  phase?: string;       // keysof GameState.states
+  gameState: GameState; // gamePlay.gameState; holds .gamePlaye & .table
+  phase?: string;       // gameState.state?.Aname: keyof GameState.states
 }
 
 class TextLog extends NamedContainer {
@@ -724,12 +724,16 @@ export class Table extends Dispatcher {
   }
 
   /**
-   * May be contained or placed with ActionSelection buttons.
+   * add DoneButton to the given panel/Container.
+   *
+   * May be contained or placed with ActionSelection buttons [ankh].
+   *
+   * textColor is BLACK or WHITE to contrast with paint(color)
    * @param cont [scaleCont] a Container to hold the DoneButton
    * @param cx [0] offset in Container (to 'center', 'left', 'right' per align)
    * @param cy [0] offset in Container (to top of text box)
-   * @param align ['center'] left or right
-   * @returns actionCont
+   * @param align ['center'] 'left' or 'right' for textAlign
+   * @returns this.doneButton
    */
   addDoneButton(cont: Container = this.scaleCont, cx = 0, cy = 0, align = 'center') {
     const doneButton = this.doneButton = new UtilButton('Done', { bgColor: 'lightgreen' });
@@ -740,17 +744,7 @@ export class Table extends Dispatcher {
     doneButton.y = cy - y;     // XY is the top-right corner, align extends to left
     doneButton.on(S.click, (evt) => this.doneClicked(evt), this);
     cont.addChild(doneButton);
-
-    // prefix advice: set text color to contrast with RectShape color
-    // TODO: add as option to UtilButton
-    const o_cgf = doneButton.rectShape.cgf;
-    const cgf = (color: string) => {
-      const tcolor = (C.dist(color, C.WHITE) < C.dist(color, C.BLACK)) ? C.black : C.white;
-      doneButton.disp.color = tcolor;
-      return o_cgf.call(doneButton.rectShape, color);
-    }
-    doneButton.rectShape.cgf = cgf; // invokes shape.paint(cgf) !!
-    return cont;
+    return doneButton;
   }
 
   /** show player player score on table */
@@ -819,6 +813,7 @@ export class Table extends Dispatcher {
       const event = info.event?.nativeEvent;
       tile.fromHex = tile.hex as IHex2;  // dragStart: set tile.fromHex when first move!
       // create and record a DragContext for this drag:
+      const gameState = this.gamePlay.gameState;
       ctx = {
         tile: tile,                  // ASSERT: hex === tile.hex
         targetHex: tile.fromHex,     // last isLegalTarget() or fromHex
@@ -826,6 +821,8 @@ export class Table extends Dispatcher {
         lastCtrl: event?.ctrlKey,
         info: info,
         nLegal: 0,
+        gameState,   // access to .table, .gamePlay
+        phase: gameState.state.Aname, // [ankh]
       }
       this.dragContext = ctx;
       if (!tile.isDragable(ctx)) {

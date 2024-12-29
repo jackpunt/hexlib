@@ -26,6 +26,9 @@ export class GameState {
     Object.keys(this.states).forEach((key) => this.states[key].Aname = key);
   }
 
+  /**
+   * The current state: a Phase identified by Aname, with a start() function.
+   */
   state: Phase;
   get table() { return this.gamePlay?.table; }
   get curPlayer() { return this.gamePlay.curPlayer; }
@@ -86,7 +89,7 @@ export class GameState {
    * If this.state.done is not defined, proceed to phase(this.donePhase, ...args)
    */
   done(...args: any[]) {
-    if (this.state.done) {
+    if (typeof this.state.done == 'function') {
       this.state.done(...args)
     } else {
       this.phase(this.donePhase, ...args); // start next Phase
