@@ -33,7 +33,7 @@ export class MeepleShape extends PaintableShape {
   }
 
   /** stroke a ring of colorn, stroke-width = 2, r = radius-2; fill disk with (~WHITE,.7) */
-  mscgf(color = this.player?.color ?? C.grey, ss = 2, rs = 0) {
+  mscgf(color = this.player?.color ?? C.grey, ss = 2 * TP.hexRad / 60, rs = 0) {
     const r = this.radius;
     const g = this.graphics.c().ss(ss).s(color).f(MeepleShape.fillColor).dc(0, 0, r - rs - ss/2);  // disk & ring
     return g;

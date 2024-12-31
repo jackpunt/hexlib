@@ -39,7 +39,14 @@ export interface DragContext {
 }
 
 class TextLog extends NamedContainer {
-  constructor(Aname: string, nlines = 6, public size: number = TP.hexRad / 2, public lead = 3) {
+  /**
+   *
+   * @param Aname
+   * @param nlines
+   * @param size fontSize [TP.hexRad/2]
+   * @param lead between lines [3]
+   */
+  constructor(Aname: string, nlines = 6, public size = TP.hexRad / 2, public lead = 3) {
     super(Aname);
     this.lines = new Array<Text>(nlines);
     for (let ndx = 0; ndx < nlines; ndx++) this.lines[ndx] = this.newText(`//0:`)
@@ -107,15 +114,16 @@ export class Table extends Dispatcher {
   netGUI: ParamGUI; // paramGUIs[2]
   /** initial visibility for toggleText */
   initialVis = false;
+  sr(v = .5) { return v * TP.hexRad / 60 }
 
   undoCont: Container = new NamedContainer('undoCont');
   undoShape: Shape = new Shape();
   skipShape: Shape = new Shape();
   redoShape: Shape = new Shape();
-  undoText: Text = new Text('', F.fontSpec(30));  // length of undo stack
-  redoText: Text = new Text('', F.fontSpec(30));  // length of history stack
-  winText: Text = new Text('', F.fontSpec(40), 'green')
-  winBack: Shape = new Shape(new Graphics().f(C.nameToRgbaString("lightgrey", .6)).r(-180, -5, 360, 130))
+  undoText: Text = new Text('', F.fontSpec(this.sr(30)));  // length of undo stack
+  redoText: Text = new Text('', F.fontSpec(this.sr(30)));  // length of history stack
+  winText: Text = new Text('', F.fontSpec(this.sr(40)), 'green')
+  winBack: Shape = new Shape(new Graphics().f(C.nameToRgbaString("lightgrey", .6)).r(this.sr(-180), this.sr(-5), this.sr(360), this.sr(130)))
 
   dragger: Dragger
   /**
@@ -181,7 +189,7 @@ export class Table extends Dispatcher {
   setupUndoButtons(bgr: XYWH, row = 8, col = -7, undoButtons = false, xOffs = 55, bSize = 60, skipRad = 45) {
     const undoC = this.undoCont; // holds the undo buttons.
     this.setToRowCol(undoC, row, col);
-    const progressBg = new Shape(), bgw = 200, bgym = 140, y0 = 0; // bgym = 240
+    const progressBg = new Shape(), bgw = this.sr(200), bgym = this.sr(140), y0 = 0; // bgym = 240
     const bgc = C.nameToRgbaString(TP.bgColor, .8);
     progressBg.graphics.f(bgc).r(-bgw / 2, y0, bgw, bgym - y0);
     undoC.addChildAt(progressBg, 0)
@@ -189,20 +197,20 @@ export class Table extends Dispatcher {
     this.dragger.makeDragable(undoC)
     if (!undoButtons) return
 
-    this.skipShape.graphics.f("white").dp(0, 0, 40, 4, 0, skipRad)
-    this.undoShape.graphics.f("red").dp(-xOffs, 0, bSize, 3, 0, 180);
-    this.redoShape.graphics.f("green").dp(+xOffs, 0, bSize, 3, 0, 0);
-    this.undoText.x = -52; this.undoText.textAlign = "center"
-    this.redoText.x = 52; this.redoText.textAlign = "center"
+    this.skipShape.graphics.f("white").dp(0, 0, this.sr(40), 4, 0, skipRad)
+    this.undoShape.graphics.f("red").dp(this.sr(-xOffs), 0, this.sr(bSize), 3, 0, 180);
+    this.redoShape.graphics.f("green").dp(this.sr(+xOffs), 0, this.sr(bSize), 3, 0, 0);
+    this.undoText.x = this.sr(-52); this.undoText.textAlign = "center"
+    this.redoText.x = this.sr(+52); this.redoText.textAlign = "center"
     this.winText.x = 0; this.winText.textAlign = "center"
     undoC.addChild(this.skipShape)
     undoC.addChild(this.undoShape)
     undoC.addChild(this.redoShape)
-    undoC.addChild(this.undoText); this.undoText.y = -14;
-    undoC.addChild(this.redoText); this.redoText.y = -14;
+    undoC.addChild(this.undoText); this.undoText.y = this.sr(-14);
+    undoC.addChild(this.redoText); this.redoText.y = this.sr(-14);
     let bgrpt = this.bgRect.parent.localToLocal(bgr.x, bgr.h, undoC)
     this.undoText.mouseEnabled = this.redoText.mouseEnabled = false
-    let aiControl = this.aiControl('pink', 75); aiControl.x = 0; aiControl.y = 100
+    let aiControl = this.aiControl('pink', this.sr(75)); aiControl.x = 0; aiControl.y = this.sr(100);
     let pmy = 0;
     undoC.addChild(aiControl)
     undoC.addChild(this.winBack);
@@ -217,8 +225,8 @@ export class Table extends Dispatcher {
     this.winText.visible = this.winBack.visible = true
     this.hexMap.update()
   }
-  enableHexInspector(qY = 52, cont = this.undoCont) {
-    const qShape = new HexShape(TP.hexRad / 3);
+  enableHexInspector(qY = this.sr(52), cont = this.undoCont) {
+    const qShape = new HexShape(this.sr(20));
     qShape.name = 'qShape';
     qShape.paint(C.BLACK);
     qShape.y = qY;  // size of 'skip' Triangles
@@ -333,12 +341,12 @@ export class Table extends Dispatcher {
 
   /**
    * all number in units of dxdc or dydr
-   * @param x0 frame left; relative to scaleCont (offset from bgRect to hexCont)
-   * @param y0 frame top; relative to scaleCont
-   * @param w0 pad width; width of bgRect, beyond hexCont, centered on hexCont
-   * @param h0 pad height; height of bgRect, beyond hexCont, centered on hexCont
-   * @param dw extend bgRect to the right, not centered
-   * @param dh extend bgRect to the bottom, not centered
+   * @param x0 frame left [-1]; relative to scaleCont (offset from bgRect to hexCont)
+   * @param y0 frame top [.5]; relative to scaleCont
+   * @param w0 pad width [10]; width of bgRect, beyond hexCont, centered on hexCont
+   * @param h0 pad height [1]; height of bgRect, beyond hexCont, centered on hexCont
+   * @param dw extend bgRect to the right, not centered [0]
+   * @param dh extend bgRect to the bottom, not centered [0]
    * @returns XYWH of a rectangle around mapCont hexMap
    */
   bgXYWH(x0 = -1, y0 = .5, w0 = 10, h0 = 1, dw = 0, dh = 0) {
@@ -384,7 +392,7 @@ export class Table extends Dispatcher {
     this.namedOn("playerMoveEvent", S.add, this.gamePlay.playerMoveEvent, this.gamePlay)
   }
 
-  layoutTurnlog(rowy = 4, colx = -12) {
+  layoutTurnlog(rowy = 4, colx = -13) {
     const parent = this.scaleCont;
     this.setToRowCol(this.turnLog, rowy, colx);
     this.setToRowCol(this.textLog, rowy, colx);
@@ -437,7 +445,7 @@ export class Table extends Dispatcher {
    * makeParamGUI(parent)   -> gui1.ymax
    * makeParamGUI2(parent)  -> gui2.ymax
    */
-  makeGUIs(scale = TP.hexRad / 60, cx = -200, cy = 250, dy = 20) {
+  makeGUIs(scale = this.sr(1), cx = -200, cy = 250, dy = 20) {
     const scaleCont = this.scaleCont;
     let wmax = 0, ymax = 0;
     const guiWYmax = (gui: ParamGUI) => {
@@ -454,7 +462,7 @@ export class Table extends Dispatcher {
     scaleCont.stage.update();
   }
 
-  /** height allocated for PlayerPanel scaled in hex height [map.rows/3-.2] */
+  /** height allocated for PlayerPanel scaled in row height [map.rows/3-.2] */
   get panelHeight() { return (2 * TP.nHexes - 1) / 3 - .2; }
   /** width of PlayerPanel, scaled in hex width [4.5] */
   get panelWidth() { return 4.5; }
@@ -594,33 +602,6 @@ export class Table extends Dispatcher {
     return rv;
   }
 
-  /** @deprecated use UtilButton (change cgf on RectShape) [legacy from Ankh] */
-  makeCircleButton(color = C.WHITE, rad = TP.hexRad / 3, c?: string, fs = rad * 3 / 2) {
-    const button = new Container(); button.name = 'circle';
-    const shape = new CircleShape(color, rad, '');
-    button.addChild(shape);
-    if (c) {
-      const t = new CenterText(c, fs); t.y += 2;
-      button.addChild(t);
-    }
-    button.setBounds(-rad, -rad, rad * 2, rad * 2);
-    button.mouseEnabled = false;
-    return button;
-  }
-
-  /** @deprecated use UtilButton [from Ankh] */
-  makeSquareButton(color = C.WHITE, xywh: XYWH, c?: string, fs = TP.hexRad / 2) {
-    const button = new Container(); button.name = 'square';
-    const shape = new RectShape(xywh, color, '');
-    button.addChild(shape);
-    if (c) {
-      const t = new CenterText(c, fs); t.y += 2;
-      button.addChild(t);
-    }
-    shape.mouseEnabled = false;
-    return button;
-  }
-
   /**
    * A newHex2 with the 'Recycle' image on top. [legacy from hextowns]
    *
@@ -646,9 +627,9 @@ export class Table extends Dispatcher {
 
   /** Params that affect the rules of the game & board
    *
-   * ParamGUI   --> board & rules [under stats panel]
-   * ParamGUI2  --> AI Player     [left of ParamGUI]
-   * NetworkGUI --> network       [below ParamGUI2]
+   * ParamGUI   --> board & rules []
+   * ParamGUI2  --> AI Player     []
+   * NetworkGUI --> network       []
    */
   makeParamGUI(parent: Container, x = 0, y = 0) {
     const gui = new ParamGUI(TP, { textAlign: 'right' });
@@ -736,7 +717,7 @@ export class Table extends Dispatcher {
    * @returns this.doneButton
    */
   addDoneButton(cont: Container = this.scaleCont, cx = 0, cy = 0, align = 'center') {
-    const doneButton = this.doneButton = new UtilButton('Done', { bgColor: 'lightgreen' });
+    const doneButton = this.doneButton = new UtilButton('Done', { bgColor: 'lightgreen', fontSize: this.sr(30) });
     doneButton.disp.textAlign = align; // Note: baseline is still 'middle'
     const { x, y, width: w, height: h } = doneButton.getBounds()
     doneButton.name = 'doneButton';
@@ -950,7 +931,7 @@ export class Table extends Dispatcher {
    * @param dragObj a DisplayObject to start dragging with dragTarget
    * @param xy offset from target to mouse pointer
    */
-  dragTarget(dragObj?: DisplayObject, xy: XY = { x: TP.hexRad / 2, y: TP.hexRad / 2 }) {
+  dragTarget(dragObj?: DisplayObject, xy: XY = { x: this.sr(30), y: this.sr(30) }) {
     if (this.isDragging) {
       // drop current dragObj on last legal targetHex
       this.stopDragging(this.dragContext.targetHex) // drop and make move

@@ -42,7 +42,7 @@ class Tile0 extends NamedContainer {
   get recycleVerb(): string { return 'demolished'; }
 
   get radius() { return TP.hexRad };
-  /** set in constructor, can override baseShape!: PaintableShape; */
+  /** set in constructor, can override baseShape!: Paintable; */
   baseShape: Paintable;
 
   /**
@@ -73,8 +73,8 @@ class Tile0 extends NamedContainer {
   /** paint with PlayerColor; updateCache()
    * @param colorn [pColor ?? grey] color for this Tile
    */
-  paint(colorn = this.pColor ?? C.grey) {
-    this.baseShape.paint(colorn); // set or update baseShape.graphics
+  paint(colorn = this.pColor ?? C.grey, force?: boolean) {
+    this.baseShape.paint(colorn, force); // set or update baseShape.graphics
     this.updateCache();           // push graphics to bitmapCache
   }
 
@@ -100,7 +100,7 @@ class Tile0 extends NamedContainer {
 
 /** all the [Hexagonal] game pieces that appear; can be dragged/dropped.
  *
- * Two subspecies: MapTile are 'stationary' on the HexMap, Meeple are 'mobile'.
+ * Two subspecies: MapTile are 'stationary' on the HexMap, Meeple [.isMeep] are 'mobile'.
  */
 export class Tile extends Tile0 implements Dragable {
   static readonly allTiles: Tile[] = [];
@@ -163,7 +163,6 @@ export class Tile extends Tile0 implements Dragable {
     this.name = cName;  // used for saveState!
     if (!Aname) this.Aname = `${cName}-${Tile.allTiles.length}`;
     const rad = this.radius;
-    //if (TP.cacheTiles > 0) this.cache(-rad, -rad, 2 * rad, 2 * rad, TP.cacheTiles);
     this.addChild(this.baseShape);
     this.nameText = this.addTextChild(rad / 2);
     if (player !== undefined)
