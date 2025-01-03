@@ -123,16 +123,18 @@ export class TileSource<T extends Tile> {
   }
 
   /**
-   * extract elements from allUnits
-   * @param pred return true to select unit [available.includes(unit, true)]
+   * Extract elements from allUnits (or available, in reverse order)
+   * @param pred [(unit, ndx) => true] filter function
+   * @param searchAll [true] if false, search only available
    * @returns Array of allUnits satisfying predicate
    */
-  filterUnits(pred = (unit: T, ndx?: number) => this.isAvailable(unit, true)) {
-    return this.allUnits.filter(pred)
+  filterUnits(pred = (unit: T, ndx?: number) => this.isAvailable(unit, true), searchAll = true) {
+    const src = searchAll ? this.allUnits : this.available;
+    return src.filter(pred)
   }
 
   get sourceHexUnit() {
-    return (this.hex.tile ?? this.hex.meep) as T; // moveTo puts it somewhere...
+    return (this.hex.tile ?? this.hex.meep) as T | undefined; // moveTo puts it somewhere...
   }
 
   /** programmatic, vs Table.dragStart
