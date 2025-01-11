@@ -472,13 +472,23 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       let dx = tx - hx, dy = ty - hy
       return Math.sqrt(dx * dx + dy * dy); // tw == H.sqrt3
     }
+
+    /** Location of corner on radial of given dir */
+    cornerXY(dir: HexDir, rad = this.radius, point = new Point(0, 0)) {
+      const deg = H.dirRot[dir];
+      const a = deg * H.degToRadians
+      point.x += Math.sin(a) * rad;
+      point.y -= Math.cos(a) * rad;
+      return point;
+    }
+
     /** Location of corner between dir0 and dir1; in parent coordinates.
      * @param dir0 a HexDir
      * @param dir1 a HexDir
      * @param point [new Point()] set location-x,y in point and return it.
      * @param rad [this.radius]
      */
-    cornerPoint(dir0: HexDir, dir1: HexDir, point = new Point(), rad = this.radius) {
+    cornerPoint(dir0: HexDir, dir1: HexDir, rad = this.radius, point = new Point()) {
       const d0 = H.dirRot[dir0], d1 = H.dirRot[dir1];
       let a2 = (d0 + d1) / 2;
       if (Math.abs(d0 - d1) > 180) a2 += 180
