@@ -876,6 +876,14 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
 
   /** link hex to/from each extant neighor */
+  /**
+   * TODO: move this to class Hex?
+   * @param hex the <T extends Hex> to be linked
+   * @param rc Row-Col at which to place the hex
+   * @param map the Array[row][col] to hold the hex
+   * @param nt selects a Topo; Topo maps from (RowCol x Dir) to a T in Array.
+   * @param lf selcts a LINKS; LINKS maps from Dir to a next <T extends Hex>
+   */
   link(hex: T, rc: RC = hex, map: T[][] = this, nt: Topo = this.topo(rc), lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
     const topoDirs = Object.keys(nt) as Array<HexDir>
     topoDirs.forEach(dir => {
