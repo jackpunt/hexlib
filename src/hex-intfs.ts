@@ -9,11 +9,12 @@ export type Or8Dir = Exclude<HexDir, 'EN' | 'WN' | 'ES' | 'WS'>; // 8 compass di
 export type Or4Dir = Exclude<Or8Dir, 'NE' | 'NW' | 'SE' | 'SW'>; // 4 compass dirs
 
 type DCR    = { [key in 'dc' | 'dr']: number }  // Delta for Col & Row
-export type TopoEW = { [key in EwDir]: DCR }
-export type TopoNS = { [key in NsDir]: DCR }
-export type Topo = TopoEW | TopoNS
-export type TopoOr8 = { [key in Or8Dir]: DCR }
-export type TopoOr4 = { [key in Or4Dir]: DCR }
+type TopoDCR = Record<HexDir, DCR>
+export type TopoEW = Record<EwDir, DCR>
+export type TopoNS = Record<NsDir, DCR>
+export type TopoOr8 = Record<Or8Dir, DCR>
+export type TopoOr4 = Record<Or4Dir, DCR>
+export type Topo = TopoEW | TopoNS | TopoOr8 | TopoOr4;
 export type TopoXYWH = {
   x: number;
   y: number;
@@ -24,6 +25,70 @@ export type TopoXYWH = {
 }
 /** function that returns XYWH of cell of size rad at row, col; using dxdc & dydr of the Topo. */
 export type TopoMetric = (rad?: number, row?: number, col?: number) => TopoXYWH;
+
+export abstract class TopoC<TD extends Partial<TopoDCR>> {
+  /** a TopoMetric for graphical layout */
+  xywh(rad = 1, row = 0, col = 0): TopoXYWH {
+    return { x: row * rad, y: col * rad, w: rad, h: rad, dxdc: rad, dydr: rad }
+  }
+
+  _linkDirs = ['N', 'E', 'S', 'W'] as HexDir[];
+  /** identify directions to adjancent cells; valid keys in topoDCR() */
+  get linkDirs() { return this._linkDirs };
+
+  /**
+   * Used by nextRowCol to locate an adjacent cell.
+   * @param rc For Hex topology, the adjacency depends on the particular (row, col)
+   * @returns a TopoDCR
+   */
+  topoDCR(rc: RC): TD {
+    return { N: { dr: -1, dc: 0 }, E: { dr: 0, dc: 1 }, S: { dr: 1, dc: 0 }, W: { dr: 0, dc: -1 } } as TD;
+  }
+  nextRowCol(rc: RC, dir: HexDir) {
+    const dcr = this.topoDCR(rc)[dir] as DCR;
+    return { row: rc.row + dcr.dr, col: rc.col + dcr.dc };
+  }
+}
+export class TopoEWC extends TopoC<TopoEW> {
+  override _linkDirs: HexDir[] = H.ewDirs;
+  // Hex rows with alternating alignment:
+  ewEvenRow: TopoEW = {
+    NE: { dc: 0, dr: -1 }, E: { dc: 1, dr: 0 }, SE: { dc: 0, dr: 1 },
+    SW: { dc: -1, dr: 1 }, W: { dc: -1, dr: 0 }, NW: { dc: -1, dr: -1 }
+  }
+  ewOddRow: TopoEW = {
+    NE: { dc: 1, dr: -1 }, E: { dc: 1, dr: 0 }, SE: { dc: 1, dr: 1 },
+    SW: { dc: 0, dr: 1 }, W: { dc: -1, dr: 0 }, NW: { dc: 0, dr: -1 }
+  }
+  override topoDCR(rc: RC): TopoEW { return (rc.row % 2 == 0) ? this.ewEvenRow : this.ewOddRow };
+
+  override xywh(rad = 1, row = 0, col = 0): TopoXYWH {
+    const h = 2 * rad, w = H.sqrt3 * rad, dydr = 1.5 * rad, dxdc = H.sqrt3 * rad;
+    const x = (col + Math.abs(Math.floor(row) % 2) / 2) * dxdc;
+    const y = (row) * dydr;   // dist between rows
+    return { x, y, w, h, dxdc, dydr }
+  };
+}
+export class TopoNSC extends TopoC<TopoNS> {
+  override _linkDirs: HexDir[] = H.nsDirs;
+  // Hex columns with alternating alignment:
+  nsEvenCol: TopoNS = {
+    EN: { dc: +1, dr: -1 }, N: { dc: 0, dr: -1 }, ES: { dc: +1, dr: 0 },
+    WS: { dc: -1, dr: 0 }, S: { dc: 0, dr: +1 }, WN: { dc: -1, dr: -1 }
+  }
+  nsOddCol: TopoNS = {
+    EN: { dc: 1, dr: 0 }, N: { dc: 0, dr: -1 }, ES: { dc: 1, dr: 1 },
+    WS: { dc: -1, dr: 1 }, S: { dc: 0, dr: 1 }, WN: { dc: -1, dr: 0 }
+  }
+  override topoDCR(rc: RC) { return (rc.col % 2 == 0) ? this.nsEvenCol : this.nsOddCol };
+
+  override xywh(rad = 1, row = 0, col = 0): TopoXYWH {
+    const h = 2 * rad, w = H.sqrt3 * rad, dydr = 1.5 * rad, dxdc = H.sqrt3 * rad;
+    const x = (col + Math.abs(Math.floor(row) % 2) / 2) * dxdc;
+    const y = (row) * dydr;   // dist between rows
+    return { x, y, w, h, dxdc, dydr }
+  };
+}
 
 /** Hex things */
 export namespace H {
@@ -64,25 +129,6 @@ export namespace H {
     const h = r * Math.cos(H.degToRadians * (tilt - 30));
     return { x: -w, y: -h, width: 2 * w, height: 2 * h };
   }
-  /** neighborhood topology, E-W & N-S orientation; even(n0) & odd(n1) rows: */
-  export const ewEvenRow: TopoEW = {
-    NE: { dc: 0, dr: -1 }, E: { dc: 1, dr: 0 }, SE: { dc: 0, dr: 1 },
-    SW: { dc: -1, dr: 1 }, W: { dc: -1, dr: 0 }, NW: { dc: -1, dr: -1 }
-  }
-  export const ewOddRow: TopoEW = {
-    NE: { dc: 1, dr: -1 }, E: { dc: 1, dr: 0 }, SE: { dc: 1, dr: 1 },
-    SW: { dc: 0, dr: 1 }, W: { dc: -1, dr: 0 }, NW: { dc: 0, dr: -1 }
-  }
-  export const nsEvenCol: TopoNS = {
-    EN: { dc: +1, dr: -1 }, N: { dc: 0, dr: -1 }, ES: { dc: +1, dr: 0 },
-    WS: { dc: -1, dr: 0 }, S: { dc: 0, dr: +1 }, WN: { dc: -1, dr: -1 }
-  }
-  export const nsOddCol: TopoNS = {
-    EN: { dc: 1, dr: 0 }, N: { dc: 0, dr: -1 }, ES: { dc: 1, dr: 1 },
-    WS: { dc: -1, dr: 1 }, S: { dc: 0, dr: 1 }, WN: { dc: -1, dr: 0 }
-  }
-  export function nsTopo(rc: RC): TopoNS { return (rc.col % 2 == 0) ? H.nsEvenCol : H.nsOddCol };
-  export function ewTopo(rc: RC): TopoEW { return (rc.row % 2 == 0) ? H.ewEvenRow : H.ewOddRow };
 
   /** includes E & W, suitable for ewTopo */
   export const ewDirs: EwDir[] = [NE, E, SE, SW, W, NW]; // directions in TopoEW: EwDir
@@ -101,11 +147,4 @@ export namespace H {
   export const dirRevEW: {[key in EwDir] : EwDir} = { E: W, W: E, NE: SW, SE: NW, SW: NE, NW: SE }
   export const dirRevNS: {[key in NsDir] : NsDir} = { N: S, S: N, EN: WS, ES: WN, WS: EN, WN: ES }
   export const rotDir: { [key: number]: HexDir } = { 0: 'N', 30: 'NE', 60: 'EN', 90: 'E', 120: 'ES', 150: 'SE', 180: 'S', 210: 'SW', 240: 'WS', 270: 'W', 300: 'WN', 330: 'NW', 360: 'N' }
-
-  // @deprecated: specific to hexline
-  export const capColor1:   string = "rgba(150,  0,   0, .8)"  // unplayable: captured last turn
-  export const capColor2:   string = "rgba(128,  80, 80, .8)"  // protoMove would capture
-  export const sacColor1:   string = "rgba(228,  80,  0, .8)"  // unplayable: sacrifice w/o capture
-  export const sacColor2:   string = "rgba(228, 120,  0, .6)"  // isplayable: sacrifice w/ capture
-  export const fjColor:     string = "rgba(228, 228,  0, .8)"  // ~unplayable: jeopardy w/o capture
 }

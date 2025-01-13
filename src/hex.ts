@@ -1,7 +1,7 @@
 import { C, Constructor, F, RC, XY, XYWH } from '@thegraid/common-lib';
 import { CenterText, CircleShape, NamedContainer, type Paintable } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
-import { H, HexDir, NsDir, type TopoEW, type TopoMetric, type TopoNS } from "./hex-intfs";
+import { H, HexDir, TopoEWC, TopoNSC, type Topo, type TopoC, type TopoMetric } from "./hex-intfs";
 import { HexShape } from "./shapes";
 import { TP } from "./table-params";
 import type { MapTile, Tile } from "./tile";
@@ -17,7 +17,6 @@ export type HexConstructor<T extends Hex> = new (map: HexM<T>, row: number, col:
 /** Record<HexDir,T>; if HexDir is mentioned then value is defined */
 export type LINKS<H extends Hex> = Partial<Record<HexDir, H>>; // { [key in HexDir]?: H }
 
-type Topo = TopoEW | TopoNS
 
 /** to recognize this class in hexUnderPoint and obtain the associated hex2: IHex2 */
 export class HexCont extends NamedContainer {
@@ -825,27 +824,29 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
 
   /** neighborhood topology, E-W & N-S orientation; even(n0) & odd(n1) rows: */
-  topo: (rc: RC) => Topo = TP.useEwTopo ? H.ewTopo : H.nsTopo;
+  // topo: (rc: RC) => Topo = TP.useEwTopo ? H.ewTopo : H.nsTopo;
+  topo: TopoC<Topo> = TP.useEwTopo ? new TopoEWC() : new TopoNSC();
 
   /** see also: Hex.linkDirs */
   get linkDirs(): HexDir[] {
-    return TP.useEwTopo ? H.ewDirs : H.nsDirs;
+    return this.topo.linkDirs;
   }
 
   /** return a new RC; does not mutate the given RC.
    *
    * @param rc initial {row, col}
    * @param dir dir to extend
-   * @param nt function (RC, dir) --> { H.dirs: DCR}
+   * @param topo function (RC, dir) --> { H.dirs: DCR}
    * @return RC of adjacent Hex in given direction for given topo.
    */
-  nextRowCol(rc: RC, dir: HexDir, nt: Topo = this.topo(rc)): RC {
-    const ntdir = (nt as TopoNS)[dir as NsDir];
-    const { dr, dc } = ntdir; // OR (nt as TopoEW[dir as EwDir]) OR simply: nt[dir]
-    return { row: rc.row + dr, col: rc.col + dc };
+  nextRowCol(rc: RC, dir: HexDir, topo = this.topo): RC {
+    return topo.nextRowCol(rc, dir);
   }
 
   readonly metaMap = Array<Array<T>>()           // hex0 (center Hex) of each MetaHex, has metaLinks to others.
+  /** singleton for placing metaHex */
+  readonly metaTopoNS = new TopoNSC();
+  readonly metaTopoEW = new TopoEWC();
 
   addMetaHex(hex: T, mrc: RC) {
     const metaMap = this.metaMap, { row: mr, col: mc } = mrc;
@@ -857,27 +858,25 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   /** link metaHex on metaMap; maybe need ewTopo for nh==1 ?? */
   metaLink(hex: T, rc: RC) {
     // planner expects Dir1 & Dir2 in NsDir; nextMetaRC.mrc: NsDir
-    let nt = (this.nh == 0) ? H.ewTopo(rc) : H.nsTopo(rc); // always nsTopo!!
+    const topo = (this.nh == 0) ? this.metaTopoEW : this.metaTopoNS; // always TopoNSC!!
     if (!hex.metaLinks) hex.metaLinks = {};
-    this.link(hex, rc, this.metaMap, nt, (hex) => hex.metaLinks)
+    this.link(hex, rc, this.metaMap, topo, (hex) => hex.metaLinks)
   }
 
-  /** link hex to/from each extant neighor */
-  /**
-   * TODO: move this to class Hex?
+  /** link hex to/from each extant neighor.
+   *
+   * lookup nextRowCol(hex, dir, topo) and cache in LINKS (bi-directional: hex <--> next)
+   *
    * @param hex the <T extends Hex> to be linked
    * @param rc Row-Col at which to place the hex
    * @param map the Array[row][col] to hold the hex
-   * @param nt selects a Topo; Topo maps from (RowCol x Dir) to a <T extends Hex> in Array.
-   * @param lf selcts a LINKS; LINKS maps from Dir to a next <T extends Hex>
+   * @param topo selects a Topo; Topo maps from (RowCol x Dir) to a <T extends Hex> in Array.
+   * @param lf selects a LINKS; hex.LINKS[dir] --> nHex(hex, dir)
    */
-  link(hex: T, rc: RC = hex, map: T[][] = this, nt: Topo = this.topo(rc), lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
-    const topoDirs = Object.keys(nt) as Array<HexDir>
-    topoDirs.forEach(dir => {
-      const { dr, dc } = (nt as TopoNS)[dir as NsDir]; // OR (nt as TopoEW[dir as EwDir])
-      const nr = rc.row + dr;
-      const nc = rc.col + dc;
-      const nHex = map[nr] && map[nr][nc]
+  link(hex: T, rc: RC = hex, map: T[][] = this, topo = this.topo, lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
+    this.topo.linkDirs.forEach(dir => {
+      const { row, col } = this.nextRowCol(rc, dir, topo);
+      const nHex = map[row]?.[col];
       if (!!nHex) {
         lf(hex)[dir] = nHex
         lf(nHex)[H.dirRev[dir]] = hex
@@ -985,7 +984,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
       const dirL = dirs[nd], dirS = dirs[(nd + 5) % 6], metaD = H.nsDirs[(nd + 5) % 6];
       rc = this.forRCsOnLine(dL, rc, dirL); // step (WS) by dist
       rc = this.forRCsOnLine(dS, rc, dirS); // step (S) to center of 0-th metaHex
-      mrc = this.nextRowCol(mrc, metaD, H.nsTopo(mrc)); // metaMap uses nsTopo!
+      mrc = this.nextRowCol(mrc, metaD, this.metaTopoNS); // metaMap uses nsTopo!
       return rc;
     }
     // do metaRing = 0, district 0:
