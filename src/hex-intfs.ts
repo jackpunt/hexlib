@@ -2,22 +2,48 @@ import { RC } from "@thegraid/common-lib";
 // export { XYWH } from "@thegraid/common-lib";
 
 /** Hexagonal canonical directions */
-export enum Dir { C, NE, E, SE, SW, W, NW }
 export type HexDir = 'NE' | 'EN' | 'E' | 'ES' | 'SE' | 'S' | 'SW' | 'WS' | 'W' | 'WN' | 'NW' | 'N';
 export type EwDir = Exclude<HexDir, 'N' | 'S' | 'EN' | 'WN' | 'ES' | 'WS'>;
 export type NsDir = Exclude<HexDir, 'E' | 'W' | 'NE' | 'NW' | 'SE' | 'SW'>;
+export type Or8Dir = Exclude<HexDir, 'EN' | 'WN' | 'ES' | 'WS'>; // 8 compass dirs
+export type Or4Dir = Exclude<Or8Dir, 'NE' | 'NW' | 'SE' | 'SW'>; // 4 compass dirs
 
 type DCR    = { [key in 'dc' | 'dr']: number }  // Delta for Col & Row
 export type TopoEW = { [key in EwDir]: DCR }
 export type TopoNS = { [key in NsDir]: DCR }
 export type Topo = TopoEW | TopoNS
+export type TopoOr8 = { [key in Or8Dir]: DCR }
+export type TopoOr4 = { [key in Or4Dir]: DCR }
+export type TopoXYWH = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  dxdc: number;
+  dydr: number;
+}
+/** function that returns XYWH of cell of size rad at row, col; using dxdc & dydr of the Topo. */
+export type TopoMetric = (rad?: number, row?: number, col?: number) => TopoXYWH;
 
 /** Hex things */
 export namespace H {
   export const degToRadians = Math.PI / 180;
   export const sqrt3 = Math.sqrt(3)  // 1.7320508075688772
   export const sqrt3_2 = H.sqrt3 / 2;
-  export const infin = String.fromCodePoint(0x221E)
+
+  export function NSxywh(rad = 1, row = 0, col = 0): TopoXYWH {
+    const w = 2 * rad, h = H.sqrt3 * rad, dxdc = 1.5 * rad, dydr = H.sqrt3 * rad;
+    const x = (col) * dxdc;
+    const y = (row + Math.abs(Math.floor(col) % 2) / 2) * dydr;
+    return { x, y, w, h, dxdc, dydr }
+  };
+  export function EWxywh(rad = 1, row = 0, col = 0): TopoXYWH {
+    const h = 2 * rad, w = H.sqrt3 * rad, dydr = 1.5 * rad, dxdc = H.sqrt3 * rad;
+    const x = (col + Math.abs(Math.floor(row) % 2) / 2) * dxdc;
+    const y = (row) * dydr;   // dist between rows
+    return { x, y, w, h, dxdc, dydr }
+  };
+
   /** not a HexDir, but identifies a Center; no Dir */
   export const C: 'C' = 'C';
   export const N: HexDir = 'N'
@@ -76,6 +102,7 @@ export namespace H {
   export const dirRevNS: {[key in NsDir] : NsDir} = { N: S, S: N, EN: WS, ES: WN, WS: EN, WN: ES }
   export const rotDir: { [key: number]: HexDir } = { 0: 'N', 30: 'NE', 60: 'EN', 90: 'E', 120: 'ES', 150: 'SE', 180: 'S', 210: 'SW', 240: 'WS', 270: 'W', 300: 'WN', 330: 'NW', 360: 'N' }
 
+  // @deprecated: specific to hexline
   export const capColor1:   string = "rgba(150,  0,   0, .8)"  // unplayable: captured last turn
   export const capColor2:   string = "rgba(128,  80, 80, .8)"  // protoMove would capture
   export const sacColor1:   string = "rgba(228,  80,  0, .8)"  // unplayable: sacrifice w/o capture

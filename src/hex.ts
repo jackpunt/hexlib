@@ -1,7 +1,7 @@
 import { C, Constructor, F, RC, XY, XYWH } from '@thegraid/common-lib';
 import { CenterText, CircleShape, NamedContainer, type Paintable } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Point, Text } from "@thegraid/easeljs-module";
-import { EwDir, H, HexDir, NsDir } from "./hex-intfs";
+import { H, HexDir, NsDir, type TopoEW, type TopoMetric, type TopoNS } from "./hex-intfs";
 import { HexShape } from "./shapes";
 import { TP } from "./table-params";
 import type { MapTile, Tile } from "./tile";
@@ -16,10 +16,7 @@ export type HexConstructor<T extends Hex> = new (map: HexM<T>, row: number, col:
 
 /** Record<HexDir,T>; if HexDir is mentioned then value is defined */
 export type LINKS<H extends Hex> = Partial<Record<HexDir, H>>; // { [key in HexDir]?: H }
-//type DCR    = { [key in 'dc' | 'dr']: number }  // Delta for Col & Row
-type DCR = { dc: number, dr: number };
-type TopoEW = { [key in EwDir]: DCR }
-type TopoNS = { [key in NsDir]: DCR }
+
 type Topo = TopoEW | TopoNS
 
 /** to recognize this class in hexUnderPoint and obtain the associated hex2: IHex2 */
@@ -70,28 +67,14 @@ export class Hex {
 
   /**
    * Location/size of Hex@[row, col]
-   * @param radius [1] 'size' of hex; radius used in drawPolyStar(radius,,, H.dirRot[tiltDir])
-   * @param ewTopo [true] true -> suitable for ewTopo (has E & W [vertical] sides)
+   * @param radius [TP.hexRad] 'size' of hex; radius used in drawPolyStar(radius,,, H.dirRot[tiltDir])
+   * @param topo [TP.useEwTopo ? H.EWxywh : H.NSxywh] TopoMetric to use
    * @param row [0]
    * @param col [0]
    * @returns \{ x, y, w, h, dxdc, dydr } of cell at [row, col]
    */
-  static xywh(radius = TP.hexRad, ewTopo = TP.useEwTopo, row = 0, col = 0) {
-    if (ewTopo) { // tiltDir = 'NE'; tilt = 30-degrees; nsTOPO
-      const h = 2 * radius, w = radius * H.sqrt3;  // h height of hexagon (long-vertical axis)
-      const dxdc = w;
-      const dydr = 1.5 * radius;
-      const x = (col + Math.abs(Math.floor(row) % 2) / 2) * dxdc;
-      const y = (row) * dydr;   // dist between rows
-      return { x, y, w, h, dxdc, dydr }
-    } else { // tiltdir == 'N'; tile = 0-degrees; ewTOPO
-      const w = 2 * radius, h = radius * H.sqrt3 // radius * 1.732
-      const dxdc = 1.5 * radius;
-      const dydr = h;
-      const x = (col) * dxdc;
-      const y = (row + Math.abs(Math.floor(col) % 2) / 2) * dydr;
-      return { x, y, w, h, dxdc, dydr }
-    }
+  static xywh(radius = TP.hexRad, topo = TP.useEwTopo ? H.EWxywh : H.NSxywh, row = 0, col = 0) {
+    return topo(radius, row, col)
   }
 
   static aname(row: number, col: number) {
@@ -118,8 +101,8 @@ export class Hex {
    * @param col [this.col]
    * @returns \{ x, y, w, h, dxdc, dydr } of cell at [row, col]
    */
-  xywh(radius = TP.hexRad, ewTopo = TP.useEwTopo, row = this.row, col = this.col) {
-    return Hex.xywh(radius, ewTopo, row, col);
+  xywh(radius = TP.hexRad, topo?: TopoMetric, row = this.row, col = this.col) {
+    return Hex.xywh(radius, topo, row, col);
   }
   get xywh0() { return this.xywh(TP.hexRad); } // so can see xywh from debugger
 
@@ -432,7 +415,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       const cont = this.cont, hs = this.hexShape;
       cont.addChildAt(hs, 0);
       cont.hitArea = hs;
-      const { x, y, w, h } = this.xywh(this.radius, TP.useEwTopo, row, col); // include margin space between hexes
+      const { x, y, w, h } = this.xywh(this.radius, undefined, row, col); // include margin space between hexes
       cont.x = x;
       cont.y = y;
       // initialize cache bounds:
@@ -842,7 +825,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
 
   /** neighborhood topology, E-W & N-S orientation; even(n0) & odd(n1) rows: */
-  topo: (rc: RC) => (TopoEW | TopoNS) = TP.useEwTopo ? H.ewTopo : H.nsTopo;
+  topo: (rc: RC) => Topo = TP.useEwTopo ? H.ewTopo : H.nsTopo;
 
   /** see also: Hex.linkDirs */
   get linkDirs(): HexDir[] {
@@ -850,6 +833,10 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
 
   /** return a new RC; does not mutate the given RC.
+   *
+   * @param rc initial {row, col}
+   * @param dir dir to extend
+   * @param nt function (RC, dir) --> { H.dirs: DCR}
    * @return RC of adjacent Hex in given direction for given topo.
    */
   nextRowCol(rc: RC, dir: HexDir, nt: Topo = this.topo(rc)): RC {
@@ -881,7 +868,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param hex the <T extends Hex> to be linked
    * @param rc Row-Col at which to place the hex
    * @param map the Array[row][col] to hold the hex
-   * @param nt selects a Topo; Topo maps from (RowCol x Dir) to a T in Array.
+   * @param nt selects a Topo; Topo maps from (RowCol x Dir) to a <T extends Hex> in Array.
    * @param lf selcts a LINKS; LINKS maps from Dir to a next <T extends Hex>
    */
   link(hex: T, rc: RC = hex, map: T[][] = this, nt: Topo = this.topo(rc), lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
@@ -1089,10 +1076,10 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    *
    * Note: district = 0; hexAry.forEach() to set alternate district.
    *
-   * rnd == 1 looks best when nc is odd;
+   * rnd == 1 looks best when nc is odd; (round the corner?)
    * @param nr height
    * @param nc width [nr + 1]
-   * @param rnd 0: all, 1: rm end of row 0 (& half of last row!)
+   * @param rnd [1] 0: all, 1: rm end of row 0 (& half of last row!)
    * @parma half [(rnd === 1) || (nc % 2 === 1)] force/deny final half-row
    * @param hexAry array in which to push the created Hexes [Array()<T>]
    * @returns hexAry with the created Hexes pushed (row major)
@@ -1105,14 +1092,14 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     const ncOdd = (nc % 2) === 0;
     const c00 = (rnd === 0) ? 0 : 1;
     const nc0 = (rnd === 0) ? 0 : nc - (ncOdd ? 1 : 2 * c00);
-    this.addLineOfHex(nc0, 0, c00, district, hexAry);
+    this.addLineOfHex(nc0, 0, c00, district, hexAry);  // first [0] row
     for (let row = 1; row < nr - 1; row++) {
-      this.addLineOfHex(nc, row, 0, district, hexAry);
+      this.addLineOfHex(nc, row, 0, district, hexAry); // all the interior row
     }
     const cf0 = (rnd === 0) ? 0 : 2;
     const ncf = nc - ((rnd === 0) ? 0 : 3);
     const dc = (half) ? 2 : 1;
-    this.addLineOfHex(ncf, nr - 1, cf0, district, hexAry, dc);
+    this.addLineOfHex(ncf, nr - 1, cf0, district, hexAry, dc); // last [nr] row
     this.setDistrictAndPaint(hexAry, district);
     return hexAry;
   }
