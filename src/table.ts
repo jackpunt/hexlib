@@ -114,7 +114,8 @@ export class Table extends Dispatcher {
   netGUI: ParamGUI; // paramGUIs[2]
   /** initial visibility for toggleText */
   initialVis = false;
-  sr(v = .5) { return v * TP.hexRad / 60 }
+  /** scale to radius */
+  sr(v = .5) { return v * TP.hexRad / 60 } // scale to hexRad
 
   undoCont: Container = new NamedContainer('undoCont');
   undoShape: Shape = new Shape();
@@ -330,7 +331,7 @@ export class Table extends Dispatcher {
     return hex
   }
 
-  /** if hextowns/ankh ever want the half-row offset, they can override as follows: */
+  /** if hextowns wants the half-row offset, they can override as follows: */
   newHex2a(row = 0, col = 0, name: string, claz: Constructor<IHex2> = this.hexC, sy = 0) {
     const hex = this.newHex2(row, col, name, claz); // super.newHex2(...)
     if (row <= 0) {
@@ -340,7 +341,7 @@ export class Table extends Dispatcher {
   }
 
   /**
-   * all number in units of dxdc or dydr
+   * all numbers in units of dxdc or dydr
    * @param x0 frame left [-1]; relative to scaleCont (offset from bgRect to hexCont)
    * @param y0 frame top [.5]; relative to scaleCont
    * @param w0 pad width [10]; width of bgRect, beyond hexCont, centered on hexCont
@@ -358,7 +359,7 @@ export class Table extends Dispatcher {
 
     // background sized for hexMap:
     const { width, height } = hexCont.getBounds(); // & .setBounds() ??
-    const { dxdc, dydr } = hexMap.xywh;
+    const { dxdc, dydr } = hexMap.xywh();
     const { x, y, w, h } = { x: x0 * dxdc, y: y0 * dydr, w: width + w0 * dxdc, h: height + h0 * dydr }
     // align center of mapCont(0,0) == hexMap(center) with center of background
     mapCont.x = x + w / 2;
@@ -476,14 +477,16 @@ export class Table extends Dispatcher {
    * P1 --C-- P4
    * P2  ---  P5
    */
-  getPanelLocs(): [row: number, col: number, dir: 1 | -1][] {
+  getPanelLocs() {
+    const { nh, mh } = this.hexMap.getSize();
     const rC = this.hexMap.centerHex.row, ph = this.panelHeight + .2;
-    const cc = this.hexMap.centerHex.col, coff = TP.nHexes + (this.panelWidth / 2);
+    const cc = this.hexMap.centerHex.col, coff = nh + (this.panelWidth / 2);
     // Left of map (dir: +1), Right of map (dir: -1)
     const cL = cc - coff, cR = cc + coff;
     const locs: [row: number, col: number, dir: 1 | -1][] = [
-      [rC - ph, cL, +1], [rC, cL, +1], [rC + ph, cL, +1],
-      [rC - ph, cR, -1], [rC, cR, -1], [rC + ph, cR, -1]];
+        [rC - ph, cL, +1], [rC, cL, +1], [rC + ph, cL, +1],
+        [rC - ph, cR, -1], [rC, cR, -1], [rC + ph, cR, -1]
+    ];
     return locs;
   }
   /**
@@ -549,6 +552,7 @@ export class Table extends Dispatcher {
   /** move cont to metric [row, col] of hexCont
    *
    * see also: HexMap.xyFromMap(target, row, col)
+   * @param cont could be the HexCont of a UnitSourceHex or a panel or ...
    */
   setToRowCol(cont: Container, row = 0, col = 0, hexCont = this.hexMap.mapCont.hexCont) {
     if (!cont.parent) this.scaleCont.addChild(cont); // localToLocal requires being on stage
@@ -588,7 +592,7 @@ export class Table extends Dispatcher {
     const rv = [] as IHex2[], map = this.hexMap;
     const { x: x0, y: y0 } = map.xyFromMap(panel, 0, 0); // offset from hexCont to panel
     const { width: panelw } = panel.getBounds();
-    const { x: xn, dydr, dxdc } = Hex.xywh(undefined, undefined, 0, colN - 1); // x of last cell
+    const { x: xn, dydr, dxdc } = this.hexMap.xywh(undefined, 0, colN - 1); // x of last cell
     const gpix = gap < 1 ? gap * dxdc : gap;
     const dx = (panelw - xn - (colN - 1) * gpix) / 2, dy = row0 * dydr; // allocate any extra space (wide-xn) to either side
     for (let col = 0; col < colN; col++) {

@@ -44,8 +44,8 @@ export class PlayerPanel extends NamedContainer {
   }
 
   get metrics() {
-    const { dxdc, dydr } = this.table.hexMap.xywh, dir = this.dir;
-    const wide = dxdc * this.wide, high = dydr * this.high, brad = TP.hexRad, gap = 6, rowh = 2 * brad + gap;
+    const map = this.table.hexMap, { dxdc, dydr } = map.xywh(), dir = this.dir, brad = map.radius;
+    const wide = dxdc * this.wide, high = dydr * this.high, gap = 6, rowh = 2 * brad + gap;
     return { dir, dydr, wide, high, brad, gap, rowh }
   }
 
@@ -78,8 +78,8 @@ export class PlayerPanel extends NamedContainer {
   makeConfirmation(query = 'Are you sure?', a1 = 'Yes', a2 = 'Cancel') {
     const c1 = 'lightgreen', c2 = 'rgb(255, 100, 100)'
     const { y: by, width: bwide, height: bhigh } = this.getBounds();
-    const { gap, high, wide } = this.metrics;
-    const { table } = this.objects, fSize = TP.hexRad / 3;
+    const { brad, gap, high, wide } = this.metrics;
+    const { table } = this.objects, fSize = brad / 3;
     this.confirmContainer = new NamedContainer('confirm') as ConfirmCont;
     const conf = this.confirmContainer;
 

@@ -37,10 +37,11 @@ export class TileSource<T extends Tile> {
     if (counter === undefined) {
       const cont = hex.map.mapCont.counterCont; // assumes hexMap ISA HexMap<IHex2>?
       const pt = new Point(0, 0);
+      const fs = TP.hexRad / 2, yoff = TP.hexRad / H.sqrt3; // TODO: adjust for NS vs EW topo?
       if (Hex2.isIHex2(hex)) {
-        hex.cont.localToLocal(0, TP.hexRad / H.sqrt3, cont, pt);
+        hex.cont.localToLocal(0, yoff, cont, pt);
       }
-      counter = this.makeCounter(`${type.name}:${player?.index ?? 'any'}`, this.numAvailable, `lightblue`, TP.hexRad / 2);
+      counter = this.makeCounter(`${type.name}:${player?.index ?? 'any'}`, this.numAvailable, `lightblue`, fs);
       counter.attachToContainer(cont, { x: counter.x + pt.x, y: counter.y + pt.y });
     }
     this.counter = counter;

@@ -57,7 +57,7 @@ class Tile0 extends NamedContainer {
    */
   addImageBitmap(name: string, at = this.numChildren - 1, size?: number) {
     const bm = AliasLoader.loader.getBitmap(name, size);
-    bm.y -= Tile.textSize / 2;
+    bm.y -= this.radius / 6; // Tile.textSize/2; maybe look at nameText.y?
     this.addChildAt(bm, at);
     return bm;      // bm.image undefined if image not loaded!
   }
@@ -105,7 +105,7 @@ class Tile0 extends NamedContainer {
 export class Tile extends Tile0 implements Dragable {
   static readonly allTiles: Tile[] = [];
   static clearAllTiles() { Tile.allTiles.length = 0; }
-  static textSize = 20 * TP.hexRad / 60;
+  // static textSize = 20 * TP.hexRad / 60;
   // static source: TileSource<Tile>[]; // base class Tile does not have a 'source'
 
   /**
@@ -245,7 +245,7 @@ export class Tile extends Tile0 implements Dragable {
    *
    * from Ankh: text = Aname.replace(/-/g, '\n'); [Andro-sphinx, Cat-Mum]
    */
-  addTextChild(y0 = this.radius / 2, text = this.Aname?.replace(/-/g, '\n'), size = Tile.textSize, vis = false) {
+  addTextChild(y0 = this.radius / 2, text = this.Aname?.replace(/-/g, '\n'), size = this.radius / 3, vis = false) {
     const nameText = new CenterText(text, size);
     nameText.y = y0;         // Meeple overrides in constructor!
     nameText.visible = vis;

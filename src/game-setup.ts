@@ -275,7 +275,7 @@ export class GameSetup {
     Player.allPlayers.length = 0;
 
     this.nPlayers = this.getNPlayers();        // Scenario may override?
-    this.hexMap = this.makeHexMap();           // only reference is in GamePlay constructor!
+    this.hexMap = this.makeHexMap();           // then copied from gameSetup -> gamePlay
     this.table = this.makeTable();
     const scenario = this.initialScenario(qParams);
     // Inject Table into GamePlay;
