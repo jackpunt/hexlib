@@ -89,7 +89,8 @@ export class Player {
 
   newTurn() {
     // faceUp and record start location:
-    this.meeples.forEach(meep => meep.faceUp()); // set meep.startHex for unMove
+    this.meeples.forEach(meep => meep.faceUp(undefined, false)); // set meep.startHex for unMove
+    this.gamePlay.hexMap.update();
   }
 
   stopMove() {
