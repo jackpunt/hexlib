@@ -1,4 +1,4 @@
-import { stime } from "@thegraid/common-lib";
+import { stime, type XY } from "@thegraid/common-lib";
 import type { NamedObject } from "@thegraid/easeljs-lib";
 import { Bitmap } from "@thegraid/easeljs-module";
 import { TP } from "./table-params";
@@ -108,6 +108,7 @@ export class AliasLoader {
   fromAlias(names: string[]) {
     return names.map(name => this.aliases[name] ?? name);
   }
+  /** initial default: 'assets/image/' [] 'png' */
   imageArgs = {
     root: 'assets/images/',
     fnames: [] as string[],
@@ -128,30 +129,37 @@ export class AliasLoader {
   /**
    * new Bitmap(this.getImage(name));
    *
-   * image is scaled to fit given size.
+   * Set scaleX & scaleY to render to given size.
+   *
+   * offset (either regXY or XY) so image is centered at 0,0
    *
    * @param name from this.imap.keys();
-   * @param size [TP.hexRad] bitmap.scale = size / max(img.width, img.height)
-   * @param offsetReg [true] regX/Y = (w/2, h/2) so image is centered with XY = (0, 0);
-   * - else regX/Y = (0, 0) and XY = (-w/2, -h/2)
+   * @param size [TP.hexRad] bitmap.scaleXY = size / max(img.width, img.height)
+   * @param offsetReg [true]
+   * - if true: regX/Y = (w/2, h/2) and XY = (0, 0)
+   * - if false: regX/Y = (0, 0) and XY = (-w/2, -h/2)
+   * - either way: image renders centered around (0, 0);
    * @return new Bitmap() containing the named image (no image if name was not loaded)
    */
-  getBitmap(name: string, size = TP.hexRad, offsetReg = true ) {
+  getBitmap(name: string, size: number | XY = TP.hexRad, offsetReg = true ) {
     const img = this.getImage(name) as HTMLImageElement;
     const bm = new Bitmap(img);
     if (img) {
       const { width, height } = img;
-      const scale = size / Math.max(height, width);
-      bm.scaleX = bm.scaleY = scale;
+      (typeof size === 'number') ?
+        (size == 0) ? (bm.scaleX = bm.scaleY = 1)
+          : (bm.scaleX = bm.scaleY = size / Math.max(height, width))
+        : (bm.scaleX = size.x / width, bm.scaleY = size.y / height)
       if (offsetReg) {
         // offset using regX, regY so it is rotates around center of image:
         bm.regX = .5 * width;
         bm.regY = .5 * height;
       } else {
         // simple offset to center image: [legacy]
-        bm.x = -.5 * width * scale;
-        bm.y = -.5 * height * scale;
+        bm.x = -.5 * width * bm.scaleX;
+        bm.y = -.5 * height * bm.scaleY;
       }
+      bm.setBounds(bm.x, bm.y, width, height); // QQQ: is it correct for offsetReg?
     }
     return bm
   }
