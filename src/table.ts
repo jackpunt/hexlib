@@ -12,6 +12,8 @@ import { HexShape } from "./shapes";
 import { playerColor0, playerColor1, TP } from "./table-params";
 import { Tile } from "./tile";
 import { TileSource } from "./tile-source";
+import { AliasLoader } from "./image-loader";
+import { TextLog } from "./text-log";
 //import { TablePlanner } from "./planner";
 
 export interface Dragable {
@@ -36,63 +38,6 @@ export interface DragContext {
   nLegal: number;       // number of legal drop tiles (excluding recycle)
   gameState: GameState; // gamePlay.gameState; holds .gamePlaye & .table
   phase?: string;       // gameState.state?.Aname: keyof GameState.states
-}
-
-class TextLog extends NamedContainer {
-  /**
-   *
-   * @param Aname
-   * @param nlines
-   * @param size fontSize [TP.hexRad/2]
-   * @param lead between lines [3]
-   */
-  constructor(Aname: string, nlines = 6, public size = TP.hexRad / 2, public lead = 3) {
-    super(Aname);
-    this.lines = new Array<Text>(nlines);
-    for (let ndx = 0; ndx < nlines; ndx++) this.lines[ndx] = this.newText(`//0:`)
-    this.addChild(...this.lines);
-  }
-
-  lines: Text[];
-  lastLine = '';
-  nReps = 0;
-
-  height(nLines = this.lines.length) {
-    return (this.size + this.lead) * nLines;
-  }
-
-  clear() {
-    this.lines.forEach(tline => tline.text = '');
-    this.stage?.update();
-  }
-
-  private newText(line = '') {
-    const text = new Text(line, F.fontSpec(this.size));
-    text.textAlign = 'left';
-    text.mouseEnabled = false;
-    return text;
-  }
-
-  private spaceLines(cy = 0, lead = this.lead) {
-    this.lines.forEach(tline => (tline.y = cy, cy += tline.getMeasuredLineHeight() + lead))
-  }
-
-  /** convert line to single-line; inc count if same line; insert & scroll up */
-  log(line: string, from = '', toConsole = true) {
-    line = line.replace(/\n/g, '-');
-    toConsole && console.log(stime(`${from}:`), line);
-    if (line === this.lastLine) {
-      this.lines[this.lines.length - 1].text = `[${++this.nReps}] ${line}`;
-    } else {
-      this.removeChild(this.lines.shift() as Text); // assert is not undefined
-      this.lines.push(this.addChild(this.newText(line)));
-      this.spaceLines();
-      this.lastLine = line;
-      this.nReps = 0;
-    }
-    this.stage?.update();
-    return line;
-  }
 }
 
 /** layout display components, setup callbacks to GamePlay.
@@ -596,7 +541,8 @@ export class Table extends Dispatcher {
     const gpix = gap < 1 ? gap * dxdc : gap;
     const dx = (panelw - xn - (colN - 1) * gpix) / 2, dy = row0 * dydr; // allocate any extra space (wide-xn) to either side
     for (let col = 0; col < colN; col++) {
-      const hex = this.newHex2(.01, col, `C${col}`, hexC); // child of map.mapCont.hexCont
+      // make hex at row=0, then offset by row0 !? legacy from hextowns half-offset?
+      const hex = this.newHex2(0, col, `C${col}`, hexC); // child of map.mapCont.hexCont
       rv.push(hex);
       hex.cont.x += (dx - x0 + col * gpix);
       hex.cont.y += (dy - y0);
@@ -607,7 +553,7 @@ export class Table extends Dispatcher {
   }
 
   /**
-   * A newHex2 with the 'Recycle' image on top. [legacy from hextowns]
+   * newHex2(row, col, name, claz) with the ${name} image on top. [legacy from hextowns]
    *
    * Typically: invoke from layoutTable() or layoutTable2()
    * @param row [TP.nHexes + 3.2] below the centerline
@@ -617,8 +563,7 @@ export class Table extends Dispatcher {
    * @returns
    */
   makeRecycleHex(row = TP.nHexes + 3.2, col = 0, name = 'Recycle', claz = RecycleHex) {
-    const image = new Tile(name).addImageBitmap(name); // ignore Tile, get image.
-    image.y = 0;              // recenter (undo text offset)
+    const image = AliasLoader.loader.getBitmap(name);
 
     const rHex = this.newHex2(row, col, name, claz);
     this.setToRowCol(rHex.cont, row, col);
@@ -703,32 +648,46 @@ export class Table extends Dispatcher {
   }
 
   doneButton: UtilButton;
-  doneClicked = (evt?: any) => {
+  doneClicked(evt?: any, data?: any) {
     if (this.doneButton) this.doneButton.visible = false;
-    this.gamePlay.phaseDone();   // <--- main doneButton does not supply 'panel'
+    this.gamePlay.phaseDone(data);   // <--- main doneButton does not supply 'panel'
   }
 
   /**
-   * add DoneButton to the given panel/Container.
+   * Add a [singleton] DoneButton to the given panel/Container.
+   * - Single instance: change text, color and even location
+   * - still invokes the same onClick callback
+   *
+   * Modal button to end current phase and proceed to the next.
+   *
+   * cont._doneListener: S.click invokes this.doneClicked(evt, data);
+   * - you can add & manage additional listeners
+   * - addDoneButton() to *same* cont removes previous _doneListener.
    *
    * May be contained or placed with ActionSelection buttons [ankh].
    *
-   * textColor is BLACK or WHITE to contrast with paint(color)
-   * @param cont [scaleCont] a Container to hold the DoneButton
+   * UtilButton: textColor is BLACK or WHITE to contrast with button.paint(color)
+   *
+   * @param cont [scaleCont] a Container to hold the DoneButton (& _doneListener)
    * @param cx [0] offset in Container (to 'center', 'left', 'right' per align)
    * @param cy [0] offset in Container (to top of text box)
    * @param align ['center'] 'left' or 'right' for textAlign
+   * @param data included in callback to doneClicked(evt, data)
    * @returns this.doneButton
    */
-  addDoneButton(cont: Container = this.scaleCont, cx = 0, cy = 0, align = 'center') {
-    const doneButton = this.doneButton = new UtilButton('Done', { bgColor: 'lightgreen', fontSize: this.sr(30) });
+  addDoneButton(cont: Container = this.scaleCont, cx = 0, cy = 0, align = 'center', data?: any) {
+    // Store the 'on' listener on the parent container:
+    const parent = cont as Container & { _doneListener: Function, _doneButton: UtilButton };
+    const doneButton = new UtilButton('Done', { bgColor: 'lightgreen', fontSize: this.sr(30) });
+    parent._doneButton?.removeEventListener(S.click, parent._doneListener);
+    parent._doneButton = this.doneButton = doneButton;
+    parent._doneListener = doneButton.on(S.click, (evt, data?: any) => this.doneClicked(evt, data), this, false, data);
     doneButton.disp.textAlign = align; // Note: baseline is still 'middle'
     const { x, y, width: w, height: h } = doneButton.getBounds()
     doneButton.name = 'doneButton';
     doneButton.x = cx - 0;     // XY is the top-right corner, align extends to left
     doneButton.y = cy - y;     // XY is the top-right corner, align extends to left
-    doneButton.on(S.click, (evt) => this.doneClicked(evt), this);
-    cont.addChild(doneButton);
+    parent.addChild(doneButton);
     return doneButton;
   }
 
