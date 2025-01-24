@@ -11,7 +11,7 @@ export class MeepleShape extends PaintableShape {
   static fillColor = 'rgba(225,225,225,.7)';
   static backColor = 'rgba(210,210,120,.5)'; // transparent light green
 
-  constructor(public player: Player, public radius = TP.meepleRad) {
+  constructor(public pColor?: string, public radius = TP.meepleRad) {
     super((color) => this.mscgf(color));
     this.y = TP.meepleY0;
     this.setMeepleBounds();
@@ -33,7 +33,7 @@ export class MeepleShape extends PaintableShape {
   }
 
   /** stroke a ring of colorn, stroke-width = 2, r = radius-2; fill disk with (~WHITE,.7) */
-  mscgf(color = this.player?.color ?? C.grey, ss = 2 * this.radius / 45, rs = 0) {
+  mscgf(color = this.pColor ?? C.grey, ss = 2 * this.radius / 45, rs = 0) {
     const r = this.radius;
     const g = this.graphics.c().ss(ss).s(color).f(MeepleShape.fillColor).dc(0, 0, r - rs - ss / 2);  // disk & ring
     return g;
@@ -61,7 +61,6 @@ export class Meeple extends Tile {
   ) {
     super(Aname, player);
     this.addChild(this.backSide);
-    this.player = player;
     this.nameText.visible = true;
     this.nameText.y = this.baseShape.y;
     // this.paint();
@@ -72,7 +71,7 @@ export class Meeple extends Tile {
   /** Meeple.radius == TP.meepleRad; same for all instances */
   override get radius() { return TP.meepleRad } // 31.578 vs 60*.4 = 24
   override textVis(v: boolean) { super.textVis(true); }
-  override makeShape(): Paintable { return new MeepleShape(this.player as Player, this.radius); }
+  override makeShape(): Paintable { return new MeepleShape(this.player?.color, this.radius); }
   declare baseShape: MeepleShape;
 
   /** location at start-of-turn; for Meeples.unMove() */
@@ -93,11 +92,13 @@ export class Meeple extends Tile {
   }
 
   /** start of turn, faceUp(undefined) --> faceUp; moveTo(true|false) --> faceUp|faceDn */
-  faceUp(up = true) {
-    if (this.backSide) this.backSide.visible = !up;
+  faceUp(up = true, update = true) {
     if (up && this.hex) this.startHex = this.hex; // set at start of turn.
-    this.updateCache();
-    if (this.hex?.isOnMap) this.gamePlay.hexMap.update();
+    if (this.backSide) {
+      this.backSide.visible = !up;
+      this.updateCache();
+      if (update && this.hex?.isOnMap) this.gamePlay.hexMap.update();
+    }
   }
 
   override moveTo(hex: Hex1) {
@@ -126,7 +127,7 @@ export class Meeple extends Tile {
     if (!hex) return false;
     if (hex.meep) return false;
     if (!hex.isOnMap) return false; // RecycleHex is "on" the map?
-    if (!ctx?.lastShift && this.backSide.visible) return false;
+    if (!ctx?.lastShift && this.backSide?.visible) return false;
     return true;
   }
 
