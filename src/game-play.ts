@@ -70,7 +70,12 @@ export class GamePlay0 {
   /** GamePlay0 - supply GodNames for each: new Player(...). */
   constructor(public gameSetup: GameSetup) {
     this.hexMap = gameSetup.hexMap;
+    const [nr, nc] = this.hexMap.nRowCol
+    this.nRows = nr;
+    this.nCols = nc;
   }
+  nCols: number
+  nRows: number
 
   turnNumber: number = 0    // = history.lenth + 1 [by this.setNextPlayer]
   curPlayerNdx: number = 0  // curPlayer defined in GamePlay extends GamePlay0
@@ -120,7 +125,7 @@ export class GamePlay0 {
 
   /**
    * Advance to given turnNumber
-   * @param turnNumber [undefined -> auto-incr; newTurn()]
+   * @param turnNumber [undefined -> auto-incr; curPlayer.newTurn()]
    */
   setNextPlayer(turnNumber?: number): void {
     if (turnNumber === undefined) {

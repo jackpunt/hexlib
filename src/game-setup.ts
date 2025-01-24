@@ -128,7 +128,7 @@ export class GameSetup {
 
   restartable = false;
   /** C-s ==> kill game, start a new one, possibly with new stateInfo
-   * @param stateInfo typically TP fields like {hexRad: 60, nHexes: 7, mHexes: 1}
+   * @param stateInfo Scenario and/or { hexRad: 60, nHexes: 7, mHexes: 1 }
    */
   restart(stateInfo: Scenario | HexAspect) {
     if (!this.restartable) return;  // ignore call from within makeGUI

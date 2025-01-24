@@ -27,13 +27,12 @@ class Tile0 extends NamedContainer {
   /** Easy access to single/current GamePlay. */
   static gamePlay: GamePlay;
 
-  constructor(Aname: string) {
+  constructor(Aname: string, public player?: Player ) {
     super(Aname);
-    this.baseShape = this.makeShape();
   }
 
   public gamePlay = Tile.gamePlay;
-  public player?: Player;
+
   /**
    * @return [false] override to return true if this to be placed on hex.meep
    */
@@ -42,8 +41,8 @@ class Tile0 extends NamedContainer {
   get recycleVerb(): string { return 'demolished'; }
 
   get radius() { return TP.hexRad };
-  /** set in constructor, can override baseShape!: Paintable; */
-  baseShape: Paintable;
+  /** set in constructorCode using makeShape(); can override if baseShape?:; */
+  baseShape!: Paintable;
 
   /**
    * this.addChildAt(new Bitmap(loader.getImage(name)), at);
@@ -51,7 +50,7 @@ class Tile0 extends NamedContainer {
    * image is scaled to fit given size.
    * centered above Tile.textSize
    * @param name from AliasLoader.loader.imap.keys();
-   * @param at [numChildern - 1]
+   * @param at [numChildren - 1]
    * @param size [TP.hexRad] bitmap.scale = size / max(img.width, img.height)
    * @return new Bitmap() containing the named image (no image if name was not loaded)
    */
@@ -62,9 +61,11 @@ class Tile0 extends NamedContainer {
     return bm;      // bm.image undefined if image not loaded!
   }
 
-  /** Default is TileShape; a HexShape with translucent disk.
+  /** Default is TileShape; a HexShape with translucent disk [hextowns].
+   *
    * add more graphics with paint(colorn)
-   * also: addImageBitmap() to add child image from AliasLoader
+   *
+   * see also: addImageBitmap() to add child image from AliasLoader
    */
   makeShape(): Paintable {
     return new TileShape(this.radius);
@@ -151,31 +152,52 @@ export class Tile extends Tile0 implements Dragable {
   source!: TileSource<Tile>;
 
   // Tile
+  /** Build the Tile [baseShape, image?, nameText] and reCache the graphics. */
   constructor(
     /** typically: className-serial; may be supplied as 'name' or undefined */
     Aname: string,
     /** the owning Player. */
     player?: Player,
   ) {
-    super(Aname)
+    super(Aname, player); // both are set as this.Aname & this.player
     Tile.allTiles.push(this);
-    const cName = Aname?.split('-')[0] ?? className(this); // className is subject to uglification!
-    this.name = cName;  // used for saveState!
-    if (!Aname) this.Aname = `${cName}-${Tile.allTiles.length}`;
-    const rad = this.radius;
-    this.addChild(this.baseShape);
-    this.nameText = this.addTextChild(rad / 2);
-    if (player !== undefined)
-      this.setPlayerAndPaint(player);  // dubious: subclasses are not yet constructed!
-    this.reCache();// TP.cacheTiles ? use H.HexBounds()
+    this.tileConstructor()
+    this.reCache();       // TP.cacheTiles ? use H.HexBounds()
   }
 
+  /** invoked by constructor; set name & Aname if undefined
+   *
+   * typical stack:
+   * - makeShape()->baseShape
+   * - addImageBitmap()->image,
+   * - addTextChild()->nameText
+   */
+  tileConstructor() {
+    this.baseShape = this.makeShape();
+    this.addChild(this.baseShape);
+    // from Ankh: extract class name for saveState
+    const cName = this.Aname?.split('-')[0] ?? className(this); // className is subject to uglification!
+    this.name = cName;  // used for saveState!
+    if (!this.Aname) this.Aname = `${cName}-${Tile.allTiles.length}`;
+    this.nameText = this.addTextChild(); // y0=radius/2, text=f(Aname), size=radius/3, vis=false
+    if (Tile.paintInConstructor && this.player) // specific to hextowns; also Meeple may provide player
+      this.setPlayerAndPaint(this.player);  // dubious: subclasses are not yet constructed!
+  }
+  static paintInConstructor = false;
+
   nameText: Text;
-  /** update nameText; replace(/-/g, '\n'); adjust y for nlines */
-  setNameText(name: string) {
+  /**
+   * change this.nameText; replace(/-/g, '\n'); adjust y for nlines
+   *
+   * retains fontSize & visibilty; updateCache()
+   *
+   * @param name [Aname] unadulterated name
+   * @param y0 [radius/2] place name in bottom half of Tile; a little lower if multi-line.
+   */
+  setNameText(name = this.Aname, y0 = this.radius / 2) {
     this.nameText.text = name.replace(/-/g, '\n');
     const nlines = this.nameText.text.split('\n').length - 1;
-    this.nameText.y = (nlines == 0) ? 0 : - nlines * this.nameText.getMeasuredHeight() / 4;
+    this.nameText.y = (nlines == 0) ? y0 : y0 - nlines * this.nameText.getMeasuredHeight() / 4;
     this.updateCache();
   }
   // for BalMark:
@@ -188,7 +210,7 @@ export class Tile extends Tile0 implements Dragable {
   homeHex?: Hex1;
   /** location at start-of-drag */
   fromHex: IHex2;
-  /** override hook to deselect/stopDragging a Tile. */
+  /** @returns [true] override can return false to deselect/stopDragging this Tile. */
   isDragable(ctx?: DragContext) { return true; }
 
   _hex: Hex1 | undefined;
@@ -199,7 +221,7 @@ export class Tile extends Tile0 implements Dragable {
     if (this.isMeep ? (this.hex?.meep === this) : (this.hex?.tile === this))
       this.hex?.setUnit(undefined, this.isMeep)
     this._hex = hex;
-    hex?.setUnit(this)
+    hex?.setUnit(this, this.isMeep)
   }
 
   override updateCache(compositeOperation?: string): void {
@@ -245,8 +267,8 @@ export class Tile extends Tile0 implements Dragable {
    *
    * from Ankh: text = Aname.replace(/-/g, '\n'); [Andro-sphinx, Cat-Mum]
    */
-  addTextChild(y0 = this.radius / 2, text = this.Aname?.replace(/-/g, '\n'), size = this.radius / 3, vis = false) {
-    const nameText = new CenterText(text, size);
+  addTextChild(y0 = this.radius / 2, text = this.Aname?.replace(/-/g, '\n'), size = this.radius / 3, vis = false, color = C.BLACK) {
+    const nameText = new CenterText(text, size, color);
     nameText.y = y0;         // Meeple overrides in constructor!
     nameText.visible = vis;
     this.addChild(nameText);
@@ -393,7 +415,7 @@ export class Tile extends Tile0 implements Dragable {
    * When this Tile starts a drag,
    * run setLegal() on all Hex of given Table to identify legal targets.
    *
-   * All Hex is table.newHexes and table.hexMap.hexAry.
+   * setLegal(hex) on: table.newHexes and table.hexMap.hexAry.
    * - does not include table.recycleHex, so that may need special treatment.
    *
    * @param table acces to newHexes and hexMap
@@ -409,7 +431,7 @@ export class Tile extends Tile0 implements Dragable {
    * Override in AuctionTile, Civic, Meeple/Leader
    * @param toHex a potential targetHex (table.hexUnderObj(dragObj.xy))
    */
-  isLegalTarget(toHex: Hex1, ctx?: DragContext) {
+  isLegalTarget(toHex: Hex1, ctx: DragContext) {
     if (!toHex) return false;
     if (!!toHex.tile) return false; // note: from AuctionHexes to Reserve overrides this.
     if (toHex.meep && !(toHex.meep.player === this.gamePlay.curPlayer)) return false; // QQQ: can place on non-player meep?

@@ -1,9 +1,17 @@
 import { stime } from '@thegraid/common-lib';
 import { Container, Text } from '@thegraid/easeljs-module';
 import { F } from '@thegraid/common-lib';
+import { TP } from './table-params';
 
 export class TextLog extends Container {
-  constructor(public Aname: string, nlines = 6, public size: number = 30, public lead = 3) {
+  /**
+   *
+   * @param Aname
+   * @param nlines
+   * @param size fontSize [TP.hexRad/2]
+   * @param lead between lines [3]
+   */
+  constructor(public Aname: string, nlines = 6, public size = TP.hexRad / 2, public lead = 3) {
     super();
     this.lines = new Array<Text>(nlines);
     for (let ndx = 0; ndx < nlines; ndx++) this.lines[ndx] = this.newText(`//0:`);
@@ -34,6 +42,7 @@ export class TextLog extends Container {
     this.lines.forEach(tline => (tline.y = cy, cy += tline.getMeasuredLineHeight() + lead));
   }
 
+  /** convert line to single-line; inc count if same line; insert & scroll up */
   log(line: string, from = '', toConsole = true) {
     line = line.replace(/\n/g, '-');
     toConsole && console.log(stime(`${from}:`), line);
