@@ -213,7 +213,8 @@ export class Hex1 extends Hex {
     // too much effort to do this in subclass Hex2:
     if (unit !== undefined && Hex.isIHex2(this)) {
       unit.x = this.x; unit.y = this.y;
-      this.mapCont.tileCont?.addChild(unit);      // meep will go under tile [wut?]
+      this.mapCont.tileCont?.addChild(unit); // if tile over meep vvv
+      if (this.meep && this.meep !== unit) this.mapCont.tileCont?.addChild(this.meep)
     }
   }
 
@@ -303,7 +304,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
     }
     get radius() { return TP.hexRad }
 
-    readonly implementsIHex2 = true;
+    readonly implementsIHex2: boolean = true;
     /** Child of mapCont.hexCont: HexCont holds hexShape(color), rcText, distText, capMark */
     readonly cont: HexCont = new HexCont(this); // Hex IS-A Hex0, HAS-A HexCont Container
     readonly hexShape = this.makeHexShape();    // shown on this.cont: colored hexagon
@@ -684,17 +685,23 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
 
   readonly radius!: number;
 
-  private minCol?: number = undefined               // Array.forEach does not look at negative indices!
-  private maxCol?: number = undefined               // used by rcLinear
-  private minRow?: number = undefined               // to find centerHex
-  private maxRow?: number = undefined               // to find centerHex
+  // explicit private:
+  private _minCol?: number = undefined   // Array.forEach does not look at negative indices!
+  private _maxCol?: number = undefined   // used by rcLinear
+  private _minRow?: number = undefined   // to find centerHex
+  private _maxRow?: number = undefined   // to find centerHex
+  // public readonly accessors:
+  get minCol() { return this._minCol }
+  get maxCol() { return this._maxCol }
+  get minRow() { return this._minRow }
+  get maxRow() { return this._maxRow }
   get centerRC() {
-    const row = Math.floor(((this.maxRow ?? 0) + (this.minRow ?? 0)) / 2);
-    const col = Math.floor(((this.minCol ?? 0) + (this.maxCol ?? 0)) / 2);
+    const row = Math.floor(((this._maxRow ?? 0) + (this._minRow ?? 0)) / 2);
+    const col = Math.floor(((this._minCol ?? 0) + (this._maxCol ?? 0)) / 2);
     return { row, col }
   }
   // when called, maxRow, etc are defined...
-  get nRowCol() { return [(this.maxRow ?? 0) - (this.minRow ?? 0), (this.maxCol ?? 0) - (this.minCol ?? 0)] }
+  get nRowCol() { return [1 + (this._maxRow as number) - (this._minRow as number), 1 + (this._maxCol as number) - (this._minCol as number)] }
 
   get centerHex() {
     const { row, col } = this.centerRC;
@@ -724,7 +731,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     }
   }
 
-  rcLinear(row: number, col: number): number { return col + row * (1 + (this.maxCol ?? 0) - (this.minCol ?? 0)) }
+  rcLinear(row: number, col: number): number { return col + row * (1 + (this._maxCol ?? 0) - (this._minCol ?? 0)) }
 
   mark: DisplayObject         // a cached DisplayObject, used by showMark
 
@@ -760,11 +767,11 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     hex.district = district // and set Hex2.districtText
     if (this[row] === undefined) {  // create new row array
       this[row] = new Array<T>()
-      if (this.minRow === undefined || row < this.minRow) this.minRow = row
-      if (this.maxRow === undefined || row > this.maxRow) this.maxRow = row
+      if (this._minRow === undefined || row < this._minRow) this._minRow = row
+      if (this._maxRow === undefined || row > this._maxRow) this._maxRow = row
     }
-    if (this.minCol === undefined || col < this.minCol) this.minCol = col
-    if (this.maxCol === undefined || col > this.maxCol) this.maxCol = col
+    if (this._minCol === undefined || col < this._minCol) this._minCol = col
+    if (this._maxCol === undefined || col > this._maxCol) this._maxCol = col
     this[row][col] = hex   // addHex to this Array<Array<Hex>>
     this.link(hex)   // link to existing neighbors
     return hex
