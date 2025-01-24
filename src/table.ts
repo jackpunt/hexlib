@@ -812,8 +812,7 @@ export class Table extends Dispatcher {
     // press SHIFT to capture [recycle] opponent's Criminals or Tiles
     const reason = tile.cantBeMovedBy(this.gamePlay.curPlayer, ctx);
     if (reason) {
-      console.log(stime(this, `.dragStart: ${reason}: ${tile},`), 'ctx=', { ...ctx });
-      // this.logText(`${reason}: ${tile}`, 'Table.dragStart');
+      this.explainReason(tile, ctx, reason)
       this.stopDragging();
     } else {
       // mark legal targets for tile; SHIFT for all hexes, if payCost
@@ -825,6 +824,16 @@ export class Table extends Dispatcher {
         tile.noLegalTarget(ctx);
       }
     }
+  }
+  /**
+   * explain reason why dragStart cantBeMovedBy(curPlayer, ctx)
+   * @param tile
+   * @param ctx
+   * @param reason as returned from cantBeMovedBy()
+   */
+  explainReason(tile: Tile, ctx: DragContext, reason?: string | boolean) {
+    console.log(stime(this, `.dragStart: ${reason}: ${tile},`), 'ctx=', { ...ctx });
+    // this.logText(`${reason}: ${tile}`, 'Table.dragStart');
   }
 
   /** invoked during dragStart(tile, ctx)

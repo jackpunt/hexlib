@@ -214,7 +214,7 @@ export class Hex1 extends Hex {
     if (unit !== undefined && Hex.isIHex2(this)) {
       unit.x = this.x; unit.y = this.y;
       this.mapCont.tileCont?.addChild(unit); // if tile over meep vvv
-      if (this.meep && this.meep !== unit) this.mapCont.tileCont?.addChild(this.meep)
+      if (this.meep && this.meep !== unit) this.meep.parent.addChild(this.meep)
     }
   }
 

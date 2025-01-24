@@ -428,7 +428,11 @@ export class Tile extends Tile0 implements Dragable {
   }
 
   /**
-   * Override in AuctionTile, Civic, Meeple/Leader
+   * Indicates if toHex is marked/legal as ctx.targetHex when dragging a tile.
+   *
+   * Override for each flavor of Tile or Meeple as approriate.
+   *
+   * Note: tile.fromHex becomes ctx.targetHex in Tile.dragFunc0; without isLegalTarget.
    * @param toHex a potential targetHex (table.hexUnderObj(dragObj.xy))
    */
   isLegalTarget(toHex: Hex1, ctx: DragContext) {
