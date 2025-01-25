@@ -682,7 +682,7 @@ export class Table extends Dispatcher {
     parent._doneButton?.removeEventListener(S.click, parent._doneListener);
     parent._doneButton = this.doneButton = doneButton;
     parent._doneListener = doneButton.on(S.click, (evt, data?: any) => this.doneClicked(evt, data), this, false, data);
-    doneButton.disp.textAlign = align; // Note: baseline is still 'middle'
+    doneButton.label.textAlign = align; // Note: baseline is still 'middle'
     const { x, y, width: w, height: h } = doneButton.getBounds()
     doneButton.name = 'doneButton';
     doneButton.x = cx - 0;     // XY is the top-right corner, align extends to left
