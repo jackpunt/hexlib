@@ -77,6 +77,7 @@ export class GameState {
     doneButton.label_text = label;
     doneButton.paint(color, true);
     afterUpdate(doneButton, afterPopup)
+    return doneButton;
   }
 
   /** proceed to phase(this.donePhase)(...args) if state.done() is not defined */

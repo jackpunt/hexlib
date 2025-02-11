@@ -48,8 +48,8 @@ export class TileSource<T extends Tile> {
   }
 
   /** can override */
-  makeCounter(name: string, initValue: number, color: string, fontSize: number, fontName?: string, textColor?: string) {
-    return new NumCounter(name, initValue, color, fontSize, fontName, textColor);
+  makeCounter(name: string, initValue: number, color: string, fontSize: number, fontName?: string, textColors?: string[]) {
+    return new NumCounter(name, initValue, color, fontSize, fontName, textColors);
   }
 
   /** length of available[] plus sourceHexUnit */

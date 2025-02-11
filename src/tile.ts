@@ -1,8 +1,9 @@
 import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
-import { CenterText, NamedContainer, Paintable, PaintableShape } from "@thegraid/easeljs-lib";
+import { CenterText, CircleShape, NamedContainer, Paintable, PaintableShape } from "@thegraid/easeljs-lib";
 import { DisplayObject, MouseEvent, Rectangle, Text } from "@thegraid/easeljs-module";
 import { type GamePlay } from "./game-play";
 import { Hex1, IHex2 } from "./hex";
+import { H } from "./hex-intfs";
 import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
 import { HexShape, TileShape } from "./shapes";
@@ -69,6 +70,31 @@ class Tile0 extends NamedContainer {
    */
   makeShape(): Paintable {
     return new TileShape(this.radius);
+  }
+
+  /** color for this.makeBleed() */
+  get bleedColor() {
+    return (this.baseShape as PaintableShape).colorn;
+  }
+
+  /** For TileExporter. base implementation: scale up from this.makeShape() */
+  makeBleed(bleed: number): DisplayObject {
+    const bleedShape = this.makeShape();
+    bleedShape.rotation = this.rotation;
+    const { width, height } = bleedShape.getBounds()
+    bleedShape.scaleX = (width + 2 * bleed) / width;
+    bleedShape.scaleY = (height + 2 * bleed) / height;
+    bleedShape.paint(this.bleedColor, true);
+    // TODO: move to makeBleed for specific use-case.
+    if (this.baseShape instanceof TileShape) {
+      // add backing circle, so bleed does not show through;
+      const rv = new NamedContainer('bleed')
+      const backRad = this.radius * H.sqrt3_2 * (55 / 60);
+      const back = new CircleShape(C.WHITE, backRad);
+      rv.addChild(back, bleedShape)
+      return rv;
+    }
+    return bleedShape;
   }
 
   /** paint with PlayerColor; updateCache()

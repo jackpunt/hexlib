@@ -36,7 +36,7 @@ class mockPlanner implements IPlanner {
   }
 }
 export class Planner extends mockPlanner {
-  pauseP: { resolved: boolean};
+  pauseP: { resolved: boolean}; // for ex: a Promise
 }
 
 /**

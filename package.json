@@ -36,7 +36,7 @@
   "homepage": "https://github.com/jackpunt/hexlib#readme",
   "dependencies": {
     "@thegraid/common-lib": "^1.3.48",
-    "@thegraid/easeljs-lib": "^1.4.9",
+    "@thegraid/easeljs-lib": "file:../createjs-lib/thegraid-easeljs-lib-1.4.10.tgz",
     "@thegraid/easeljs-module": "^1.4.0",
     "json5": "^2.2.3"
   },

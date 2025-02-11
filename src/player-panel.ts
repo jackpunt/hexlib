@@ -57,21 +57,19 @@ export class PlayerPanel extends NamedContainer {
 
   /**
    *
-   * @param ss1 stroke width (2 or 4)
+   * @param ss stroke size (4 or 8)
    * @param bgc fill color
    */
-  setOutline(ss1 = 2, bgc = this.bg0) {
+  setOutline(ss = 4, bgc = this.bg0) {
     const { wide, high, } = this.metrics;
-    const ss2 = ss1 * 2 + 1, g = new Graphics().ss(ss2); // our own ss calcs
     this.removeChild(this.outline);
-    // this.outline = new RectShape({ x: -ss1, y: -ss1, w: wide + ss2, h: high + ss2, s: 0 }, bgc, this.player.color, g);
-    this.outline = new RectShape({ x: 0, y: 0, w: wide, h: high, s: ss1 }, bgc, this.player.color);
+    this.outline = new RectShape({ x: 0, y: 0, w: wide, h: high, s: ss }, bgc, this.player.color);
     this.addChildAt(this.outline, 0);
   }
   bg0 = 'rgba(255,255,255,.3)';
   bg1 = 'rgba(255,255,255,.5)';
   showPlayer(show = (this.player && this.player === this.player.gamePlay.curPlayer)) {
-    this.setOutline(show ? 4 : 2, show ? this.bg1 : this.bg0);
+    this.setOutline(show ? 8 : 4, show ? this.bg1 : this.bg0);
   }
 
   confirmContainer: ConfirmCont;

@@ -11,7 +11,19 @@ import { MapTile, Tile, } from "./tile";
 export class Player {
   static allPlayers: Player[] = [];
   // PlayerLib uses type string, client can make a restricted type
-  static colorScheme = ['Red', 'Blue', 'darkgreen', 'Violet', 'gold', 'purple'];
+  static colorScheme: Record<string, string> = { red: 'Red', blue: 'Blue', green: 'darkgreen', violet: 'Violet', gold: 'gold', purple: 'purple' };
+  /**
+   * Can use canonical color name, is mapped to arbitrary HTML color.
+   * @param ndx number or (keyof typeof Player.colorScheme)
+   * @returns colorScheme[ndx]
+   */
+  static playerColor(ndx: number | string) {
+    if (typeof ndx === 'number') ndx = Object.keys(Player.colorScheme)[ndx] as keyof typeof Player.colorScheme;
+    return Player.colorScheme[ndx as keyof typeof Player.colorScheme];
+  }
+  static colorName(color: string) {
+    return Object.keys(Player.colorScheme).find(k => Player.playerColor(k) === color)
+  }
 
   readonly Aname: string;
   constructor(
@@ -20,8 +32,9 @@ export class Player {
   ) {
     Player.allPlayers[index] = this;
     TP.numPlayers = Player.allPlayers.length; // incrementing up to gamePlay.nPlayers
-    this.color = Player.colorScheme[index];
-    this.Aname = `P${index}:${this.color}`;
+    this.color = Player.playerColor(index);
+    const cname = Player.colorName(this.color)
+    this.Aname = `P${index}:${cname}`;
     console.log(stime(this, `.new:`), this.Aname);
   }
 
@@ -51,7 +64,7 @@ export class Player {
 
   // Created in masse by Table.layoutCounter
   coinCounter: NumCounter; // set by layoutCounters: `${'Coin'}Counter`
-  get coins() { return this.coinCounter?.getValue(); }
+  get coins() { return this.coinCounter?.value; }
   set coins(v: number) { this.coinCounter?.updateValue(v); }
 
   /** @deprecated only works for 2-players; use nthPlayer() */

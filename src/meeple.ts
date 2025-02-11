@@ -23,6 +23,7 @@ export class MeepleShape extends PaintableShape {
   }
 
   backSide: Shape;  // visible when Meeple is 'faceDown' after a move.
+  /** make an overlay shape for the backside of baseShape. */
   makeOverlay(y0 = this.y) {
     const { x, width: r2 } = this.getBounds(); // x at left edge
     const over = new Shape();

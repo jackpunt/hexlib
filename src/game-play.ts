@@ -135,9 +135,13 @@ export class GamePlay0 {
     }
     this.turnNumber = turnNumber;
     this.preGame = false;
-    this.curPlayer = Player.allPlayers[0].nthPlayer(turnNumber);
-    this.curPlayerNdx = this.curPlayer.index;
+    this.setCurPlayer(Player.allPlayers[0].nthPlayer(turnNumber));
     this.curPlayer.newTurn();
+  }
+
+  setCurPlayer(player: Player) {
+    this.curPlayer = player;
+    this.curPlayerNdx = player.index;
   }
 
   isEndOfGame() {
@@ -471,10 +475,13 @@ export class GamePlay extends GamePlay0 {
    * invoked by GamePlay.setNextPlayer(turnNumber);
    * after super.setNextPlayer: {set curPlayer & curPlayer.newTurn() }
    * before showCurPlayer()
+   *
+   * @param from annotation indicating the origin of this log line
+   * @param toConsole [true] false to not log on console
    */
-  logNextPlayer(from: string) {
+  logNextPlayer(from: string, toConsole?: boolean) {
     const { logAt } = this.logWriterInfo();
-    this.table.logText(`&file=${logAt} ${this.curPlayer.Aname} ${stime.fs()}`, from);
+    this.table.logText(`&file=${logAt} ${this.curPlayer.Aname} ${stime.fs()}`, from, toConsole);
     ; (document.getElementById('readFileName') as HTMLTextAreaElement).value = logAt;
   }
 

@@ -119,7 +119,9 @@ export class TopoNSC extends TopoC<NsDCR> {
 /** Hex things */
 export namespace H {
   export const degToRadians = Math.PI / 180;
-  export const sqrt3 = Math.sqrt(3)  // 1.7320508075688772
+  /** 1.7320508075688772 */
+  export const sqrt3 = Math.sqrt(3);
+  /** 0.8660254037844386 */
   export const sqrt3_2 = H.sqrt3 / 2;
 
   /** not a HexDir, but identifies a Center; no Dir */

@@ -314,8 +314,14 @@ export class Table extends Dispatcher {
   }
 
   /**
-   * Inject gamePlay, gamePlay.hexMap and hexC; setBackground and cache; layoutTable2; makePerPlayer;
-   * setupUndoButtons; layoutTurnlog;
+   * @example
+   * Inject gamePlay, gamePlay.hexMap and hexC;
+   * setBackground(scaleCont, this.bgXYWH)
+   * hexCont.cache(hexCont.getBounds());
+   * layoutTable2();
+   * makePerPlayer();
+   * setupUndoButtons();
+   * layoutTurnlog();
    */
   layoutTable(gamePlay: GamePlay) {
     this.gamePlay = gamePlay;
@@ -335,7 +341,7 @@ export class Table extends Dispatcher {
 
     this.layoutTurnlog();
 
-    this.namedOn("playerMoveEvent", S.add, this.gamePlay.playerMoveEvent, this.gamePlay)
+    // this.namedOn("playerMoveEvent", S.add, this.gamePlay.playerMoveEvent, this.gamePlay)// legacy from hexline:
   }
 
   layoutTurnlog(rowy = 4, colx = -13) {
@@ -675,7 +681,8 @@ export class Table extends Dispatcher {
    * @param data included in callback to doneClicked(evt, data)
    * @returns this.doneButton
    */
-  addDoneButton(cont: Container = this.scaleCont, cx = 0, cy = 0, align = 'center', data?: any) {
+  addDoneButton(cont?: Container, cx = 0, cy = 0, align = 'center', data?: any) {
+    cont = cont ?? this.doneButton?.parent ?? this.scaleCont
     // Store the 'on' listener on the parent container:
     const parent = cont as Container & { _doneListener: Function, _doneButton: UtilButton };
     const doneButton = new UtilButton('Done', { bgColor: 'lightgreen', fontSize: this.sr(30) });
@@ -691,7 +698,7 @@ export class Table extends Dispatcher {
     return doneButton;
   }
 
-  /** show player player score on table */
+  /** override to show player score on table/panel */
   setPlayerScore(plyr: Player, score = 0, rank?: number) {
   }
 
