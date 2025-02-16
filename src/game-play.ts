@@ -59,12 +59,11 @@ export class GamePlay0 {
   // [or keep 'state' in-memory and reload from there]
   // hexline originally did undo/redo; ankh writes/reads Scenario object log_date_time.json
 
-  logWriterLine0() {
-    const setup = this.gameSetup, thus = this as any as GamePlay, turn = thus.turnNumber;
-    let line = { time: stime.fs(), turn };
+  /** log a json line of the form {${key}: ${line}}   */
+  logWriterLine0(key = 'start', line: Record<string, any> = { time: stime.fs(), turn: this.turnNumber }) {
     let line0 = json(line, true); // machine readable starting conditions
     console.log(`-------------------- ${line0}`)
-    this.logWriter.writeLine(`{start: ${line0}},`)
+    this.logWriter.writeLine(`{${key}: ${line0}},`)
   }
 
   /** GamePlay0 - supply GodNames for each: new Player(...). */
@@ -282,7 +281,7 @@ export class GamePlay extends GamePlay0 {
     // KeyBinder.keyBinder.setKey('k', () => this.logWriter.showBacklog());
     KeyBinder.keyBinder.setKey('D', () => this.debug())
 
-    KeyBinder.keyBinder.setKey('C-s', () => {  // C-s START
+    KeyBinder.keyBinder.setKey('C-s', () => {  // C-s RE-START
       blinkAndThen(this.hexMap.mapCont.markCont, () => this.gameSetup.restart({}));
     });
 

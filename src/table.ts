@@ -708,7 +708,8 @@ export class Table extends Dispatcher {
    *
    * A Tile or class of Tile may stopDragging() due to noLegalTargets().
    */
-  startGame(scenario: Scenario) {
+  startGame() {
+    this.scaleCont.addChild(this.overlayCont); // now at top of the list.
     // All Tiles (& Meeple) are Dragable: (Note: if noLegal then stopDragging)
     Tile.allTiles.forEach(tile => {
       this.makeDragable(tile);

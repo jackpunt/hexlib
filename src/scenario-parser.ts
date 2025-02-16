@@ -4,16 +4,32 @@ import { KeyBinder } from "@thegraid/easeljs-lib";
 import type { GamePlay } from "./game-play";
 import { Hex, HexMap, IHex2 } from "./hex";
 
+// may need to declare module to 'extend' this interface...
+// Scenario is StartElt &| SetupElt
+// initialScenario produces a StartElt; for parseScenario(SetupElt)
+// clips from file@turn are SetupElt; also for parseScenario(SetupElt)
+// SetupElt is the main use of Scenario
 export interface SetupElt {
   Aname?: string;        // {orig-scene}@{turn} or {filename}@{turn} ?
   turn?: number;         // default to 0; (or 1...)
   coins?: number[];      // Player has some coins, maybe also some VPs?
   gameState?: any[];     // GameState contribution
 }
-/** Reading from a file, first element is a StartElt with start: {...},
- * then follows normal SetupElt[] */
-export type LogElts = [ StartElt, ...SetupElt[]];
-export type StartElt = { start: { time: string, scene: string, turn: number } };
+/** Reading from a logfile: [{start: StartElt},...SetupElt[]]
+ * - first element is {start: StartElt}
+ * - the rest is the SetupElt[]
+ */
+export type LogElts = [{ start: StartElt }, ...SetupElt[]];
+// StartElt = { Aname, n? }; the initial conditions of the Scenario.
+// other SetupElt in the logfile have intermediate states as the game progresses.
+export type StartElt = {
+  Aname: string,
+  n?: number,            // number of Players; from qParams
+  time?: string,
+  turn?: number,         // usually start turn=0 or maybe -1 if auto-incr..
+  scene?: string,        // reference name of Scenario (ala Ankh)
+}
+// export type StartElt = { start: StartBody };
 
 export class ScenarioParser {
 
@@ -41,9 +57,10 @@ export class ScenarioParser {
     this.gamePlay.hexMap.update();
   }
 
-  /** add the optional bit to SetupElt */
+  /** add any optional game-specific bits to SetupElt */
   addStateElements(setupElt: SetupElt) {
     setupElt.gameState = this.gamePlay.gameState.saveState();
+    return setupElt;
   }
 
   /** override/replace to create a SetupElt and logState(logWriter) */
@@ -51,8 +68,7 @@ export class ScenarioParser {
     const turn = Math.max(0, gamePlay.turnNumber);
     const coins = gamePlay.allPlayers.map(p => p.coins);
     const time = stime.fs();
-    const setupElt = { turn, time, coins, } as SetupElt;
-    this.addStateElements(setupElt)
+    const setupElt = this.addStateElements({ turn, time, coins, } as SetupElt);
     if (logWriter) this.logState(setupElt, logWriter);
     return setupElt;
   }

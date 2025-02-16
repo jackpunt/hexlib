@@ -7,7 +7,7 @@ import { Hex, Hex2, HexMap, MapCont } from "./hex";
 import { AliasLoader } from "./image-loader";
 import { Meeple } from "./meeple";
 import { Player } from "./player";
-import { ScenarioParser, SetupElt } from "./scenario-parser";
+import { ScenarioParser, SetupElt, type StartElt } from "./scenario-parser";
 import { LogReader, LogWriter } from "./stream-writer";
 import { Table } from "./table";
 import { TP } from "./table-params";
@@ -24,8 +24,8 @@ stime.anno = (obj: string | { constructor: { name: string; }, stage?: Stage, tab
 
 /** configuration of HexMap */
 export interface HexAspect { mh?: number, nh?: number, hexRad?: number }
-/** Specify and initial or current state of game */
-export interface Scenario { turn: number, Aname: string, };
+/** Specify and initial or current state of game; see also Scenario.SetupElt */
+export type Scenario = SetupElt; // {Aname: string, turn: number}
 
 interface MultiItem extends DropdownItem { }
 class MultiChoice extends DropdownChoice {
@@ -50,15 +50,15 @@ export class GameSetup {
   /**
    * ngAfterViewInit2() --> start here!
    *
-   * - this.initialize(canvasId, qParams);
-   * - this.loadImagesThenStartup(qParams);
+   * - this.initialize(canvasId);
+   * - this.loadImagesThenStartup();
    *
    * @param canvasId supply undefined for "headless" Stage
-   * @param qParams queryParams from StageComponent -> this.qParams;
+   * @param qParams queryParams from StageComponent --> this.qParams;
    */
   constructor(canvasId: string, public qParams: Params = {}) {
     this.initialize(canvasId);
-    this.loadImagesThenStartup(qParams);
+    this.loadImagesThenStartup();
   }
 
   static random_seed = '';
@@ -82,13 +82,13 @@ export class GameSetup {
 
   /** Label browser page. Typically: nPlayer=n, scenario from file. */
   get pageLabel() {
-    const { n, file } = this.qParams;
+    const { n, file } = this.qParams as { n?: string, file?: string };
       const sep = (n !== undefined && file !== undefined) ? '&' : '';
       return `${n ? ` n=${n}` : ''}${sep}${file ? `file=${file}` : ''}`;
   }
 
-  loadImagesThenStartup(qParams: Params = this.qParams) {
-    AliasLoader.loader.loadImages(() => this.startup(qParams));
+  loadImagesThenStartup() {
+    AliasLoader.loader.loadImages(() => this.startup());
   }
 
   makePlayer(ndx: number, gamePlay: GamePlay) {
@@ -128,8 +128,17 @@ export class GameSetup {
 
   restartable = false;
   /** C-s ==> kill game, start a new one, possibly with new stateInfo
+   *
+   * - p.endGame()
+   * - deContainer()
+   * - resetState(stateInfo)
+   * - startup(stateInfo as Scenario)
    * @param stateInfo Scenario and/or { hexRad: 60, nHexes: 7, mHexes: 1 }
    */
+  // ParamGUI restarts with single: HexAspect;
+  // keyBinder(C-s) restarts with empty Scenario: {}; // should be previous Scenario?
+  // parseStateButton: restart({ parsed from JSON text element })
+  // extractStateFromString: restart({ parsed from file@turn })
   restart(stateInfo: Scenario | HexAspect) {
     if (!this.restartable) return;  // ignore call from within makeGUI
     let netState = this.netState
@@ -145,13 +154,17 @@ export class GameSetup {
       cont.removeAllChildren()
     }
     deContainer(this.stage);
-    this.resetState(stateInfo);
-    this.startup();             // was in resetState() but this makes more sense. maybe startup(stateInfo)?
+    this.zeroAllArrays();
+    this.resetState(stateInfo); // <-- inject/edit necessary elements: nGods, godNames,...
+    this.startup(stateInfo as Scenario); // was in resetState() but this makes more sense.
     // next tick, new thread...
     setTimeout(() => this.netState = netState, 100) // onChange-> ('new', 'join', 'ref') initiate a new connection
   }
 
-  /** reset GameState and/or Table/TableParams before startup() */
+  /**
+   * reset GameState and/or Table/TableParams before startScenario(stateInfo as Scenario)
+   * @param stateInfo (HexAspect mostly?)
+   */
   resetState(stateInfo: Scenario | HexAspect) {
     const { mh, nh, hexRad } = stateInfo as HexAspect;
     TP.mHexes = mh ?? TP.mHexes;
@@ -165,9 +178,9 @@ export class GameSetup {
     const parseStateText = document.getElementById('parseStateText') as HTMLInputElement;
     parseStateButton.onclick = () => {
       const stateText = parseStateText.value;
-      const state = JSON5.parse(stateText) as Scenario;
-      state.Aname = state.Aname ?? `parseStateText`;
-      blinkAndThen(this.gamePlay.hexMap.mapCont.markCont, () => this.restart(state))
+      const scenario = JSON5.parse(stateText) as Scenario;
+      scenario.Aname = scenario.Aname ?? `parseStateText`;
+      blinkAndThen(this.gamePlay.hexMap.mapCont.markCont, () => this.restart(scenario))
     }
   }
 
@@ -183,30 +196,30 @@ export class GameSetup {
     const readFileName = readFileNameElt.value;
     const [fname, turnstr] = readFileName.split('@'); // fileName@turn
     const turn = Number.parseInt(turnstr);
-    const stateInfo = this.extractStateFromString(fileText, fileName, turn);
+    const stateInfo = this.extractStateFromLogText(fileText, fileName, turn);
     this.setupToReadFileState();   // another thread to wait for next click
     this.restart(stateInfo);
   }
 
   /**
    *
-   * @param fileText contents of the file
+   * @param logText contents of the file
    * @param fileName the file that was read
    * @param turn extracted from fileName\@turn
    * @returns stateInfo suitable for restart(stateInfo)
    */
-  extractStateFromString(fileText: string, fileName: string, turn: number) {
-    const logArray = JSON5.parse(fileText) as Scenario[];
+  extractStateFromLogText(logText: string, fileName: string, turn: number) {
+    const logArray = JSON5.parse(logText) as SetupElt[];
     const [, ...stateArray] = logArray;
-    const state = stateArray.find(state => state.turn === turn) ?? {}  as Scenario;
+    const state = stateArray.find(state => state.turn === turn) ?? ({}  as SetupElt);
     state.Aname = `${fileName}@${turn}`;
     return state;
   }
 
-  /** compute nPlayers from qParams['n'] */
-  getNPlayers(qParams = this.qParams, nDef = TP.numPlayers) {
+  /** compute TP.numPlayers from qParams['n'] */
+  getNPlayers(qParams = this.qParams, nDefault = TP.numPlayers) {
     const n = qParams['n'];
-    TP.numPlayers = Math.min(TP.maxPlayers, n ? Number.parseInt(n) : nDef);
+    TP.numPlayers = Math.min(TP.maxPlayers, n ? Number.parseInt(n) : nDefault);
     return TP.numPlayers;
   }
 
@@ -245,13 +258,24 @@ export class GameSetup {
     return hexMap;
   }
 
-  /** EventDispatcher, ScaleCont, GUI-Player */
+  /**
+   * Make a Table instance [for cross injection] comprising
+   * EventDispatcher, ScaleCont, GUI support for gamePlay & Player.
+   *
+   * startScenario() will call table.layoutTable() to populate it.
+   */
   makeTable() {
     return new Table(this.stage);
   }
 
-  initialScenario(qParams: Params = this.qParams): Scenario {
-    return { turn: 0, Aname: 'defaultScenario' };
+  /** create a Scenario for a new game; based on qParams.
+   *
+   * see also: gameSetup.resetState() which can cleanup or extend the Scenario.
+   */
+  initialScenario(qParams = this.qParams): StartElt {
+    // qParams may have: mh, nh, hexRad (as HexAspect; from ParamGUI)
+    const n = this.getNPlayers(qParams)
+    return { Aname: 'defaultScenario', n, ...qParams, turn: 0,  };
   }
 
   makeGamePlay(scenario: Scenario) {
@@ -259,31 +283,43 @@ export class GameSetup {
   }
 
   /**
+   *  zero allTiles, allMeeples, allPlayers, etc.
+   *  invoked by startup();
+   */
+  zeroAllArrays() {
+    Tile.allTiles.length = 0
+    Meeple.allMeeples.length = 0;
+    Player.allPlayers.length = 0;
+  }
+
+  /**
    * Make new Table/layout & gamePlay/hexMap & Players.
    *
+   * - zeroAllArrays()
    * - getNPlayers()
    * - makeHexMap()
    * - makeTable()
-   * - initialScenario()
    * - makeGamePlay(scenario)
    * - startScenario(scenario)
-   * @param qParams [this.qParams] typically obtained from URL
+   * @param scenario [initialScenario(this.qParams), qParams as obtained from URL]
    */
-  startup(qParams = this.qParams) {
-    Tile.clearAllTiles();
-    Meeple.allMeeples.length = 0;
-    Player.allPlayers.length = 0;
-
+  // loadImagesThenStartup-->startup(qParams)
+  // restart(?) --> startup(Param | Scenario)
+  startup(scenario?: Scenario ) {
+    // intialScenario produces a StartupElt from qParams
+    if (!scenario || !scenario.turn) scenario = this.initialScenario();
+    this.scenario = scenario;                  // retain for future reference
     this.nPlayers = this.getNPlayers();        // Scenario may override?
     this.hexMap = this.makeHexMap();           // then copied from gameSetup -> gamePlay
     this.table = this.makeTable();
-    const scenario = this.initialScenario(qParams);
     // Inject Table into GamePlay;
     // GameState, mouse/keyboard->GamePlay,
-    this.gamePlay = this.makeGamePlay(scenario);
+    this.gamePlay = this.makeGamePlay(scenario); // scenario provided... maybe not used
 
     this.startScenario(scenario);
   }
+  /** the scenario last used by start(scenario) */
+  scenario: Scenario;
 
   /**
    * Given hexMap, table, and gamePlay, setup/layout everything for the game scenario.
@@ -311,11 +347,12 @@ export class GameSetup {
     this.gamePlay.logWriterLine0();
 
     gamePlay.forEachPlayer(p => p.newGame(gamePlay))        // make Planner *after* table & gamePlay are setup
-    this.restartable = false;  // block makeGUIs from reentrant restarting
-    this.table.makeGUIs();
-    this.restartable = true;   // *after* makeLines has stablilized selectValue
-    table.scaleCont.addChild(table.overlayCont); // now at top of the list.
-    table.startGame(scenario); // parseScenario; allTiles.makeDragable(); setNextPlayer();
+    {
+      this.restartable = false;  // block makeGUIs from reentrant restart()
+      this.table.makeGUIs();
+      this.restartable = true;   // *after* makeLines has stablilized selectValue
+    }
+    table.startGame();           // enable GUI & setNextPlayer()
     return gamePlay;
   }
 
