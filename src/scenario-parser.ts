@@ -84,13 +84,13 @@ export class ScenarioParser {
     logWriter.writeLine(lines);
   }
 
-  /** debug utility */
+  /** debug utility: list legal hexes; click to toggle */
   identCells(map: HexMap<IHex2>) {
     map.forEachHex(hex => {
       const hc = hex.cont;
       hc.mouseEnabled = true;
       hc.on(S.click, () => {
-        hex.isLegal = !hex.isLegal;
+        hex.setIsLegal(!hex.isLegal);
         map.update();
       });
     });

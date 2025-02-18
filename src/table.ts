@@ -854,7 +854,7 @@ export class Table extends Dispatcher {
     let nLegal = 0;
     const countLegalHexes = (hex: IHex2) => {
       if (hex !== tile.hex && tile.isLegalTarget(hex, ctx)) {
-        hex.isLegal = true; // ==> legalMark.visible = true;
+        hex.setIsLegal(true); // ==> legalMark.visible = true;
         nLegal += 1;
       }
     };

@@ -358,7 +358,10 @@ export class Tile extends Tile0 implements Dragable {
     if (!this.hex) this.parent?.removeChild(this); // Note: Hex1.setUnit() --> addChild()
   }
 
-  /** map.showMark(ctx.targetHex); override for alternate showMark. */
+  /** From HexMap.showMark(ctx.targetHex); when this tile is over a new targetHex.
+   *
+   *  override for alternate showMark.
+   */
   showTargetMark(hex: IHex2 | undefined, ctx: DragContext) {
     ctx.targetHex?.map.showMark(ctx.targetHex); // else prev mark still showing
   }
@@ -448,7 +451,7 @@ export class Tile extends Tile0 implements Dragable {
    * @param setLegal [default: hex.isLegal = false] or countLegalHexes/isLegalTarget
    * @param ctx DragContext if needed
    */
-  markLegal(table: Table, setLegal = (hex: IHex2) => { hex.isLegal = false; }, ctx = table.dragContext) {
+  markLegal(table: Table, setLegal = (hex: IHex2) => { hex.setIsLegal(false); }, ctx = table.dragContext) {
     table.newHexes.forEach(setLegal);
     table.hexMap.forEachHex(setLegal);
   }

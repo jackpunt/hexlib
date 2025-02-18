@@ -273,21 +273,27 @@ export class GamePlay extends GamePlay0 {
     KeyBinder.keyBinder.setKey('C-l', () => this.readFileState());
     KeyBinder.keyBinder.setKey('r', () => this.readFileState());
     KeyBinder.keyBinder.setKey('h', () => {this.table.textLog.visible = !this.table.textLog.visible; this.hexMap.update()});
+    KeyBinder.keyBinder.setKey('P', () => this.selectBacklog(-1));
+    KeyBinder.keyBinder.setKey('N', () => this.selectBacklog(1));
+    KeyBinder.keyBinder.setKey('S', () => this.gameSetup.blinkThenRestart());
+    KeyBinder.keyBinder.setKey('C-s', () => this.gameSetup.blinkThenRestart(undefined, '{}'));
+    // blinkAndThen(this.hexMap.mapCont.markCont, () => this.gameSetup.restart({}));
 
-    // KeyBinder.keyBinder.setKey('U', { thisArg: this.gameState, func: this.gameState.undoAction, argVal: true })
-    // KeyBinder.keyBinder.setKey('p', { thisArg: this, func: this.saveState, argVal: true })
-    // KeyBinder.keyBinder.setKey('P', { thisArg: this, func: this.pickState, argVal: true })
-    // KeyBinder.keyBinder.setKey('C-p', { thisArg: this, func: this.pickState, argVal: false }) // can't use Meta-P
-    // KeyBinder.keyBinder.setKey('k', () => this.logWriter.showBacklog());
     KeyBinder.keyBinder.setKey('D', () => this.debug())
-
-    KeyBinder.keyBinder.setKey('C-s', () => {  // C-s RE-START
-      blinkAndThen(this.hexMap.mapCont.markCont, () => this.gameSetup.restart({}));
-    });
 
     // diagnostics:
     table.undoShape.on(S.click, () => this.undoMove(), this)
     table.redoShape.on(S.click, () => this.redoMove(), this)
+  }
+
+  backlogIndex = 1;
+  selectBacklog(incr = -1) {
+    const parseStateText = document.getElementById('parseStateText') as HTMLInputElement;
+    const backlog = this.logWriter.backlog;
+    const ndx = Math.max(0, Math.min(backlog.length - 1, this.backlogIndex + incr));
+    this.backlogIndex = ndx;
+    const logElt = backlog[ndx]; // .replace(/,\n$/,'');
+    parseStateText.value = logElt;
   }
 
   /** enter debugger, with interesting values in local scope */
@@ -305,7 +311,7 @@ export class GamePlay extends GamePlay0 {
   }
 
   readFileState() {
-    document.getElementById('fsReadFileButton')?.click();
+    document.getElementById('fsReadFileButton')?.click(); // --> window.showOpenFilePicker()
   }
 
   // async fileState() {
@@ -320,30 +326,6 @@ export class GamePlay extends GamePlay0 {
   //   console.log(stime(this, `.fileState: logArray =\n`), stateArray);
   //   this.gameSetup.restart(state);
   // }
-
-  backStates: Array<SetupElt> = [];
-  /** setNextPlayer->startTurn (or Key['p']) */
-  saveState() {
-    if (this.nstate !== 0) {
-      this.backStates = this.backStates.slice(this.nstate); // remove ejected states
-      this.nstate = 0;
-    }
-
-    const state = this.gameSetup.scenarioParser.saveState(this);
-    this.backStates.unshift(state);
-    console.log(stime(this, `.saveState -------- #${this.nstate}:${this.backStates.length-1} turn=${state.turn}`), state);
-  }
-  // TODO: setup undo index to go fwd and back? wire into undoCont?
-  nstate = 0;
-  /** move nstate to older(back=true, S-P) or newer(back=false, C-P) states in backStates */
-  pickState(back = true) {
-    this.nstate = back ? Math.min(this.backStates.length - 1, this.nstate + 1) : Math.max(0, this.nstate - 1);
-    const state = this.backStates[this.nstate];
-    console.log(stime(this, `.pickState -------- #${this.nstate}:${this.backStates.length-1} turn=${state.turn}:`), state);
-    this.gameSetup.parseScenario(state); // typically sets gamePlay.turnNumber
-    console.log(stime(this, `.pickState -------- #${this.nstate}:${this.backStates.length-1} turn=${state.turn}:`), state);
-    this.setNextPlayer(this.turnNumber);
-  }
 
   clickDone() {
     this.table.doneClicked({})

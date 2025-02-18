@@ -1,6 +1,6 @@
 import { Constructor, Random, stime } from "@thegraid/common-lib";
 import { DropdownChoice, DropdownItem, blinkAndThen, makeStage } from "@thegraid/easeljs-lib";
-import { Container, Stage } from "@thegraid/easeljs-module";
+import { Container, Stage, type DisplayObject } from "@thegraid/easeljs-module";
 import JSON5 from 'json5';
 import { GamePlay } from "./game-play";
 import { Hex, Hex2, HexMap, MapCont } from "./hex";
@@ -69,7 +69,11 @@ export class GameSetup {
     Random.use_random = Random.mulberry32(seed);
   }
 
-  /** one-time, invoked from new GameSetup(canvasId); typically from StageComponent.ngAfterViewInit2() */
+  /** one-time, invoked from new GameSetup(canvasId);
+   * typically from StageComponent.ngAfterViewInit2()
+   *
+   * override should call super.initialize();
+   */
   initialize(canvasId: string) {
     stime.fmt = 'MM-DD kk:mm:ss.SSSL';
     this.init_random(this.qParams.rand);
@@ -131,6 +135,7 @@ export class GameSetup {
    *
    * - p.endGame()
    * - deContainer()
+   * - zeroAllArrays()
    * - resetState(stateInfo)
    * - startup(stateInfo as Scenario)
    * @param stateInfo Scenario and/or { hexRad: 60, nHexes: 7, mHexes: 1 }
@@ -172,16 +177,37 @@ export class GameSetup {
     TP.hexRad = hexRad ?? TP.hexRad;
   }
 
-  /** read & parse State from text element */
-  setupToParseState() {
-    const parseStateButton = document.getElementById('parseStateButton') as HTMLElement;
-    const parseStateText = document.getElementById('parseStateText') as HTMLInputElement;
-    parseStateButton.onclick = () => {
-      const stateText = parseStateText.value;
-      const scenario = JSON5.parse(stateText) as Scenario;
-      scenario.Aname = scenario.Aname ?? `parseStateText`;
-      blinkAndThen(this.gamePlay.hexMap.mapCont.markCont, () => this.restart(scenario))
-    }
+  /** read & parse State from text element: parseStateButton.onClick() => blinkThenRestart() */
+  setupToParseState(): void {
+    const parseStateButton = document.getElementById('parseStateButton') as HTMLButtonElement;
+    parseStateButton.onclick = () => this.blinkThenRestart()
+  }
+
+  /** blink DisplayObject [this.table.doneButton] until parseStateAndRestart() completes */
+  blinkThenRestart(dispObj: DisplayObject = this.table.doneButton, text?: string) {
+    const psb = document.getElementById('parseStateButton') as HTMLButtonElement;
+    const bgColor = psb.style.backgroundColor;
+    psb.style.backgroundColor = 'pink';
+    blinkAndThen(dispObj ?? this.stage, () => {
+      this.parseStateTextAndRestart(text, (scenario) => {
+        this.restart(scenario)
+        psb.style.backgroundColor = bgColor
+      });
+    });
+  }
+
+  /**
+   *
+   * @param stateText [Element('parseStateText').value.replace(/,$/, '')]
+   * @param restart [(s) => this.restart(s)] process the Scenario
+   */
+  parseStateTextAndRestart(stateText?: string, restart = (scenario: Scenario) => this.restart(scenario)) {
+    // JSON5 barfs on trailing ','
+    if (!stateText) stateText = (document.getElementById('parseStateText') as HTMLInputElement).value.replace(/,$/, '');
+    console.log(stime(this, `.parseStateTextAndRestart`), stateText);
+    const scenario = JSON5.parse(stateText) as Scenario;
+    scenario.Aname = scenario.Aname ?? `parseStateText`;
+    restart(scenario);
   }
 
   fileReadPromise: Promise<File>;
@@ -283,31 +309,31 @@ export class GameSetup {
   }
 
   /**
-   *  zero allTiles, allMeeples, allPlayers, etc.
-   *  invoked by startup();
+   *  zero backlog, allTiles, allMeeples, allPlayers, etc.
    */
   zeroAllArrays() {
+    this.logWriter.backlog.length = 0;
     Tile.allTiles.length = 0
     Meeple.allMeeples.length = 0;
     Player.allPlayers.length = 0;
-  }
+}
 
   /**
    * Make new Table/layout & gamePlay/hexMap & Players.
    *
-   * - zeroAllArrays()
    * - getNPlayers()
    * - makeHexMap()
    * - makeTable()
    * - makeGamePlay(scenario)
    * - startScenario(scenario)
+   *
    * @param scenario [initialScenario(this.qParams), qParams as obtained from URL]
    */
   // loadImagesThenStartup-->startup(qParams)
   // restart(?) --> startup(Param | Scenario)
   startup(scenario?: Scenario ) {
-    // intialScenario produces a StartupElt from qParams
-    if (!scenario || !scenario.turn) scenario = this.initialScenario();
+    // initialScenario produces a StartupElt from qParams
+    if (!scenario || scenario.turn == undefined) scenario = this.initialScenario();
     this.scenario = scenario;                  // retain for future reference
     this.nPlayers = this.getNPlayers();        // Scenario may override?
     this.hexMap = this.makeHexMap();           // then copied from gameSetup -> gamePlay

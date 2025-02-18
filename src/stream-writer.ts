@@ -4,6 +4,8 @@ import {} from "wicg-file-system-access"
 export interface ILogWriter {
   writeLine(text: string): void | Promise<void>
 }
+
+/** base class for LogReader & LogWriter */
 class FileBase {
   constructor(public name = 'logFile', public buttonId = 'fsOpenFileButton') {
   }

@@ -106,9 +106,8 @@ export class Hex {
   }
   get isOnMap() { return this.district !== undefined; } // also: (row !== undefined) && (col !== undefined)
 
-  _isLegal: boolean;
-  get isLegal() { return this._isLegal; }
-  set isLegal(v: boolean) { this._isLegal = v; }
+  /** during D&D, indicate if Hex is legal drop target */
+  isLegal: boolean;
 
   /** hexlib.Hex uses only the HexM slice of a HexMap. */
   readonly map: HexM<Hex>;  // Note: this.parent == this.map.hexCont [cached] TODO: typify ??
@@ -374,10 +373,12 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
 
     makeLegalMark() { return new LegalMark() }
     legalMark!: LegalMark;
-    override get isLegal() { return this._isLegal; }
-    override set isLegal(v: boolean) {
-      super.isLegal = v;
+
+    /** Mixin loses get/set methods -- cannot be overridden, we use normal method */
+    setIsLegal(v: boolean) {
+      this.isLegal = v;
       this.legalMark.visible = v;
+      return v;
     }
 
     /** place this.cont; setBounds(); cont.cache() */
