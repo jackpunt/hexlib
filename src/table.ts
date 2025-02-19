@@ -45,6 +45,7 @@ export interface DragContext {
  * uses a HexMap\<IHex2\>
  */
 export class Table extends Dispatcher {
+  /** last created Table */
   static table: Table
   static stageTable(obj: DisplayObject) {
     return (obj.stage as StageTable).table
@@ -198,12 +199,12 @@ export class Table extends Dispatcher {
   isVisible = false;
   /** invoked by enableHexInspector or KeyBinding:
    *
-   * Tile.allTiles.textVis(vis); hexMap.hex.showText(vis);
+   * gamePlay.allTiles.textVis(vis); hexMap.hex.showText(vis);
    */
   toggleText(vis: boolean = !this.isVisible) {
     if (this.downClick) { this.downClick = false; return } // skip one 'click' when pressup/dropfunc
     this.isVisible = vis;
-    Tile.allTiles?.forEach(tile => tile.textVis(vis));
+    this.gamePlay.allTiles?.forEach(tile => tile.textVis(vis));
     this.hexMap?.forEachHex(hex => hex.showText(vis))
     this.hexMap?.update()               // after toggleText & updateCache()
     return;
@@ -221,7 +222,7 @@ export class Table extends Dispatcher {
     this.cacheScale = cacheScale ?? Math.max(1, this.scaleCont.scaleX); // If zoomed in, use that higher scale
     const scale = TP.cacheTiles = setCache ? this.cacheScale : 0;
     console.log(stime('GamePlay', `.reCacheTiles: `), { setCache: setCache, scale, scaleX: this.scaleCont.scaleX.toFixed(2) });
-    Tile.allTiles.forEach(tile => {
+    this.gamePlay.allTiles.forEach(tile => {
       tile.reCache(scale);  // uncache if (scale == 0)
     });
     this.hexMap.update();
@@ -711,7 +712,7 @@ export class Table extends Dispatcher {
   startGame() {
     this.scaleCont.addChild(this.overlayCont); // now at top of the list.
     // All Tiles (& Meeple) are Dragable: (Note: if noLegal then stopDragging)
-    Tile.allTiles.forEach(tile => {
+    this.gamePlay.allTiles.forEach(tile => {
       this.makeDragable(tile);
     });
 

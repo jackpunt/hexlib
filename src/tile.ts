@@ -32,6 +32,7 @@ class Tile0 extends NamedContainer {
     super(Aname);
   }
 
+  /** every Tile has pointer to the GamePlay extant when Tile was created! */
   public gamePlay = Tile.gamePlay;
 
   /**
@@ -130,8 +131,9 @@ class Tile0 extends NamedContainer {
  * Two subspecies: MapTile are 'stationary' on the HexMap, Meeple [.isMeep] are 'mobile'.
  */
 export class Tile extends Tile0 implements Dragable {
-  static readonly allTiles: Tile[] = [];
-  static clearAllTiles() { Tile.allTiles.length = 0; }
+
+  /** @deprecated use GameSetup.zeroAllArrays() */
+  static clearAllTiles() { this.gamePlay.allTiles.length = 0; }
   // static textSize = 20 * TP.hexRad / 60;
   // static source: TileSource<Tile>[]; // base class Tile does not have a 'source'
 
@@ -186,7 +188,7 @@ export class Tile extends Tile0 implements Dragable {
     player?: Player,
   ) {
     super(Aname, player); // both are set as this.Aname & this.player
-    Tile.allTiles.push(this);
+    this.gamePlay.allTiles.push(this);
     this.tileConstructor()
     this.reCache();       // TP.cacheTiles ? use H.HexBounds()
   }
@@ -204,7 +206,7 @@ export class Tile extends Tile0 implements Dragable {
     // from Ankh: extract class name for saveState
     const cName = this.Aname?.split('-')[0] ?? className(this); // className is subject to uglification!
     this.name = cName;  // used for saveState!
-    if (!this.Aname) this.Aname = `${cName}-${Tile.allTiles.length}`;
+    if (!this.Aname) this.Aname = `${cName}-${this.gamePlay.allTiles.length}`;
     this.nameText = this.addTextChild(); // y0=radius/2, text=f(Aname), size=radius/3, vis=false
     if (Tile.paintInConstructor && this.player) // specific to hextowns; also Meeple may provide player
       this.setPlayerAndPaint(this.player);  // dubious: subclasses are not yet constructed!

@@ -2,14 +2,12 @@ import { Constructor, stime } from "@thegraid/common-lib";
 import { NumCounter } from "./counters";
 import type { GamePlay } from "./game-play";
 import { HexDir } from "./hex-intfs";
-import { Meeple } from "./meeple";
 import { IPlanner, newPlanner } from "./plan-proxy";
 import type { PlayerPanel } from "./player-panel";
 import { TP } from "./table-params";
 import { MapTile, Tile, } from "./tile";
 
 export class Player {
-  static allPlayers: Player[] = [];
   // PlayerLib uses type string, client can make a restricted type
   static colorScheme: Record<string, string> = { red: 'Red', blue: 'Blue', green: 'darkgreen', violet: 'Violet', gold: 'gold', purple: 'purple' };
   /**
@@ -30,8 +28,8 @@ export class Player {
     readonly index: number,
     public readonly gamePlay: GamePlay, // for headless, allow GamePlay0
   ) {
-    Player.allPlayers[index] = this;
-    TP.numPlayers = Player.allPlayers.length; // incrementing up to gamePlay.nPlayers
+    gamePlay.allPlayers[index] = this;
+    TP.numPlayers = gamePlay.allPlayers.length; // incrementing up to gamePlay.nPlayers
     this.color = Player.playerColor(index);
     const cname = Player.colorName(this.color)
     this.Aname = `P${index}:${cname}`;
@@ -49,12 +47,12 @@ export class Player {
   /** much useful context about this Player. */
   panel: PlayerPanel;
 
-  allOf<T extends Tile>(claz: Constructor<T>) { return (Tile.allTiles as T[]).filter(t => t instanceof claz && t.player === this); }
+  allOf<T extends Tile>(claz: Constructor<T>) { return (this.gamePlay.allTiles as T[]).filter(t => t instanceof claz && t.player === this); }
   allOnMap<T extends Tile>(claz: Constructor<T>) { return this.allOf(claz).filter(t => t.hex?.isOnMap); }
   /** Resi/Busi/PS/Lake/Civics in play on Map */
   get mapTiles() { return this.allOf(MapTile) as MapTile[] }
   // Player's Leaders, Police & Criminals
-  get meeples() { return Meeple.allMeeples.filter(meep => meep.player == this) };
+  get meeples() { return this.gamePlay.allMeeples.filter(meep => meep.player == this) };
 
   _score: number = 0;
   get score() { return this._score }
@@ -68,8 +66,8 @@ export class Player {
   set coins(v: number) { this.coinCounter?.updateValue(v); }
 
   /** @deprecated only works for 2-players; use nthPlayer() */
-  get otherPlayer() { return Player.allPlayers[1 - this.index] }
-  nthPlayer(nth = 1) { return Player.allPlayers[(this.index + nth) % Player.allPlayers.length] }
+  get otherPlayer() { return this.gamePlay.allPlayers[1 - this.index] }
+  nthPlayer(nth = 1) { return this.gamePlay.allPlayers[(this.index + nth) % this.gamePlay.allPlayers.length] }
 
   planner?: IPlanner;
   /** if true then invoke plannerMove */

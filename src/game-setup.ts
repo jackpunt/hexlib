@@ -92,7 +92,7 @@ export class GameSetup {
   }
 
   loadImagesThenStartup() {
-    AliasLoader.loader.loadImages(() => this.startup());
+    AliasLoader.loader.loadImages(() => this.startup(this.qParams));
   }
 
   makePlayer(ndx: number, gamePlay: GamePlay) {
@@ -119,6 +119,7 @@ export class GameSetup {
     this.table.netGUI?.selectValue('Network', val)
   }
   get netState() { return this._netState }
+  /** for network player vs 'ref' */
   set playerId(val: string) { this.table.netGUI?.selectValue('PlayerId', val ?? '     ') }
 
   logTime_js: string;
@@ -150,7 +151,7 @@ export class GameSetup {
     // this.gamePlay.closeNetwork('restart') // See: hexcity [aka: CityMap, BoomTown], CgClient
     // this.gamePlay.logWriter?.closeFile()  // maybe put in NetClient, vs GamePlay
     this.gamePlay.forEachPlayer(p => p.endGame())
-    Tile.allTiles.forEach(tile => tile.hex = undefined)
+    this.gamePlay.allTiles.forEach(tile => tile.hex = undefined)
     let deContainer = (cont: Container) => {
       cont.children.forEach(dObj => {
         dObj.removeAllEventListeners()
@@ -160,14 +161,26 @@ export class GameSetup {
     }
     deContainer(this.stage);
     this.zeroAllArrays();
-    this.resetState(stateInfo); // <-- inject/edit necessary elements: nGods, godNames,...
     this.startup(stateInfo as Scenario); // was in resetState() but this makes more sense.
     // next tick, new thread...
     setTimeout(() => this.netState = netState, 100) // onChange-> ('new', 'join', 'ref') initiate a new connection
   }
 
   /**
-   * reset GameState and/or Table/TableParams before startScenario(stateInfo as Scenario)
+   * zero gamePlay.allTile/Meeples/Players/etc for deconstruction.
+   *
+   * Not essential, this.gamePlay will be dropped/replaced in startup().
+   */
+  zeroAllArrays() {
+    this.gamePlay.allTiles.length = 0
+    this.gamePlay.allMeeples.length = 0;
+    this.gamePlay.allPlayers.length = 0;
+  }
+
+  /**
+   * set TableParams from HexAspect of ParamGUI
+   *
+   * could override to edit any Scenario bits before startup() --> startScenario(scenario)
    * @param stateInfo (HexAspect mostly?)
    */
   resetState(stateInfo: Scenario | HexAspect) {
@@ -309,16 +322,6 @@ export class GameSetup {
   }
 
   /**
-   *  zero backlog, allTiles, allMeeples, allPlayers, etc.
-   */
-  zeroAllArrays() {
-    this.logWriter.backlog.length = 0;
-    Tile.allTiles.length = 0
-    Meeple.allMeeples.length = 0;
-    Player.allPlayers.length = 0;
-}
-
-  /**
    * Make new Table/layout & gamePlay/hexMap & Players.
    *
    * - getNPlayers()
@@ -332,6 +335,9 @@ export class GameSetup {
   // loadImagesThenStartup-->startup(qParams)
   // restart(?) --> startup(Param | Scenario)
   startup(scenario?: Scenario ) {
+    // maybe qParams has nh, mh?
+    this.resetState(scenario as HexAspect); // <-- inject/edit necessary elements: nGods, godNames,...
+    this.logWriter.backlog.length = 0; // flush the backlog (assume file is closed)
     // initialScenario produces a StartupElt from qParams
     if (!scenario || scenario.turn == undefined) scenario = this.initialScenario();
     this.scenario = scenario;                  // retain for future reference
@@ -361,11 +367,11 @@ export class GameSetup {
    * - table.startGame(scenario)
    */
   startScenario(scenario: Scenario) {
-    const gamePlay = this.gamePlay, table = this.table;
+    const gamePlay = this.gamePlay;
     this.makeAllPlayers(gamePlay);     // Players have: civics & meeples & TownSpec
 
     // Inject GamePlay to Table; all the GUI components, makeAllDistricts(), addTerrain, initialRegions
-    table.layoutTable(gamePlay);     // mutual injection & make all panelForPlayer
+    this.table.layoutTable(gamePlay);     // mutual injection & make all panelForPlayer
 
     this.gamePlay.turnNumber = -1;   // in prep for setNextPlayer or parseScenario
     // Place Tiles and Meeple on HexMap, set GameState.
@@ -378,7 +384,7 @@ export class GameSetup {
       this.table.makeGUIs();
       this.restartable = true;   // *after* makeLines has stablilized selectValue
     }
-    table.startGame();           // enable GUI & setNextPlayer()
+    this.table.startGame();           // enable GUI & setNextPlayer()
     return gamePlay;
   }
 

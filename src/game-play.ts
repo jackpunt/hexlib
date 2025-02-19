@@ -7,7 +7,6 @@ import { Hex, Hex1, HexMap, IdHex } from "./hex";
 import { Meeple } from "./meeple";
 import { Planner } from "./plan-proxy";
 import { Player } from "./player";
-import { SetupElt } from "./scenario-parser";
 import { Table } from "./table";
 import { PlayerColor, TP } from "./table-params";
 import { Tile } from "./tile";
@@ -36,12 +35,11 @@ class Move {
  * Implement game, enforce the rules, manage GameState & hexMap; no GUI/Table required.
  */
 export class GamePlay0 {
-  /** the latest GamePlay instance in this VM/context/process */
-  static gamePlay: GamePlay0;
-  static gpid = 0
-  readonly id = GamePlay0.gpid++
 
-  readonly gameState: GameState = (this instanceof GamePlay) ? new GameState(this as GamePlay) : undefined as any as GameState;
+  static gpid = 0
+  readonly id = GamePlay0.gpid++; // instance id of this GamePlay [debug help?]
+
+  readonly gameState!: GameState;
   get gamePhase() { return this.gameState.state; }
   isPhase(name: string) { return this.gamePhase === this.gameState.states[name]; }
   phaseDone(...args: any[]) { this.gameState.done(...args); }
@@ -49,9 +47,12 @@ export class GamePlay0 {
   ll(n: number) { return TP.log > n }
 
   get logWriter() { return this.gameSetup.logWriter; }
-
-  get allPlayers() { return Player.allPlayers; }
-  get allTiles() { return Tile.allTiles; }
+  _allPlayers: Player[] = []
+  get allPlayers() { return this._allPlayers; }
+  _allTiles: Tile[] = []
+  get allTiles() { return this._allTiles; }
+  _allMeeples: Meeple[] = []
+  get allMeeples() { return this._allMeeples; }
 
   readonly hexMap: HexMap<Hex>;          // created by GameSetup; no districts until Table.layoutTable!
   readonly redoMoves: { hex: Hex | IdHex }[] = []
@@ -134,7 +135,7 @@ export class GamePlay0 {
     }
     this.turnNumber = turnNumber;
     this.preGame = false;
-    this.setCurPlayer(Player.allPlayers[0].nthPlayer(turnNumber));
+    this.setCurPlayer(this.allPlayers[0].nthPlayer(turnNumber));
     this.curPlayer.newTurn();
   }
 
@@ -162,7 +163,7 @@ export class GamePlay0 {
 
   /** update Counters (econ, expense, vp) for ALL players. */
   updateCounters() {       // TODO: find users of hexMap.update()
-    // Player.allPlayers.forEach(player => player.setCounters(false));
+    // this.allPlayers.forEach(player => player.setCounters(false));
     this.hexMap.update();
   }
 
@@ -224,10 +225,11 @@ export class GamePlay0 {
  */
 export class GamePlay extends GamePlay0 {
   readonly table: Table   // access to GUI (drag/drop) methods.
+  override gameState: GameState = new GameState(this);
   /** GamePlay is the GUI-augmented extension of GamePlay0; uses Table */
   constructor(gameSetup: GameSetup, scenario: Scenario) {
     super(gameSetup);            // hexMap, history, gStats...
-    Tile.gamePlay = this; // table
+    Tile.gamePlay = this;        // provide pointer for all Tiles created.
     this.table = gameSetup.table;
     if (this.table.stage.canvas) this.bindKeys();
   }

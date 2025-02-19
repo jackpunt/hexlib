@@ -14,6 +14,7 @@ import { Tile } from "./tile";
  * Source.hex.tile or Source.hex.meep holds an available Tile, placed by moveTo()
  */
 export class TileSource<T extends Tile> {
+  /** event name: update source counter */
   static update = 'update';
   readonly Aname: string
   private readonly allUnits: T[] = new Array<T>();

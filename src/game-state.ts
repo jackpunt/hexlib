@@ -14,6 +14,7 @@ export interface Phase {
 
 export class GameState {
 
+  /** created by new GamePlay(); initialized/injected into gamePlay.gameState. */
   constructor(public gamePlay: GamePlay, states?: Record<string,Phase>, purge: boolean | string[] = false) {
     this.defineStates(states, purge);
   }

@@ -45,7 +45,6 @@ export class MeepleShape extends PaintableShape {
  * canonical base class for Meeples; ASSERT (.isMeep === true)
  */
 export class Meeple extends Tile {
-  static allMeeples: Meeple[] = [];
 
   override get isMeep() { return true; }
   get backSide() { return this.baseShape.backSide; }
@@ -65,7 +64,7 @@ export class Meeple extends Tile {
     this.nameText.visible = true;
     this.nameText.y = this.baseShape.y;
     // this.paint();
-    Meeple.allMeeples.push(this);
+    this.gamePlay.allMeeples.push(this);
   }
 
 
