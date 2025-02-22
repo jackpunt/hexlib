@@ -34,9 +34,7 @@ export class GameState {
   get table() { return this.gamePlay?.table; }
   get curPlayer() { return this.gamePlay.curPlayer; }
 
-  saveGame() {
-    this.gamePlay.gameSetup.scenarioParser.saveState(this.gamePlay);
-  }
+  saveGame() { this.gamePlay.saveState(); }
 
   // [eventName, eventSpecial, phase, args]
   /** create gameState component of ScenarioParser.SetupElt */

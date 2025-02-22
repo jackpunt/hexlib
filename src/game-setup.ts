@@ -45,20 +45,21 @@ export class GameSetup {
   stage: Stage;
   hexMap: HexMap<Hex>;
   gamePlay: GamePlay;
-  table: Table;        // here so GameSetup can override type? all uses are from GamePlay.table;
+  table: Table;  // subclass can declare table: TYPE; all external uses are from GamePlay.table;
 
   /**
    * ngAfterViewInit2() --> start here!
    *
    * - this.initialize(canvasId);
-   * - this.loadImagesThenStartup();
+   * - this.loadImagesThenStartup(this.qParams);
    *
    * @param canvasId supply undefined for "headless" Stage
    * @param qParams queryParams from StageComponent --> this.qParams;
    */
-  constructor(canvasId: string, public qParams: Params = {}) {
+  constructor(canvasId?: string, public qParams: Params = {}) {
+    this.logWriter = this.makeLogWriter();
     this.initialize(canvasId);
-    this.loadImagesThenStartup();
+    this.loadImagesThenStartup(this.qParams);
   }
 
   static random_seed = '';
@@ -73,8 +74,10 @@ export class GameSetup {
    * typically from StageComponent.ngAfterViewInit2()
    *
    * override should call super.initialize();
+   *
+   * @param canvasId a \<canvas> Element OR the DOM ID of a \<canvas> Element (or undefined for no canvas)
    */
-  initialize(canvasId: string) {
+  initialize(canvasId?: string) {
     stime.fmt = 'MM-DD kk:mm:ss.SSSL';
     this.init_random(this.qParams.rand);
     this.stage = makeStage(canvasId, false);
@@ -91,8 +94,8 @@ export class GameSetup {
       return `${n ? ` n=${n}` : ''}${sep}${file ? `file=${file}` : ''}`;
   }
 
-  loadImagesThenStartup() {
-    AliasLoader.loader.loadImages(() => this.startup(this.qParams));
+  loadImagesThenStartup(scenario: Scenario = this.qParams) {
+    AliasLoader.loader.loadImages(() => this.startup(scenario));
   }
 
   makePlayer(ndx: number, gamePlay: GamePlay) {
@@ -124,7 +127,7 @@ export class GameSetup {
 
   logTime_js: string;
   /** Generally accessed as: gamePlay.logWriter! */
-  readonly logWriter = this.makeLogWriter();
+  readonly logWriter: LogWriter;
   makeLogWriter() {
     const logTime_js = this.logTime_js = `log_${stime.fs('MM-DD_Lkk_mm')}.js`;
     const logWriter = new LogWriter(logTime_js, '[\n', ']\n'); // terminate array, but insert before terminal
@@ -175,6 +178,8 @@ export class GameSetup {
     this.gamePlay.allTiles.length = 0
     this.gamePlay.allMeeples.length = 0;
     this.gamePlay.allPlayers.length = 0;
+    // include logWriter here, for easier override
+    this.logWriter.backlog.length = 0;   // flush the backlog (assume file is closed)
   }
 
   /**
@@ -337,7 +342,6 @@ export class GameSetup {
   startup(scenario?: Scenario ) {
     // maybe qParams has nh, mh?
     this.resetState(scenario as HexAspect); // <-- inject/edit necessary elements: nGods, godNames,...
-    this.logWriter.backlog.length = 0; // flush the backlog (assume file is closed)
     // initialScenario produces a StartupElt from qParams
     if (!scenario || scenario.turn == undefined) scenario = this.initialScenario();
     this.scenario = scenario;                  // retain for future reference
@@ -360,23 +364,22 @@ export class GameSetup {
    * - makeAllPlayers(gamePlay)
    * - layoutTable(gamePlay)
    * - gamePlay.turnNumber = -1
-   * - setPlayerScore()
    * - parseScenario(scenario) // scenario.turn set on a FULL/SAVED scenario
    * - forEachPlayer(p.newGame(gamePlay))
    * - with (restartable = false) table.makeGUIs() QQQQ: keep in GameSetup ?
    * - table.startGame(scenario)
    */
   startScenario(scenario: Scenario) {
-    const gamePlay = this.gamePlay;
+    const gamePlay = this.gamePlay;    // many invocations
     this.makeAllPlayers(gamePlay);     // Players have: civics & meeples & TownSpec
 
     // Inject GamePlay to Table; all the GUI components, makeAllDistricts(), addTerrain, initialRegions
     this.table.layoutTable(gamePlay);     // mutual injection & make all panelForPlayer
 
-    this.gamePlay.turnNumber = -1;   // in prep for setNextPlayer or parseScenario
+    gamePlay.turnNumber = -1;   // in prep for setNextPlayer or parseScenario
     // Place Tiles and Meeple on HexMap, set GameState.
-    this.parseScenario(scenario); // may change gamePlay.turnNumber, gamePlay.phase (& conflictRegion)
-    this.gamePlay.logWriterLine0();
+    gamePlay.parseScenario(scenario); // may change gamePlay.turnNumber, gamePlay.phase (& conflictRegion)
+    gamePlay.logWriterLine0();
 
     gamePlay.forEachPlayer(p => p.newGame(gamePlay))        // make Planner *after* table & gamePlay are setup
     {
@@ -387,21 +390,4 @@ export class GameSetup {
     this.table.startGame();           // enable GUI & setNextPlayer()
     return gamePlay;
   }
-
-  makeScenarioParser(hexMap: HexMap<Hex>, gamePlay = this.gamePlay) {
-    return new ScenarioParser(hexMap, this.gamePlay);
-  }
-  scenarioParser: ScenarioParser;
-  /**
-   * Place Tiles and Meeples on HexMap, set GameState.
-   *
-   * new ScenarioParser(hexMap, gamePlay).parseScenario(scenario);
-   */
-  parseScenario(scenario: SetupElt) {
-    const hexMap = this.gamePlay.hexMap;
-    const scenarioParser = this.scenarioParser = this.makeScenarioParser(hexMap, this.gamePlay);
-    this.gamePlay.logWriter.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)
-    scenarioParser.parseScenario(scenario);
-  }
-
 }

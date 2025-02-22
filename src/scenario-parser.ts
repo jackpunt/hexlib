@@ -64,7 +64,7 @@ export class ScenarioParser {
   }
 
   /** override/replace to create a SetupElt and logState(logWriter) */
-  saveState(gamePlay: GamePlay, logWriter = this.gamePlay.logWriter): SetupElt {
+  saveState(gamePlay = this.gamePlay, logWriter = gamePlay.logWriter): SetupElt {
     const turn = Math.max(0, gamePlay.turnNumber);
     const coins = gamePlay.allPlayers.map(p => p.coins);
     const time = stime.fs();

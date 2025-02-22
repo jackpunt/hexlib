@@ -10,6 +10,7 @@ import { Player } from "./player";
 import { Table } from "./table";
 import { PlayerColor, TP } from "./table-params";
 import { Tile } from "./tile";
+import { ScenarioParser, SetupElt } from "./scenario-parser";
 
 /**
  * Event indicating a Tile has been placed on a Hex.
@@ -286,6 +287,25 @@ export class GamePlay extends GamePlay0 {
     // diagnostics:
     table.undoShape.on(S.click, () => this.undoMove(), this)
     table.redoShape.on(S.click, () => this.redoMove(), this)
+  }
+
+  /** override! new ScenarioParser() when GameSetup -> parseScenario() */
+  makeScenarioParser(hexMap: HexMap<Hex> = this.hexMap) {
+    return new ScenarioParser(hexMap, this);
+  }
+  scenarioParser: ScenarioParser;
+  /**
+   * Place Tiles and Meeples on HexMap, set GameState.
+   *
+   * new ScenarioParser(hexMap, gamePlay).parseScenario(scenario);
+   */
+  parseScenario(scenario: SetupElt) {
+    const scenarioParser = this.scenarioParser = this.makeScenarioParser();
+    this.logWriter.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)
+    scenarioParser.parseScenario(scenario);
+  }
+  saveState() {
+    this.scenarioParser.saveState(this)
   }
 
   backlogIndex = 1;
