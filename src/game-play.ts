@@ -304,8 +304,18 @@ export class GamePlay extends GamePlay0 {
     this.logWriter.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)
     scenarioParser.parseScenario(scenario);
   }
-  saveState() {
+  /** save state of the current scenario; suitable for later parseScenario */
+  saveGame() {
     this.scenarioParser.saveState(this)
+  }
+  /** GamePlay contribution to saved Scenario */
+  saveState(setupElt: SetupElt) {
+    setupElt.coins = this.allPlayers.map(p => p.coins);
+  }
+  /** restore state from saveState() */
+  parseState(setupElt: SetupElt) {
+    const coins = setupElt.coins;
+    if (coins) coins.forEach((coin, ndx) => this.allPlayers[ndx].coins = coin);
   }
 
   backlogIndex = 1;

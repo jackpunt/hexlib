@@ -5,13 +5,11 @@ import JSON5 from 'json5';
 import { GamePlay } from "./game-play";
 import { Hex, Hex2, HexMap, MapCont } from "./hex";
 import { AliasLoader } from "./image-loader";
-import { Meeple } from "./meeple";
 import { Player } from "./player";
 import { ScenarioParser, SetupElt, type StartElt } from "./scenario-parser";
 import { LogReader, LogWriter } from "./stream-writer";
 import { Table } from "./table";
 import { TP } from "./table-params";
-import { Tile } from "./tile";
 
 /** OR: import { Params } from "@angular/router"; */
 declare type Params = Record<string, any>;
@@ -94,8 +92,8 @@ export class GameSetup {
       return `${n ? ` n=${n}` : ''}${sep}${file ? `file=${file}` : ''}`;
   }
 
-  loadImagesThenStartup(scenario: Scenario = this.qParams) {
-    AliasLoader.loader.loadImages(() => this.startup(scenario));
+  loadImagesThenStartup(qParams = this.qParams) {
+    AliasLoader.loader.loadImages(() => this.startup(qParams));
   }
 
   makePlayer(ndx: number, gamePlay: GamePlay) {
@@ -135,20 +133,19 @@ export class GameSetup {
   }
 
   restartable = false;
-  /** C-s ==> kill game, start a new one, possibly with new stateInfo
-   *
-   * - p.endGame()
-   * - deContainer()
+  /**
+   * C-s ==> end game & deconstruct; startup a new one with given stateInfo
+   * - allPlayers.endGame()
+   * - deContainer(this.stage)
    * - zeroAllArrays()
-   * - resetState(stateInfo)
-   * - startup(stateInfo as Scenario)
-   * @param stateInfo Scenario and/or { hexRad: 60, nHexes: 7, mHexes: 1 }
+   * - startup(stateInfo as SetupElt)
+   * @param stateInfo SetupElt and/or { hexRad: 60, nHexes: 7, mHexes: 1 }
    */
   // ParamGUI restarts with single: HexAspect;
   // keyBinder(C-s) restarts with empty Scenario: {}; // should be previous Scenario?
   // parseStateButton: restart({ parsed from JSON text element })
   // extractStateFromString: restart({ parsed from file@turn })
-  restart(stateInfo: Scenario | HexAspect) {
+  restart(stateInfo: SetupElt | HexAspect) {
     if (!this.restartable) return;  // ignore call from within makeGUI
     let netState = this.netState
     // this.gamePlay.closeNetwork('restart') // See: hexcity [aka: CityMap, BoomTown], CgClient
@@ -164,7 +161,7 @@ export class GameSetup {
     }
     deContainer(this.stage);
     this.zeroAllArrays();
-    this.startup(stateInfo as Scenario); // was in resetState() but this makes more sense.
+    this.startup(stateInfo as SetupElt); // was in resetState() but this makes more sense.
     // next tick, new thread...
     setTimeout(() => this.netState = netState, 100) // onChange-> ('new', 'join', 'ref') initiate a new connection
   }
@@ -219,13 +216,13 @@ export class GameSetup {
    * @param stateText [Element('parseStateText').value.replace(/,$/, '')]
    * @param restart [(s) => this.restart(s)] process the Scenario
    */
-  parseStateTextAndRestart(stateText?: string, restart = (scenario: Scenario) => this.restart(scenario)) {
+  parseStateTextAndRestart(stateText?: string, restart = (setupElt: SetupElt) => this.restart(setupElt)) {
     // JSON5 barfs on trailing ','
     if (!stateText) stateText = (document.getElementById('parseStateText') as HTMLInputElement).value.replace(/,$/, '');
     console.log(stime(this, `.parseStateTextAndRestart`), stateText);
-    const scenario = JSON5.parse(stateText) as Scenario;
-    scenario.Aname = scenario.Aname ?? `parseStateText`;
-    restart(scenario);
+    const setupElt = JSON5.parse(stateText) as SetupElt;
+    setupElt.Aname = setupElt.Aname ?? `parseStateText`;
+    restart(setupElt);
   }
 
   fileReadPromise: Promise<File>;
@@ -319,15 +316,19 @@ export class GameSetup {
   initialScenario(qParams = this.qParams): StartElt {
     // qParams may have: mh, nh, hexRad (as HexAspect; from ParamGUI)
     const n = this.getNPlayers(qParams)
-    return { Aname: 'defaultScenario', n, ...qParams, turn: 0,  };
+    return { Aname: 'defaultScenario', n, ...qParams, turn: 0, };
   }
 
-  makeGamePlay(scenario: Scenario) {
-    return new GamePlay(this, scenario);
+  makeGamePlay(startElt: SetupElt) {
+    return new GamePlay(this, startElt);
   }
 
   /**
    * Make new Table/layout & gamePlay/hexMap & Players.
+   *
+   * - resetState(scenario)
+   * - initialScenario(this.qParams)
+   * -
    *
    * - getNPlayers()
    * - makeHexMap()
@@ -337,25 +338,26 @@ export class GameSetup {
    *
    * @param scenario [initialScenario(this.qParams), qParams as obtained from URL]
    */
-  // loadImagesThenStartup-->startup(qParams)
-  // restart(?) --> startup(Param | Scenario)
-  startup(scenario?: Scenario ) {
-    // maybe qParams has nh, mh?
-    this.resetState(scenario as HexAspect); // <-- inject/edit necessary elements: nGods, godNames,...
-    // initialScenario produces a StartupElt from qParams
-    if (!scenario || scenario.turn == undefined) scenario = this.initialScenario();
-    this.scenario = scenario;                  // retain for future reference
+  // loadImagesThenStartup-->startup(qParams); initially
+  // restart(?) --> startup(Param | Scenario); incrementally
+  startup(qParams: Params | SetupElt ) {
+    // initialScenario produces a StartupElt from qParams (which could be a SetupElt)
+    const startElt: StartElt = this.initialScenario(qParams);
+    // qParams may have {nh?, mh?, hexRad?} from ParamGUI
+    this.resetState(startElt as HexAspect); // <-- inject/edit necessary elements: nGods, godNames,...
+    this.startupScenario = startElt;           // retain for future reference
+
     this.nPlayers = this.getNPlayers();        // Scenario may override?
     this.hexMap = this.makeHexMap();           // then copied from gameSetup -> gamePlay
     this.table = this.makeTable();
     // Inject Table into GamePlay;
     // GameState, mouse/keyboard->GamePlay,
-    this.gamePlay = this.makeGamePlay(scenario); // scenario provided... maybe not used
+    this.gamePlay = this.makeGamePlay(startElt); // scenario provided... maybe not used
 
-    this.startScenario(scenario);
+    this.startScenario(startElt);
   }
   /** the scenario last used by start(scenario) */
-  scenario: Scenario;
+  startupScenario: SetupElt;
 
   /**
    * Given hexMap, table, and gamePlay, setup/layout everything for the game scenario.

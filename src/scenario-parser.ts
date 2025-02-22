@@ -3,6 +3,7 @@ import { S, stime } from "@thegraid/common-lib";
 import { KeyBinder } from "@thegraid/easeljs-lib";
 import type { GamePlay } from "./game-play";
 import { Hex, HexMap, IHex2 } from "./hex";
+import type { LogWriter } from "./stream-writer";
 
 // may need to declare module to 'extend' this interface...
 // Scenario is StartElt &| SetupElt
@@ -24,7 +25,7 @@ export type LogElts = [{ start: StartElt }, ...SetupElt[]];
 // other SetupElt in the logfile have intermediate states as the game progresses.
 export type StartElt = {
   Aname: string,
-  n?: number,            // number of Players; from qParams
+  n?: number,            // number of Players; from qParams/initialScenario
   time?: string,
   turn?: number,         // usually start turn=0 or maybe -1 if auto-incr..
   scene?: string,        // reference name of Scenario (ala Ankh)
@@ -37,38 +38,48 @@ export class ScenarioParser {
     return;
   }
 
-  /** parse json to recreate all the needed bits (see Ankh.parseScenario). */
+  /**
+   * parse JSON to recreate all the needed bits (see Ankh.parseScenario).
+   *
+   * saveState() delegates to various components [gameState, table] to saveState
+   *
+   * parseScenario() delegates
+   */
   parseScenario(setup: SetupElt) {
-    if (!setup) return;
-    // console.log(stime(this, `.parseScenario: curState =`), this.saveState(this.gamePlay, true)); // log current state for debug...
+    console.info(stime(this, `.parseScenario: curState =`), this.saveState(this.gamePlay)); // log current state for debug...
     console.log(stime(this, `.parseScenario: newState =`), setup);
 
-    const { gameState, turn } = setup;
-    const map = this.map, gamePlay = this.gamePlay, allPlayers = gamePlay.allPlayers, table = gamePlay.table;
+    const { turn } = setup;
+    const gamePlay = this.gamePlay, table = gamePlay.table;
     const turnSet = (turn !== undefined); // indicates a Saved Scenario: assign & place everything
     if (turnSet) {
       gamePlay.turnNumber = turn;
       table.logText(`turn = ${turn}`, `parseScenario`);
       this.gamePlay.allTiles.forEach(tile => tile.hex?.isOnMap ? tile.sendHome() : undefined); // clear existing map
     }
-    if (gameState) {
-      this.gamePlay.gameState.parseState(gameState);
-    }
     this.gamePlay.hexMap.update();
   }
 
   /** add any optional game-specific bits to SetupElt */
   addStateElements(setupElt: SetupElt) {
+    this.gamePlay.saveState(setupElt);  // saved in top-level!
     setupElt.gameState = this.gamePlay.gameState.saveState();
     return setupElt;
   }
 
+  parseStateElements(setupElt: SetupElt) {
+    this.gamePlay.parseState(setupElt); // top-level entries
+    const { gameState } = setupElt;
+    if (gameState) {
+      this.gamePlay.gameState.parseState(gameState);
+    }
+  }
+
   /** override/replace to create a SetupElt and logState(logWriter) */
-  saveState(gamePlay = this.gamePlay, logWriter = gamePlay.logWriter): SetupElt {
+  saveState(gamePlay = this.gamePlay, logWriter: LogWriter | false = gamePlay.logWriter): SetupElt {
     const turn = Math.max(0, gamePlay.turnNumber);
-    const coins = gamePlay.allPlayers.map(p => p.coins);
     const time = stime.fs();
-    const setupElt = this.addStateElements({ turn, time, coins, } as SetupElt);
+    const setupElt = this.addStateElements({ turn, time, } as SetupElt);
     if (logWriter) this.logState(setupElt, logWriter);
     return setupElt;
   }

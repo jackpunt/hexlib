@@ -34,8 +34,6 @@ export class GameState {
   get table() { return this.gamePlay?.table; }
   get curPlayer() { return this.gamePlay.curPlayer; }
 
-  saveGame() { this.gamePlay.saveState(); }
-
   // [eventName, eventSpecial, phase, args]
   /** create gameState component of ScenarioParser.SetupElt */
   saveState(): any[] {
@@ -104,7 +102,7 @@ export class GameState {
   readonly states: { [index: string]: Phase } = {
     BeginTurn: {
       start: () => {
-        this.saveGame();
+        this.gamePlay.saveGame();
         this.phase('ChooseAction');
       },
       done: () => {

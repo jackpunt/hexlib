@@ -1,9 +1,8 @@
 import { S, stime } from "@thegraid/common-lib";
 import { afterUpdate, CenterText, NamedContainer, RectShape, TextInRect, UtilButton } from "@thegraid/easeljs-lib";
-import { Graphics, MouseEvent } from "@thegraid/easeljs-module";
+import { MouseEvent } from "@thegraid/easeljs-module";
 import { Player } from "./player";
 import { Table } from "./table";
-import { TP } from "./table-params";
 
 
 interface ConfirmCont extends NamedContainer {
@@ -15,7 +14,7 @@ interface ConfirmCont extends NamedContainer {
 export class PlayerPanel extends NamedContainer {
 
   outline: RectShape;
-  get hexMap() { return this.table.gamePlay.hexMap } // dynamic lookup
+  get hexMap() { return this.table.hexMap } // dynamic lookup
 
   /**
    *
