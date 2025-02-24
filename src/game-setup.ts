@@ -80,10 +80,19 @@ export class GameSetup {
     this.init_random(this.qParams.rand);
     this.stage = makeStage(canvasId, false);
     this.stage.snapToPixel = TP.snapToPixel;
+    this.setupNetwork(this.qParams);
     this.setupToParseState();                 // restart when/if 'SetState' button is clicked
     this.setupToReadFileState();              // restart when/if 'LoadFile' button is clicked
   }
 
+  /** set TP.{ghost, gport, networkGroup, networkUrl} from qParams */
+  setupNetwork(qParams = this.qParams) {
+    const { host, port, title } = qParams;
+    TP.ghost = host || TP.ghost
+    TP.gport = Number.parseInt(port || TP.gport.toString(10), 10)
+    TP.networkGroup = `${title}:game1`;
+    TP.networkUrl = TP.buildURL(undefined);
+  }
 
   /** Label browser page. Typically: nPlayer=n, scenario from file. */
   get pageLabel() {
@@ -97,7 +106,7 @@ export class GameSetup {
   }
 
   makePlayer(ndx: number, gamePlay: GamePlay) {
-    new Player(ndx, gamePlay);
+    return new Player(ndx, gamePlay);
   }
 
   /** set from qParams['n'] */
@@ -132,9 +141,9 @@ export class GameSetup {
     return logWriter;
   }
 
-  restartable = false;
   /**
-   * C-s ==> end game & deconstruct; startup a new one with given stateInfo
+   * C-s ==> end game & deconstruct; startScenario(this.startupScenario)
+   *
    * - allPlayers.endGame()
    * - deContainer(this.stage)
    * - zeroAllArrays()
@@ -146,13 +155,12 @@ export class GameSetup {
   // parseStateButton: restart({ parsed from JSON text element })
   // extractStateFromString: restart({ parsed from file@turn })
   restart(stateInfo: SetupElt | HexAspect) {
-    if (!this.restartable) return;  // ignore call from within makeGUI
-    let netState = this.netState
+    const netState = this.netState;
     // this.gamePlay.closeNetwork('restart') // See: hexcity [aka: CityMap, BoomTown], CgClient
     // this.gamePlay.logWriter?.closeFile()  // maybe put in NetClient, vs GamePlay
     this.gamePlay.forEachPlayer(p => p.endGame())
     this.gamePlay.allTiles.forEach(tile => tile.hex = undefined)
-    let deContainer = (cont: Container) => {
+    const deContainer = (cont: Container) => {
       cont.children.forEach(dObj => {
         dObj.removeAllEventListeners()
         if (dObj instanceof Container) deContainer(dObj)
@@ -161,7 +169,8 @@ export class GameSetup {
     }
     deContainer(this.stage);
     this.zeroAllArrays();
-    this.startup(stateInfo as SetupElt); // was in resetState() but this makes more sense.
+    this.resetState(stateInfo as HexAspect); // stateInfo may have {nh?, mh?, hexRad?} from ParamGUI
+    this.startScenario(stateInfo as SetupElt); // was in resetState() but this makes more sense.
     // next tick, new thread...
     setTimeout(() => this.netState = netState, 100) // onChange-> ('new', 'join', 'ref') initiate a new connection
   }
@@ -170,19 +179,21 @@ export class GameSetup {
    * zero gamePlay.allTile/Meeples/Players/etc for deconstruction.
    *
    * Not essential, this.gamePlay will be dropped/replaced in startup().
+   *
+   * @param clearLog [true] false to retain backlog (someday: allLog!)
    */
-  zeroAllArrays() {
+  zeroAllArrays(clearLog = true) {
     this.gamePlay.allTiles.length = 0
     this.gamePlay.allMeeples.length = 0;
     this.gamePlay.allPlayers.length = 0;
     // include logWriter here, for easier override
-    this.logWriter.backlog.length = 0;   // flush the backlog (assume file is closed)
+    if (clearLog) this.logWriter.backlog.length = 0;   // flush the backlog (assume file is closed)
   }
 
   /**
    * set TableParams from HexAspect of ParamGUI
    *
-   * could override to edit any Scenario bits before startup() --> startScenario(scenario)
+   * could override to edit any Scenario bits before restart() --> startScenario(scenario)
    * @param stateInfo (HexAspect mostly?)
    */
   resetState(stateInfo: Scenario | HexAspect) {
@@ -324,55 +335,52 @@ export class GameSetup {
   }
 
   /**
-   * Make new Table/layout & gamePlay/hexMap & Players.
+   * invoke startScenario(StartElt)
    *
-   * - resetState(scenario)
-   * - initialScenario(this.qParams)
-   * -
+   * From constructor() --> loadImagesThenStartup() --> startup()
    *
-   * - getNPlayers()
-   * - makeHexMap()
-   * - makeTable()
-   * - makeGamePlay(scenario)
+   * - this.startScenario = initialScenario(this.qParams)
    * - startScenario(scenario)
    *
    * @param scenario [initialScenario(this.qParams), qParams as obtained from URL]
    */
-  // loadImagesThenStartup-->startup(qParams); initially
-  // restart(?) --> startup(Param | Scenario); incrementally
+  // loadImagesThenStartup --> startup(qParams); initially
+  // parseStateAndRestart(?) --> startScenario(Scenario); incrementally
   startup(qParams: Params | SetupElt ) {
     // initialScenario produces a StartupElt from qParams (which could be a SetupElt)
-    const startElt: StartElt = this.initialScenario(qParams);
-    // qParams may have {nh?, mh?, hexRad?} from ParamGUI
-    this.resetState(startElt as HexAspect); // <-- inject/edit necessary elements: nGods, godNames,...
-    this.startupScenario = startElt;           // retain for future reference
-
-    this.nPlayers = this.getNPlayers();        // Scenario may override?
-    this.hexMap = this.makeHexMap();           // then copied from gameSetup -> gamePlay
-    this.table = this.makeTable();
-    // Inject Table into GamePlay;
-    // GameState, mouse/keyboard->GamePlay,
-    this.gamePlay = this.makeGamePlay(startElt); // scenario provided... maybe not used
-
+    const startElt = this.initialScenario(qParams);
+    this.startupScenario = startElt;   // retain for future reference
     this.startScenario(startElt);
   }
   /** the scenario last used by start(scenario) */
   startupScenario: SetupElt;
 
   /**
+   * Make new Table/layout & gamePlay/hexMap & Players.
+   *
    * Given hexMap, table, and gamePlay, setup/layout everything for the game scenario.
    *
+   * - getNPlayers()
+   * - makeHexMap()
+   * - makeTable()
+   * - makeGamePlay(scenario)
+   * -
    * - gamePlay = this.gamePlay
    * - makeAllPlayers(gamePlay)
    * - layoutTable(gamePlay)
    * - gamePlay.turnNumber = -1
+   * -
    * - parseScenario(scenario) // scenario.turn set on a FULL/SAVED scenario
    * - forEachPlayer(p.newGame(gamePlay))
-   * - with (restartable = false) table.makeGUIs() QQQQ: keep in GameSetup ?
    * - table.startGame(scenario)
    */
   startScenario(scenario: Scenario) {
-    const gamePlay = this.gamePlay;    // many invocations
+    this.nPlayers = this.getNPlayers();        // Scenario may override?
+    this.hexMap = this.makeHexMap();           // then copied from gameSetup -> gamePlay
+    this.table = this.makeTable();
+
+    // GameState, mouse/keyboard->GamePlay,
+    const gamePlay = this.gamePlay = this.makeGamePlay(scenario); // scenario provided... maybe not used
     this.makeAllPlayers(gamePlay);     // Players have: civics & meeples & TownSpec
 
     // Inject GamePlay to Table; all the GUI components, makeAllDistricts(), addTerrain, initialRegions
@@ -381,14 +389,10 @@ export class GameSetup {
     gamePlay.turnNumber = -1;   // in prep for setNextPlayer or parseScenario
     // Place Tiles and Meeple on HexMap, set GameState.
     gamePlay.parseScenario(scenario); // may change gamePlay.turnNumber, gamePlay.phase (& conflictRegion)
+    this.table.makeGUIs();     // reflect settings from scenario. QQQ: is this the right place?
     gamePlay.logWriterLine0();
 
-    gamePlay.forEachPlayer(p => p.newGame(gamePlay))        // make Planner *after* table & gamePlay are setup
-    {
-      this.restartable = false;  // block makeGUIs from reentrant restart()
-      this.table.makeGUIs();
-      this.restartable = true;   // *after* makeLines has stablilized selectValue
-    }
+    gamePlay.forEachPlayer(p => p.newGame(gamePlay)) // make Planner *after* table & gamePlay are setup
     this.table.startGame();           // enable GUI & setNextPlayer()
     return gamePlay;
   }

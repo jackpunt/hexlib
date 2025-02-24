@@ -1,7 +1,7 @@
-import { C, stime } from "@thegraid/common-lib";
+import { stime } from "@thegraid/common-lib";
 // import { json } from "./functions";
-import type { GamePlay } from "./game-play";
 import { afterUpdate } from "@thegraid/easeljs-lib";
+import type { GamePlay0 } from "./game-play";
 
 
 export interface Phase {
@@ -15,7 +15,7 @@ export interface Phase {
 export class GameState {
 
   /** created by new GamePlay(); initialized/injected into gamePlay.gameState. */
-  constructor(public gamePlay: GamePlay, states?: Record<string,Phase>, purge: boolean | string[] = false) {
+  constructor(public gamePlay: GamePlay0, states?: Record<string,Phase>, purge: boolean | string[] = false) {
     this.defineStates(states, purge);
   }
   defineStates(states = this.states, purge: boolean | string[] = false) {
@@ -31,7 +31,7 @@ export class GameState {
    * The current state: a Phase identified by Aname, with a start() function.
    */
   state: Phase;
-  get table() { return this.gamePlay?.table; }
+  get table() { return this.gamePlay.table; }
   get curPlayer() { return this.gamePlay.curPlayer; }
 
   // [eventName, eventSpecial, phase, args]
@@ -68,7 +68,7 @@ export class GameState {
    * @param afterPopup continuation after stage.update()
    */
   doneButton(label?: string, color = this.curPlayer.color, afterPopup?: () => void) {
-    const doneButton = this.table.doneButton;
+    const doneButton = this.table?.doneButton;
     if (!doneButton) return;
     doneButton.visible = !!label;
     doneButton.label_text = label;

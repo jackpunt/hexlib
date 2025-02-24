@@ -1,7 +1,7 @@
 
 import { S, stime } from "@thegraid/common-lib";
 import { KeyBinder } from "@thegraid/easeljs-lib";
-import type { GamePlay } from "./game-play";
+import type { GamePlay0 } from "./game-play";
 import { Hex, HexMap, IHex2 } from "./hex";
 import type { LogWriter } from "./stream-writer";
 
@@ -34,7 +34,7 @@ export type StartElt = {
 
 export class ScenarioParser {
 
-  constructor(public map: HexMap<Hex>, public gamePlay: GamePlay) {
+  constructor(public map: HexMap<Hex>, public gamePlay: GamePlay0) {
     return;
   }
 
@@ -54,7 +54,7 @@ export class ScenarioParser {
     const turnSet = (turn !== undefined); // indicates a Saved Scenario: assign & place everything
     if (turnSet) {
       gamePlay.turnNumber = turn;
-      table.logText(`turn = ${turn}`, `parseScenario`);
+      table?.logText(`turn = ${turn}`, `parseScenario`);
       this.gamePlay.allTiles.forEach(tile => tile.hex?.isOnMap ? tile.sendHome() : undefined); // clear existing map
     }
     this.gamePlay.hexMap.update();

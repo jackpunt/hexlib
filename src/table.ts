@@ -3,6 +3,7 @@ import { afterUpdate, Dispatcher, Dragger, DragInfo, DropdownStyle, KeyBinder, N
 import { Container, DisplayObject, Graphics, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
 import { TileEvent, type GamePlay } from "./game-play";
+import type { HexAspect } from "./game-setup";
 import type { GameState } from "./game-state";
 import { Hex, HexM, HexMap, IdHex, IHex2, RecycleHex } from "./hex";
 import { AliasLoader } from "./image-loader";
@@ -590,15 +591,16 @@ export class Table extends Dispatcher {
     const gui = new ParamGUI(TP, { textAlign: 'right' });
     gui.name = (gui as NamedObject).Aname = 'ParamGUI';
     const gameSetup = this.gamePlay.gameSetup;
+    const restart = (state: HexAspect) => (gameSetup.restart(state));
     gui.makeParamSpec('hexRad', [30, 60, 90, 120], { fontColor: 'red' }); TP.hexRad;
     gui.makeParamSpec('nHexes', [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], { fontColor: 'red' }); TP.nHexes;
     gui.makeParamSpec('mHexes', [1, 2, 3], { fontColor: 'red' }); TP.mHexes;
-    gui.spec("hexRad").onChange = (item: ParamItem) => { gameSetup.restart({ hexRad: item.value }) }
-    gui.spec("nHexes").onChange = (item: ParamItem) => { gameSetup.restart({ nh: item.value }) }
-    gui.spec("mHexes").onChange = (item: ParamItem) => { gameSetup.restart({ mh: item.value }) }
+    gui.spec("hexRad").onChange = (item: ParamItem) => restart({ hexRad: item.value })
+    gui.spec("nHexes").onChange = (item: ParamItem) => restart({ nh: item.value })
+    gui.spec("mHexes").onChange = (item: ParamItem) => restart({ mh: item.value })
 
     parent.addChild(gui)
-    gui.x = x; gui.y = y
+    gui.x = x; gui.y = y;
     gui.makeLines();
     return gui
   }

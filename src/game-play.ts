@@ -40,6 +40,7 @@ export class GamePlay0 {
   static gpid = 0
   readonly id = GamePlay0.gpid++; // instance id of this GamePlay [debug help?]
 
+  table?: Table;
   readonly gameState!: GameState;
   get gamePhase() { return this.gameState.state; }
   isPhase(name: string) { return this.gamePhase === this.gameState.states[name]; }
@@ -216,6 +217,36 @@ export class GamePlay0 {
     tile.logRecycle(verb);
     tile.sendHome();  // recycleTile
   }
+
+
+  /** override! new ScenarioParser() when GameSetup -> parseScenario() */
+  makeScenarioParser(hexMap: HexMap<Hex> = this.hexMap) {
+    return new ScenarioParser(hexMap, this);
+  }
+  scenarioParser: ScenarioParser;
+  /**
+   * Place Tiles and Meeples on HexMap, set GameState.
+   *
+   * new ScenarioParser(hexMap, gamePlay).parseScenario(scenario);
+   */
+  parseScenario(scenario: SetupElt) {
+    const scenarioParser = this.scenarioParser = this.makeScenarioParser();
+    this.logWriter.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)
+    scenarioParser.parseScenario(scenario);
+  }
+  /** save state of the current scenario; suitable for later parseScenario */
+  saveGame() {
+    this.scenarioParser.saveState(this)
+  }
+  /** GamePlay contribution to saved Scenario */
+  saveState(setupElt: SetupElt) {
+    setupElt.coins = this.allPlayers.map(p => p.coins);
+  }
+  /** restore state from saveState() */
+  parseState(setupElt: SetupElt) {
+    const coins = setupElt.coins;
+    if (coins) coins.forEach((coin, ndx) => this.allPlayers[ndx].coins = coin);
+  }
 }
 
 /**
@@ -225,8 +256,8 @@ export class GamePlay0 {
  * so games can extend the non-GUI GamePlay0
  */
 export class GamePlay extends GamePlay0 {
-  readonly table: Table   // access to GUI (drag/drop) methods.
-  override gameState: GameState = new GameState(this);
+  declare table: Table   // access to GUI (drag/drop) methods.
+  override readonly gameState: GameState = new GameState(this);
   /** GamePlay is the GUI-augmented extension of GamePlay0; uses Table */
   constructor(gameSetup: GameSetup, scenario: Scenario) {
     super(gameSetup);            // hexMap, history, gStats...
@@ -287,35 +318,6 @@ export class GamePlay extends GamePlay0 {
     // diagnostics:
     table.undoShape.on(S.click, () => this.undoMove(), this)
     table.redoShape.on(S.click, () => this.redoMove(), this)
-  }
-
-  /** override! new ScenarioParser() when GameSetup -> parseScenario() */
-  makeScenarioParser(hexMap: HexMap<Hex> = this.hexMap) {
-    return new ScenarioParser(hexMap, this);
-  }
-  scenarioParser: ScenarioParser;
-  /**
-   * Place Tiles and Meeples on HexMap, set GameState.
-   *
-   * new ScenarioParser(hexMap, gamePlay).parseScenario(scenario);
-   */
-  parseScenario(scenario: SetupElt) {
-    const scenarioParser = this.scenarioParser = this.makeScenarioParser();
-    this.logWriter.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)
-    scenarioParser.parseScenario(scenario);
-  }
-  /** save state of the current scenario; suitable for later parseScenario */
-  saveGame() {
-    this.scenarioParser.saveState(this)
-  }
-  /** GamePlay contribution to saved Scenario */
-  saveState(setupElt: SetupElt) {
-    setupElt.coins = this.allPlayers.map(p => p.coins);
-  }
-  /** restore state from saveState() */
-  parseState(setupElt: SetupElt) {
-    const coins = setupElt.coins;
-    if (coins) coins.forEach((coin, ndx) => this.allPlayers[ndx].coins = coin);
   }
 
   backlogIndex = 1;
