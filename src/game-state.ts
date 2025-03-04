@@ -44,10 +44,12 @@ export class GameState {
 
   }
   startPhase = 'BeginTurn';
-  startArgs = [];
+  startArgs: any[] = [];
   /** Bootstrap the Scenario: this.phase(startPhase, ...startArgs). */
-  start() {
-    this.phase(this.startPhase, ...this.startArgs);
+  start(startPhase = this.startPhase, startArgs = this.startArgs) {
+    this.startPhase = startPhase;
+    this.startArgs = startArgs;
+    this.phase(startPhase, ...startArgs);
   }
 
   /** set state and state.start() with given args. */

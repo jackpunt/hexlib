@@ -76,7 +76,7 @@ export class ScenarioParser {
   }
 
   /** override/replace to create a SetupElt and logState(logWriter) */
-  saveState(gamePlay = this.gamePlay, logWriter: LogWriter | false = gamePlay.logWriter): SetupElt {
+  saveState(gamePlay = this.gamePlay, logWriter: LogWriter | false = gamePlay.logWriter ?? false): SetupElt {
     const turn = Math.max(0, gamePlay.turnNumber);
     const time = stime.fs();
     const setupElt = this.addStateElements({ turn, time, } as SetupElt);
@@ -92,7 +92,7 @@ export class ScenarioParser {
       lines = `${lines}\n  ${key}: ${line}${ndx < n ? ',' : ''}`;
     })
     lines = `${lines}\n},`
-    logWriter.writeLine(lines);
+    logWriter?.writeLine(lines);
   }
 
   /** debug utility: list legal hexes; click to toggle */

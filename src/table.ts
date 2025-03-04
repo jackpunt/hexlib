@@ -100,17 +100,16 @@ export class Table extends Dispatcher {
 
   /** write '// ${turn}: ${line}' comment line to TextLog (& console) & logWriter */
   logText(line: string, from = '', toConsole = true) {
-    const text = this.textLog.log(`${this.gamePlay.turnNumber}: ${line}`, from || '***', toConsole); // scrolling lines below
-    this.gamePlay.logWriter.writeLine(`// ${text}`);
+    const text = this.textLog.log(`${this.gamePlay.turnId}: ${line}`, from || '***', toConsole); // scrolling lines below
+    this.gamePlay.logWriter?.writeLine(`// ${text}`);
     // JSON string, instead of JSON5 comment:
     // const text = this.textLog.log(`${this.gamePlay.turnNumber}: ${line}`, from); // scrolling lines below
     // this.gamePlay.logWriter.writeLine(`"${line}",`);
   }
 
-  logCurPlayer(plyr: Player) {
-    const tn = this.gamePlay.turnNumber
-    const robo = plyr.useRobo ? AT.ansiText(['red', 'bold'], "robo") : "----";
-    const info = { turn: tn, gamePlay: this.gamePlay, curPlayer: plyr, plyr: plyr.Aname }
+  logCurPlayer(plyr: Player, tn = this.gamePlay.turnNumber) {
+      const robo = plyr.useRobo ? AT.ansiText(['red', 'bold'], "robo") : "----";
+    const info = { turn: tn, plyr: plyr.Aname, gamePlay: this.gamePlay, curPlayer: plyr }
     console.log(stime(this, `.logCurPlayer --${robo}--`), info);
     this.logTurnPlayer(`//${tn}: ${plyr.Aname}`);
   }
@@ -372,6 +371,11 @@ export class Table extends Dispatcher {
     return;
   }
 
+  /** methods invoked by makeGUIs()->gpanel-> guiToMake(...)->new ParamGUI() */
+  guisToMake = [this.makeNetworkGUI, this.makeParamGUI, this.makeParamGUI2];
+  /** ParamGUIs that were made */
+  guisMade: ParamGUI[] = [];
+
   /**
    * Make ParamGUI with a background RectShape, and make it dragable.
    * @param makeGUI a function(Container, x?, y?) to create a ParamGUI
@@ -390,7 +394,6 @@ export class Table extends Dispatcher {
     const bgr = new RectShape({ x: -d, y: -d, w: gui.linew + 2 * d, h: gui.ymax + 2 * d }, 'rgb(200,200,200,.5)', '');
     gui.addChildAt(bgr, 0);
     this.dragger.makeDragable(gui);
-    this.stage.update()
     return gui;
   }
   /**
@@ -406,13 +409,13 @@ export class Table extends Dispatcher {
       wmax = Math.max(wmax, (gui.children[0] as RectShape).getBounds().width)
       return gui;
     }
-    const guis = [this.makeNetworkGUI, this.makeParamGUI, this.makeParamGUI2].map(mgf => {
+    const guis = this.guisMade = this.guisToMake.map(mgf => {
       return guiWYmax(this.gpanel(mgf, cx, cy + ymax, scale))
     })
     guis.forEach(gui => gui.x -= wmax)
     scaleCont.addChild(...guis.reverse()); // lower y values ABOVE to dropdown is not obscured
     // TODO: dropdown to use given 'top' container!
-    scaleCont.stage.update();
+    this.stage.update()
   }
 
   /** height allocated for PlayerPanel scaled in row height [map.rows/3-.2] */
@@ -706,7 +709,7 @@ export class Table extends Dispatcher {
 
   /** update table when a new Game is started.
    *
-   * default: [allTiles.makeDragable(); setNextPlayer(gamePlay.turnNumber)]
+   * default: [scaleCont.addChild(overlayCont); allTiles.makeDragable()]
    *
    * A Tile or class of Tile may stopDragging() due to noLegalTargets().
    */
@@ -716,9 +719,7 @@ export class Table extends Dispatcher {
     this.gamePlay.allTiles.forEach(tile => {
       this.makeDragable(tile);
     });
-
     // this.stage.enableMouseOver(10);
-    this.gamePlay.setNextPlayer(this.gamePlay.turnNumber > 0 ? this.gamePlay.turnNumber : 0);
   }
 
   /**

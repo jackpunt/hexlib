@@ -9,16 +9,18 @@ import { MapTile, Tile, } from "./tile";
 
 export class Player {
   // PlayerLib uses type string, client can make a restricted type
+  /** Record<canonical name, HTML color string>  */
   static colorScheme: Record<string, string> = { red: 'Red', blue: 'Blue', green: 'darkgreen', violet: 'Violet', gold: 'gold', purple: 'purple' };
   /**
-   * Can use canonical color name, is mapped to arbitrary HTML color.
-   * @param ndx number or (keyof typeof Player.colorScheme)
-   * @returns colorScheme[ndx]
+   * Given canonical name (or numerical ndx), map to arbitrary HTML color.
+   * @param cname number or (keyof typeof Player.colorScheme)
+   * @returns colorScheme[ndx] as HTML color string
    */
-  static playerColor(ndx: number | string) {
-    if (typeof ndx === 'number') ndx = Object.keys(Player.colorScheme)[ndx] as keyof typeof Player.colorScheme;
-    return Player.colorScheme[ndx as keyof typeof Player.colorScheme];
+  static playerColor(cname: number | keyof typeof Player.colorScheme) {
+    if (typeof cname === 'number') cname = Object.keys(Player.colorScheme)[cname] as keyof typeof Player.colorScheme;
+    return Player.colorScheme[cname];
   }
+  /** invert from HTML color to find canonical cname */
   static colorName(color: string) {
     return Object.keys(Player.colorScheme).find(k => Player.playerColor(k) === color)
   }
@@ -31,12 +33,17 @@ export class Player {
     gamePlay.allPlayers[index] = this;
     TP.numPlayers = gamePlay.allPlayers.length; // incrementing up to gamePlay.nPlayers
     this.color = Player.playerColor(index);
-    const cname = Player.colorName(this.color)
-    this.Aname = `P${index}:${cname}`;
-    console.log(stime(this, `.new:`), this.Aname);
+    this.Aname = `P${index}:${this.cname}`;
+    Player.logNewPlayer && Player.logNewPlayer(this);
   }
+  /** action at end of Player.constructor() */
+  static logNewPlayer = (plyr: Player): any => {
+    console.log(stime(plyr, `.new:`), plyr.Aname);
+  };
 
+  get cname() { return Player.playerColor(this.color) }
   _color: string;
+  /** HTML color string */
   get color() { return this._color; }
   set color(c: string) { this._color = c; }
   /** now used as 'nominal' in log to identify player, never used as a COLOR */
@@ -75,7 +82,7 @@ export class Player {
 
   readonly startDir: HexDir;
 
-  /** make Civics, Leaders & Police; also makeLeaderHex() */
+  /** make coinCounter, or whatever... */
   makePlayerBits() {
     this.coinCounter = new NumCounter('coins', 0)
   }

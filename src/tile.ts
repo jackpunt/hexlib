@@ -33,7 +33,7 @@ class Tile0 extends NamedContainer {
   }
 
   /** every Tile has pointer to the GamePlay extant when Tile was created! */
-  public gamePlay = Tile.gamePlay;
+  gamePlay: GamePlay;
 
   /**
    * @return [false] override to return true if this to be placed on hex.meep
@@ -131,11 +131,7 @@ class Tile0 extends NamedContainer {
  * Two subspecies: MapTile are 'stationary' on the HexMap, Meeple [.isMeep] are 'mobile'.
  */
 export class Tile extends Tile0 implements Dragable {
-
-  /** @deprecated use GameSetup.zeroAllArrays() */
-  static clearAllTiles() { this.gamePlay.allTiles.length = 0; }
-  // static textSize = 20 * TP.hexRad / 60;
-  // static source: TileSource<Tile>[]; // base class Tile does not have a 'source'
+  // static source: TileSource<Tile>[]; // base class Tile does NOT have a 'source'
 
   /**
    * @example
@@ -188,19 +184,23 @@ export class Tile extends Tile0 implements Dragable {
     player?: Player,
   ) {
     super(Aname, player); // both are set as this.Aname & this.player
-    this.gamePlay.allTiles.push(this);
     this.tileConstructor()
     this.reCache();       // TP.cacheTiles ? use H.HexBounds()
   }
 
   /** invoked by constructor; set name & Aname if undefined
    *
-   * typical stack:
+   * - gamePlay = Tile.gamePlay
+   * - gamePlay.allTiles.push(this)
+   *
+   * typical children stack:
    * - makeShape()->baseShape
    * - addImageBitmap()->image,
    * - addTextChild()->nameText
    */
   tileConstructor() {
+    this.gamePlay = Tile.gamePlay;
+    this.gamePlay?.allTiles.push(this);
     this.baseShape = this.makeShape();
     this.addChild(this.baseShape);
     // from Ankh: extract class name for saveState
@@ -500,7 +500,7 @@ export class Tile extends Tile0 implements Dragable {
   }
 }
 
-/** a half-sized Tile. [Ankh] */
+/** a half-sized Tile. [hextowns] */
 export class Token extends Tile {
 
   override makeShape(colorn?: string): PaintableShape {

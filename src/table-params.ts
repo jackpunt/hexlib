@@ -100,7 +100,7 @@ export class TP {
   static flashDwell: number = 500
   static flipDwell:  number = 200 // chooseStartPlayer dwell between each card flip
 
-  static bgColor: string = 'rgba(155, 100, 150, .3)';
+  static bgColor = 'rgba(200, 120, 40, 0.8)'; // C.nameToRgbaString('Sienna', .8); // 'saddlebrown'
   static bgRect = { x: -2400, y: -1000, w: 8000, h: 5000 }
 
   static ghost: string = 'game7'   // game-setup.network()

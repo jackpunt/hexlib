@@ -62,11 +62,11 @@ export class GamePlay0 {
   // [or keep 'state' in-memory and reload from there]
   // hexline originally did undo/redo; ankh writes/reads Scenario object log_date_time.json
 
-  /** log a json line of the form {${key}: ${line}}   */
+  /** log a json line of the form {${key}: ${line}}; may feed to parseScenario!  */
   logWriterLine0(key = 'start', line: Record<string, any> = { time: stime.fs(), turn: this.turnNumber }) {
     let line0 = json(line, true); // machine readable starting conditions
     console.log(`-------------------- ${line0}`)
-    this.logWriter.writeLine(`{${key}: ${line0}},`)
+    this.logWriter?.writeLine(`{${key}: ${line0}},`)
   }
 
   /** GamePlay0 - supply GodNames for each: new Player(...). */
@@ -78,8 +78,9 @@ export class GamePlay0 {
   }
   nCols: number
   nRows: number
-
-  turnNumber: number = 0    // = history.lenth + 1 [by this.setNextPlayer]
+  // in prep for setNextPlayer or parseScenario:
+  turnNumber: number = -1    // = history.lenth + 1 [by this.setNextPlayer]
+  get turnId() { return `${this.turnNumber}`}
   curPlayerNdx: number = 0  // curPlayer defined in GamePlay extends GamePlay0
   curPlayer: Player;
   preGame = true;
@@ -136,7 +137,7 @@ export class GamePlay0 {
       this.turnNumber = turnNumber;
     }
     this.turnNumber = turnNumber;
-    this.preGame = false;
+    this.preGame = false;   // TODO: use gameState.isPhase() ??
     this.setCurPlayer(this.allPlayers[0].nthPlayer(turnNumber));
     this.curPlayer.newTurn();
   }
@@ -231,7 +232,7 @@ export class GamePlay0 {
    */
   parseScenario(scenario: SetupElt) {
     const scenarioParser = this.scenarioParser = this.makeScenarioParser();
-    this.logWriter.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)
+    this.logWriter?.writeLine(`// GameSetup.parseScenario: ${scenario.Aname}`)
     scenarioParser.parseScenario(scenario);
   }
   /** save state of the current scenario; suitable for later parseScenario */
@@ -258,10 +259,10 @@ export class GamePlay0 {
 export class GamePlay extends GamePlay0 {
   declare table: Table   // access to GUI (drag/drop) methods.
   override readonly gameState: GameState = new GameState(this);
+
   /** GamePlay is the GUI-augmented extension of GamePlay0; uses Table */
   constructor(gameSetup: GameSetup, scenario: Scenario) {
     super(gameSetup);            // hexMap, history, gStats...
-    Tile.gamePlay = this;        // provide pointer for all Tiles created.
     this.table = gameSetup.table;
     if (this.table.stage.canvas) this.bindKeys();
   }
@@ -301,9 +302,9 @@ export class GamePlay extends GamePlay0 {
     KeyBinder.keyBinder.setKey('y', { thisArg: this, func: this.clickConfirm, argVal: true })
     KeyBinder.keyBinder.setKey('d', { thisArg: this, func: this.clickDone, argVal: true })
 
-    KeyBinder.keyBinder.setKey('l', () => this.logWriter.pickLogFile());
-    KeyBinder.keyBinder.setKey('L', () => this.logWriter.showBacklog());
-    KeyBinder.keyBinder.setKey('M-l', () => this.logWriter.closeFile());
+    KeyBinder.keyBinder.setKey('l', () => this.logWriter?.pickLogFile());
+    KeyBinder.keyBinder.setKey('L', () => this.logWriter?.showBacklog());
+    KeyBinder.keyBinder.setKey('M-l', () => this.logWriter?.closeFile());
     KeyBinder.keyBinder.setKey('C-l', () => this.readFileState());
     KeyBinder.keyBinder.setKey('r', () => this.readFileState());
     KeyBinder.keyBinder.setKey('h', () => {this.table.textLog.visible = !this.table.textLog.visible; this.hexMap.update()});
@@ -322,6 +323,7 @@ export class GamePlay extends GamePlay0 {
 
   backlogIndex = 1;
   selectBacklog(incr = -1) {
+    if (!this.logWriter) return;
     const parseStateText = document.getElementById('parseStateText') as HTMLInputElement;
     const backlog = this.logWriter.backlog;
     const ndx = Math.max(0, Math.min(backlog.length - 1, this.backlogIndex + incr));
@@ -480,7 +482,7 @@ export class GamePlay extends GamePlay0 {
    * if logWriter.fileName not set, use gameSetup.logTime_js
    */
   logWriterInfo() {
-    const fileName = this.logWriter.fileName;
+    const fileName = this.logWriter?.fileName ?? 'noLogWriter';
     const [logName, ext] = (fileName ?? this.gameSetup.logTime_js)?.split('.');
     const backLog = fileName ? '' : ' **';
     const logAt = `${logName}@${this.turnNumber}${backLog}`;

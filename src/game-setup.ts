@@ -6,7 +6,7 @@ import { GamePlay } from "./game-play";
 import { Hex, Hex2, HexMap, MapCont } from "./hex";
 import { AliasLoader } from "./image-loader";
 import { Player } from "./player";
-import { ScenarioParser, SetupElt, type StartElt } from "./scenario-parser";
+import { SetupElt, type StartElt } from "./scenario-parser";
 import { LogReader, LogWriter } from "./stream-writer";
 import { Table } from "./table";
 import { TP } from "./table-params";
@@ -20,7 +20,7 @@ stime.anno = (obj: string | { constructor: { name: string; }, stage?: Stage, tab
   return !!stage ? (!!stage.canvas ? ' C' : ' R') : ' -' as string;
 }
 
-/** configuration of HexMap */
+/** configuration of HexMap; args from ParamGUI to resetState() */
 export interface HexAspect { mh?: number, nh?: number, hexRad?: number }
 /** Specify and initial or current state of game; see also Scenario.SetupElt */
 export type Scenario = SetupElt; // {Aname: string, turn: number}
@@ -57,7 +57,6 @@ export class GameSetup {
   constructor(canvasId?: string, public qParams: Params = {}) {
     this.logWriter = this.makeLogWriter();
     this.initialize(canvasId);
-    this.loadImagesThenStartup(this.qParams);
   }
 
   static random_seed = '';
@@ -134,8 +133,8 @@ export class GameSetup {
 
   logTime_js: string;
   /** Generally accessed as: gamePlay.logWriter! */
-  readonly logWriter: LogWriter;
-  makeLogWriter() {
+  readonly logWriter?: LogWriter;
+  makeLogWriter(): LogWriter | undefined {
     const logTime_js = this.logTime_js = `log_${stime.fs('MM-DD_Lkk_mm')}.js`;
     const logWriter = new LogWriter(logTime_js, '[\n', ']\n'); // terminate array, but insert before terminal
     return logWriter;
@@ -187,11 +186,13 @@ export class GameSetup {
     this.gamePlay.allMeeples.length = 0;
     this.gamePlay.allPlayers.length = 0;
     // include logWriter here, for easier override
-    if (clearLog) this.logWriter.backlog.length = 0;   // flush the backlog (assume file is closed)
+    if (clearLog && this.logWriter) this.logWriter.backlog.length = 0;   // flush the backlog (assume file is closed)
   }
 
   /**
    * set TableParams from HexAspect of ParamGUI
+   *
+   * originally from hexmarket: find consistent set from mh, nh, dbp, etc.
    *
    * could override to edit any Scenario bits before restart() --> startScenario(scenario)
    * @param stateInfo (HexAspect mostly?)
@@ -331,7 +332,7 @@ export class GameSetup {
   }
 
   makeGamePlay(startElt: SetupElt) {
-    return new GamePlay(this, startElt);
+    return new GamePlay(this, startElt); // you may want: return Tile.gamePlay = new GamePlay(...)
   }
 
   /**
@@ -358,21 +359,21 @@ export class GameSetup {
   /**
    * Make new Table/layout & gamePlay/hexMap & Players.
    *
-   * Given hexMap, table, and gamePlay, setup/layout everything for the game scenario.
+   * Make hexMap, table, and gamePlay;
+   * Setup/layout everything for the game scenario.
    *
    * - getNPlayers()
    * - makeHexMap()
    * - makeTable()
    * - makeGamePlay(scenario)
    * -
-   * - gamePlay = this.gamePlay
    * - makeAllPlayers(gamePlay)
    * - layoutTable(gamePlay)
    * - gamePlay.turnNumber = -1
    * -
    * - parseScenario(scenario) // scenario.turn set on a FULL/SAVED scenario
    * - forEachPlayer(p.newGame(gamePlay))
-   * - table.startGame(scenario)
+   * - startGame()
    */
   startScenario(scenario: Scenario) {
     this.nPlayers = this.getNPlayers();        // Scenario may override?
@@ -384,16 +385,33 @@ export class GameSetup {
     this.makeAllPlayers(gamePlay);     // Players have: civics & meeples & TownSpec
 
     // Inject GamePlay to Table; all the GUI components, makeAllDistricts(), addTerrain, initialRegions
-    this.table.layoutTable(gamePlay);     // mutual injection & make all panelForPlayer
+    this.layoutTable(gamePlay);        // mutual injection & make all panelForPlayer
 
-    gamePlay.turnNumber = -1;   // in prep for setNextPlayer or parseScenario
     // Place Tiles and Meeple on HexMap, set GameState.
     gamePlay.parseScenario(scenario); // may change gamePlay.turnNumber, gamePlay.phase (& conflictRegion)
-    this.table.makeGUIs();     // reflect settings from scenario. QQQ: is this the right place?
+    this.makeGUIs();            // reflect settings from scenario. QQQ: is this the right place?
     gamePlay.logWriterLine0();
 
     gamePlay.forEachPlayer(p => p.newGame(gamePlay)) // make Planner *after* table & gamePlay are setup
-    this.table.startGame();           // enable GUI & setNextPlayer()
+    this.startGame();
     return gamePlay;
+  }
+
+  /** table.makeGUIs() */
+  makeGUIs()  {
+    this.table.makeGUIs()
+  }
+
+  /** table.layoutTable(gamePlay) */
+  layoutTable(gamePlay: GamePlay) {
+    this.table.layoutTable(gamePlay)
+  }
+
+  /** table.startGame(); gamePlay.start(); */
+  startGame() {
+    this.table.startGame();          // enable GUI & setNextPlayer()
+    const gamePlay = this.gamePlay;  // tn<0 marked 'preGame'; may be obsolete
+    gamePlay.setNextPlayer(gamePlay.turnNumber > 0 ? gamePlay.turnNumber : 0);
+    gamePlay.gameState.start();
   }
 }
