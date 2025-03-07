@@ -41,7 +41,7 @@ export class Player {
     console.log(stime(plyr, `.new:`), plyr.Aname);
   };
 
-  get cname() { return Player.playerColor(this.color) }
+  get cname() { return Player.colorName(this.color) }
   _color: string;
   /** HTML color string */
   get color() { return this._color; }

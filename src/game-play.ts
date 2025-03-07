@@ -291,7 +291,6 @@ export class GamePlay extends GamePlay0 {
     KeyBinder.keyBinder.setKey('M-z', { thisArg: this, func: this.undoMove })
     KeyBinder.keyBinder.setKey('b', { thisArg: this, func: this.undoMove })
     KeyBinder.keyBinder.setKey('f', { thisArg: this, func: this.redoMove })
-    //KeyBinder.keyBinder.setKey('S', { thisArg: this, func: this.skipMove })
     KeyBinder.keyBinder.setKey('Escape', () => this.table.stopDragging()) // Escape
     KeyBinder.keyBinder.setKey('C-c', { thisArg: this, func: this.stopPlayer })// C-c Stop Planner
     KeyBinder.keyBinder.setKey('u', { thisArg: this, func: this.unMove })
@@ -310,8 +309,8 @@ export class GamePlay extends GamePlay0 {
     KeyBinder.keyBinder.setKey('h', () => {this.table.textLog.visible = !this.table.textLog.visible; this.hexMap.update()});
     KeyBinder.keyBinder.setKey('P', () => this.selectBacklog(-1));
     KeyBinder.keyBinder.setKey('N', () => this.selectBacklog(1));
-    KeyBinder.keyBinder.setKey('S', () => this.gameSetup.blinkThenRestart());
-    KeyBinder.keyBinder.setKey('C-s', () => this.gameSetup.blinkThenRestart(undefined, '{}'));
+    KeyBinder.keyBinder.setKey('S-S', () => this.gameSetup.blinkThenRestart()); // parseStateText
+    KeyBinder.keyBinder.setKey('C-s', () => this.gameSetup.blinkThenRestart(undefined, '{}')); // new game
     // blinkAndThen(this.hexMap.mapCont.markCont, () => this.gameSetup.restart({}));
 
     KeyBinder.keyBinder.setKey('D', () => this.debug())
@@ -331,6 +330,16 @@ export class GamePlay extends GamePlay0 {
     const logElt = backlog[ndx]; // .replace(/,\n$/,'');
     parseStateText.value = logElt;
   }
+
+  /** get current state: SetupElt; stringify; write to console.log */
+  showGameSave() {
+    const setupElt = this.scenarioParser.saveState(this, false)
+    const lines = this.scenarioParser.logState(setupElt, undefined);
+    console.log(stime(this, `.showGameSave:\n`));
+    console.log(lines);
+    return lines;
+  }
+
 
   /** enter debugger, with interesting values in local scope */
   debug() {

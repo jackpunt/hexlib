@@ -367,7 +367,7 @@ export class Table extends Dispatcher {
    * Whatever: make overlays, score panel, extra tracks (auction...)
    */
   layoutTable2() {
-    afterUpdate(this.stage, () => setTimeout(() => this.toggleText(this.initialVis), 10));
+    afterUpdate(this.stage, () => this.toggleText(this.initialVis));
     return;
   }
 

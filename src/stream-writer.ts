@@ -96,6 +96,7 @@ export class LogWriter extends FileBase implements ILogWriter {
   xfileName?: string; // retain last fileName when file is closed
 
   backlog: string[] = [];
+  /** append text to backlog; if file is waiting to write then also writeBacklog() */
   writeLine(text = '') {
     const wasNoBacklog = (this.backlog.length === 0);
     this.backlog.push(`${text}\n`);
@@ -103,10 +104,12 @@ export class LogWriter extends FileBase implements ILogWriter {
       this.writeBacklog(this); // try write new backlog.
     }
   }
+  /** join() the whole backlog; write to console.log(lines) */
   showBacklog() {
-    console.log(stime(this, `.showBacklog:\n`));
-    const backlog = this.backlog.join('');
-    console.log(backlog);
+    console.log(stime(this, `.showBacklog:`));
+    const lines = this.backlog.join('');
+    console.log(lines);
+    return lines;
   }
 
   /**

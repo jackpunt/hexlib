@@ -54,10 +54,10 @@ export class GameState {
 
   /** set state and state.start() with given args. */
   phase(phase: string, ...args: any[]) {
-    console.log(stime(this, `.phase: ${this.state?.Aname ?? 'Initialize'} -> ${phase}`));
+    console.log(stime(this, `.phase: ${this.state?.Aname ?? 'Initialize'} -> ${phase}`), args);
     const state = this.state = this.states[phase];
     if (!state) { alert(`no state named ${phase}`); debugger; }
-    state.start(...args);
+    setTimeout(() => state.start(...args), 0);
   }
 
   /** true if currently in the named state */

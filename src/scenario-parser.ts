@@ -93,6 +93,7 @@ export class ScenarioParser {
     })
     lines = `${lines}\n},`
     logWriter?.writeLine(lines);
+    return lines;
   }
 
   /** debug utility: list legal hexes; click to toggle */

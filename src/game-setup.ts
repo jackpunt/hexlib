@@ -229,12 +229,22 @@ export class GameSetup {
    * @param restart [(s) => this.restart(s)] process the Scenario
    */
   parseStateTextAndRestart(stateText?: string, restart = (setupElt: SetupElt) => this.restart(setupElt)) {
-    // JSON5 barfs on trailing ','
-    if (!stateText) stateText = (document.getElementById('parseStateText') as HTMLInputElement).value.replace(/,$/, '');
-    console.log(stime(this, `.parseStateTextAndRestart`), stateText);
-    const setupElt = JSON5.parse(stateText) as SetupElt;
-    setupElt.Aname = setupElt.Aname ?? `parseStateText`;
-    restart(setupElt);
+    if (!stateText) {
+      stateText = (document.getElementById('parseStateText') as HTMLInputElement).value;
+    }
+    stateText = stateText.replace(/,$/, '')   // JSON5 barfs on trailing ','
+    console.log(stime(this, `.parseStateTextAndRestart: '${stateText}'`));
+    if (stateText) {
+      try {
+        const setupElt = JSON5.parse(stateText+' ') as SetupElt;
+        setupElt.Aname = setupElt.Aname ?? `parseStateText`;
+        restart(setupElt);
+      } catch (err) {
+        console.log(stime(this, `.parseStateAndRestart:`), err)
+      }
+    } else {
+      console.log(stime(this, `.parseStateAndRestart: no stateText`))
+    }
   }
 
   fileReadPromise: Promise<File>;
@@ -262,7 +272,7 @@ export class GameSetup {
    * @returns stateInfo suitable for restart(stateInfo)
    */
   extractStateFromLogText(logText: string, fileName: string, turn: number) {
-    const logArray = JSON5.parse(logText) as SetupElt[];
+    const logArray = JSON5.parse(logText+' ') as SetupElt[];
     const [, ...stateArray] = logArray;
     const state = stateArray.find(state => state.turn === turn) ?? ({}  as SetupElt);
     state.Aname = `${fileName}@${turn}`;
@@ -353,7 +363,7 @@ export class GameSetup {
     this.startupScenario = startElt;   // retain for future reference
     this.startScenario(startElt);
   }
-  /** the scenario last used by start(scenario) */
+  /** the scenario last used by startup(scenario) */
   startupScenario: SetupElt;
 
   /**
