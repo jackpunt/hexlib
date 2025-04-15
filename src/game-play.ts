@@ -42,8 +42,8 @@ export class GamePlay0 {
 
   table?: Table;
   readonly gameState!: GameState;
-  get gamePhase() { return this.gameState.state; }
-  isPhase(name: string) { return this.gamePhase === this.gameState.states[name]; }
+  get gamePhase() { return this.gameState.state.Aname; }
+  isPhase(name: string) { return this.gamePhase === name; }
   phaseDone(...args: any[]) { this.gameState.done(...args); }
   recycleHex: Hex1;
   ll(n: number) { return TP.log > n }
@@ -237,7 +237,7 @@ export class GamePlay0 {
   }
   /** save state of the current scenario; suitable for later parseScenario */
   saveGame() {
-    this.scenarioParser.saveState(this)
+    this.scenarioParser.saveState()
   }
   /** GamePlay contribution to saved Scenario */
   saveState(setupElt: SetupElt) {
@@ -333,10 +333,10 @@ export class GamePlay extends GamePlay0 {
 
   /** get current state: SetupElt; stringify; write to console.log */
   showGameSave() {
-    const setupElt = this.scenarioParser.saveState(this, false)
-    const lines = this.scenarioParser.logState(setupElt, undefined);
-    console.log(stime(this, `.showGameSave:\n`));
-    console.log(lines);
+    const setupElt = this.scenarioParser.saveState(false)
+    const lines = this.scenarioParser.logState(setupElt, false);
+    console.log(stime(this, `.showGameSave:`));
+    console.log(` ${lines}`);
     return lines;
   }
 

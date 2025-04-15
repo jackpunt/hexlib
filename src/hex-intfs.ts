@@ -7,6 +7,7 @@ export type EwDir = Extract<HexDir, 'NE' | 'E' | 'SE' | 'SW' | 'W' | 'NW'>
 export type NsDir = Extract<HexDir, 'EN' | 'ES' | 'S' | 'WS' | 'WN' | 'N'>;
 export type Or8Dir = Extract<HexDir, 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW' | 'N'>; // 8 compass dirs
 export type Or4Dir = Extract<Or8Dir, 'N' | 'E' | 'S' | 'W'>; // 4 compass dirs
+export type PyrDir = Extract<HexDir, 'NW' | 'NE' | 'SE' | 'SW'>; // 4 off-axis dirs
 
 export type DCR    = { dc: number, dr: number }  // Delta for Col & Row
 type TopoDCR = Record<HexDir, DCR>
@@ -87,6 +88,7 @@ export class TopoEWC extends TopoC<EwDCR> {
   }
   topoDCR(rc: RC): EwDCR { return (rc.row % 2 == 0) ? this.ewEvenRow : this.ewOddRow };
 
+  /** "odd rows" (based on abs(floor(row))) are shifted 1/2 column to right */
   override xywh(rad = 1, row = 0, col = 0): TopoXYWH {
     const h = 2 * rad, w = H.sqrt3 * rad, dydr = 1.5 * rad, dxdc = H.sqrt3 * rad;
     const x = (col + Math.abs(Math.floor(row) % 2) / 2) * dxdc;
@@ -147,6 +149,7 @@ export namespace H {
 
   export const or4Dirs: Or4Dir[] = [E, S, W, N];
   export const or8Dirs: Or8Dir[] = [NE, E, SE, S, SW, W, NW, N];
+  export const pyrDirs: PyrDir[] = [NE, NW, SE, SW];
   /** includes E & W, suitable for ewTopo */
   export const ewDirs: EwDir[] = [NE, E, SE, SW, W, NW]; // directions in TopoEW: EwDir
   /** includes N & S, suitable for nsTopo */

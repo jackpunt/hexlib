@@ -46,7 +46,7 @@ export class ScenarioParser {
    * parseScenario() delegates
    */
   parseScenario(setup: SetupElt) {
-    console.info(stime(this, `.parseScenario: curState =`), this.saveState(this.gamePlay)); // log current state for debug...
+    console.info(stime(this, `.parseScenario: curState =`), this.saveState()); // log current state for debug...
     console.log(stime(this, `.parseScenario: newState =`), setup);
 
     const { turn } = setup;
@@ -76,8 +76,8 @@ export class ScenarioParser {
   }
 
   /** override/replace to create a SetupElt and logState(logWriter) */
-  saveState(gamePlay = this.gamePlay, logWriter: LogWriter | false = gamePlay.logWriter ?? false): SetupElt {
-    const turn = Math.max(0, gamePlay.turnNumber);
+  saveState(logWriter: LogWriter | false = this.gamePlay.logWriter ?? false): SetupElt {
+    const turn = Math.max(0, this.gamePlay.turnNumber);
     const time = stime.fs();
     const setupElt = this.addStateElements({ turn, time, } as SetupElt);
     if (logWriter) this.logState(setupElt, logWriter);
@@ -85,14 +85,14 @@ export class ScenarioParser {
   }
 
   /** write each component of SetupElt on a line, wrapped between '{' ... '\n}' */
-  logState(state: SetupElt, logWriter = this.gamePlay.logWriter) {
+  logState(state: SetupElt, logWriter: LogWriter | false = this.gamePlay.logWriter ?? false ) {
     let lines = '{', keys = Object.keys(state) as (keyof SetupElt)[], n = keys.length - 1;
     keys.forEach((key, ndx) => {
       const line = JSON.stringify(state[key]);
       lines = `${lines}\n  ${key}: ${line}${ndx < n ? ',' : ''}`;
     })
     lines = `${lines}\n},`
-    logWriter?.writeLine(lines);
+    logWriter && logWriter.writeLine(lines);
     return lines;
   }
 

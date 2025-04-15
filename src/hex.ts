@@ -696,17 +696,25 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   get maxCol() { return this._maxCol }
   get minRow() { return this._minRow }
   get maxRow() { return this._maxRow }
+  // when called, maxRow, etc are defined...
+  get nRowCol() { return [1 + (this._maxRow as number) - (this._minRow as number), 1 + (this._maxCol as number) - (this._minCol as number)] }
+
+  /** center RC, floor((max+min)/2); approx when nRowCol is even; ok for most HEX maps. */
   get centerRC() {
     const row = Math.floor(((this._maxRow ?? 0) + (this._minRow ?? 0)) / 2);
     const col = Math.floor(((this._minCol ?? 0) + (this._maxCol ?? 0)) / 2);
     return { row, col }
   }
-  // when called, maxRow, etc are defined...
-  get nRowCol() { return [1 + (this._maxRow as number) - (this._minRow as number), 1 + (this._maxCol as number) - (this._minCol as number)] }
-
+  /** Hex at centerRC; approx when nRowCol is even; ok for most HEX maps. */
   get centerHex() {
     const { row, col } = this.centerRC;
     return this[row][col]; // as Hex2; as T;
+  }
+  /** non-integer RC at center of map {(maxRow-minRow)/2, (maxCol-minCol)/2} */
+  get centerMap() {
+    const row = (((this._maxRow ?? 0) + (this._minRow ?? 0)) / 2);
+    const col = (((this._minCol ?? 0) + (this._maxCol ?? 0)) / 2);
+    return { row, col }
   }
 
   /**
@@ -875,10 +883,10 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    *
    * lookup nextRowCol(hex, dir, topo) and cache in LINKS (bi-directional: hex <--> next)
    *
-   * @param hex the <T extends Hex> to be linked
+   * @param hex the \<T extends Hex\> to be linked
    * @param rc Row-Col at which to place the hex
    * @param map the Array[row][col] to hold the hex
-   * @param topo selects a Topo; Topo maps from (RowCol x Dir) to a <T extends Hex> in Array.
+   * @param topo selects a Topo; Topo maps from (RowCol x Dir) to a \<T extends Hex\> in Array.
    * @param lf selects a LINKS; hex.LINKS[dir] --> nHex(hex, dir)
    */
   link(hex: T, rc: RC = hex, map: T[][] = this, topo = this.topo, lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
@@ -912,7 +920,8 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return undefined;
   }
 
-  /** set target.xy to metric [row, col] of this HexMap.hexCont; return the xywh coordinates
+  /** set target.xy to topo.xywh(row, col) of this HexMap.hexCont;
+   * @returns the xywh coordinates
    *
    * see also: Table.setToRowCol(cont, row, col)
    */
@@ -1115,7 +1124,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
 
   /**
    * create horizontal row using hexAry.push(addHex(row, col++dc, district))
-   * @param maxc max col to use (esp when dc > 1)
+   * @param maxc number of col to add (last col at col + maxc * dc)
    * @param row
    * @param col initial col; increment by dc
    * @param district

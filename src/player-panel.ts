@@ -71,6 +71,7 @@ export class PlayerPanel extends NamedContainer {
     this.setOutline(show ? 8 : 4, show ? this.bg1 : this.bg0);
   }
 
+  /** areYouSure: delegated from GameState as gameState.panel.areYouSure(...) */
   confirmContainer: ConfirmCont;
   makeConfirmation(query = 'Are you sure?', a1 = 'Yes', a2 = 'Cancel') {
     const c1 = 'lightgreen', c2 = 'rgb(255, 100, 100)'
@@ -118,7 +119,10 @@ export class PlayerPanel extends NamedContainer {
     (yes ? buttonYes : buttonCan).dispatchEvent(event);
   }
 
-  /** popup the confirmContainer, take yes() or cancel() action */
+  /** popup the confirmContainer, take yes() or cancel() action
+   *
+   * (while save/hide/restore the visiblilty of the table.doneButton)
+   */
   areYouSure(msg: string, yes: () => void, cancel?: () => void, afterPopup: () => void = () => {}) {
     const { panel, table } = this.objects;
     // save state of doneButton, then disable it:

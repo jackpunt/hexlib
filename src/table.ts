@@ -344,8 +344,7 @@ export class Table extends Dispatcher {
     // this.namedOn("playerMoveEvent", S.add, this.gamePlay.playerMoveEvent, this.gamePlay)// legacy from hexline:
   }
 
-  layoutTurnlog(rowy = 4, colx = -13) {
-    const parent = this.scaleCont;
+  layoutTurnlog(rowy = 4, colx = -13, parent = this.scaleCont) {
     this.setToRowCol(this.turnLog, rowy, colx);
     this.setToRowCol(this.textLog, rowy, colx);
     this.textLog.y += this.turnLog.height(TP.numPlayers + 1); // allow room for 1 line per player
@@ -435,9 +434,9 @@ export class Table extends Dispatcher {
   getPanelLocs() {
     const { nh, mh } = this.hexMap.getSize();
     const rC = this.hexMap.centerHex.row, ph = this.panelHeight + .2;
-    const cc = this.hexMap.centerHex.col, coff = nh + (this.panelWidth / 2);
+    const cC = this.hexMap.centerHex.col, coff = nh + (this.panelWidth / 2);
     // Left of map (dir: +1), Right of map (dir: -1)
-    const cL = cc - coff, cR = cc + coff;
+    const cL = cC - coff, cR = cC + coff;
     const locs: [row: number, col: number, dir: 1 | -1][] = [
         [rC - ph, cL, +1], [rC, cL, +1], [rC + ph, cL, +1],
         [rC - ph, cR, -1], [rC, cR, -1], [rC + ph, cR, -1]
@@ -453,10 +452,10 @@ export class Table extends Dispatcher {
     return [[], [0], [0, 3], [0, 3, 1], [0, 3, 4, 1], [0, 3, 4, 2, 1], [0, 3, 4, 5, 2, 1]][np];
   }
 
-  /** Panel location for the nth of nPlayers.
-   *
+  /**
+   * Select from given panelLocs the location for the nth of nPlayers.
    * @param pIndex Player index (0 .. nPlayers-1)
-   * @param nPlayers [allPlayers.length] total number of Players
+   * @param nPlayers [TP.numPlayers] total number of Players
    * @param panelLocs [getPanelLocs] potential panel locations
    * @return panelLocs[panelLocsForNp(nPlayers)][pIndex]
    */
@@ -468,7 +467,7 @@ export class Table extends Dispatcher {
   }
 
   /**
-   *
+   * override point for new PlayerPanel(...)
    * @param table
    * @param player
    * @param high panelHeight
@@ -489,16 +488,13 @@ export class Table extends Dispatcher {
       return new PlayerPanel(table, player, high, wide, row - high / 2, col - wide / 2, dir)
     }
 
-  readonly allPlayerPanels: PlayerPanel[] = [];
   /** make player panels, placed at panelLoc... */
   makePerPlayer() {
-    this.allPlayerPanels.length = 0; // TODO: maybe deconstruct
     const high = this.panelHeight, wide = this.panelWidth;
-    const locs = this.getPanelLocs();
+    const nPlayers = TP.numPlayers, locs = this.getPanelLocs();
     this.gamePlay.forEachPlayer((player, pIndex) => {
-      const [row, col, dir] = this.panelLoc(pIndex, TP.numPlayers, locs);
-      const panel = this.makePlayerPanel(this, player, high, wide, row, col, dir);
-      this.allPlayerPanels[pIndex] = player.panel = panel;
+      const [row, col, dir] = this.panelLoc(pIndex, nPlayers, locs);
+      player.panel = this.makePlayerPanel(this, player, high, wide, row, col, dir);
       player.makePlayerBits();
       this.setPlayerScore(player);
     });
