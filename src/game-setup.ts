@@ -1,10 +1,9 @@
 import { Constructor, Random, stime } from "@thegraid/common-lib";
-import { DropdownChoice, DropdownItem, blinkAndThen, makeStage } from "@thegraid/easeljs-lib";
+import { AliasLoader, DropdownChoice, DropdownItem, blinkAndThen, makeStage } from "@thegraid/easeljs-lib";
 import { Container, Stage, type DisplayObject } from "@thegraid/easeljs-module";
 import JSON5 from 'json5';
 import { GamePlay } from "./game-play";
 import { Hex, Hex2, HexMap, MapCont } from "./hex";
-import { AliasLoader } from "./image-loader";
 import { Player } from "./player";
 import { SetupElt, type StartElt } from "./scenario-parser";
 import { LogReader, LogWriter } from "./stream-writer";

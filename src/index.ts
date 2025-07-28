@@ -5,7 +5,6 @@ export * from './game-setup.js';
 export * from './game-state.js';
 export * from './hex-intfs.js';
 export * from './hex.js';
-export * from './image-loader.js';
 export * from './meeple.js';
 export * from './plan-proxy.js';
 export * from './player-panel.js';

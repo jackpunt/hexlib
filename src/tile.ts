@@ -1,10 +1,9 @@
 import { C, Constructor, S, className, stime } from "@thegraid/common-lib";
-import { CenterText, CircleShape, NamedContainer, Paintable, PaintableShape } from "@thegraid/easeljs-lib";
+import { AliasLoader, CenterText, CircleShape, NamedContainer, Paintable, PaintableShape } from "@thegraid/easeljs-lib";
 import { DisplayObject, MouseEvent, Rectangle, Text } from "@thegraid/easeljs-module";
 import { type GamePlay } from "./game-play";
 import { Hex1, IHex2 } from "./hex";
 import { H } from "./hex-intfs";
-import { AliasLoader } from "./image-loader";
 import type { Player } from "./player";
 import { HexShape, TileShape } from "./shapes";
 import type { DragContext, Dragable, Table } from "./table";
@@ -195,7 +194,6 @@ export class Tile extends Tile0 implements Dragable {
    *
    * typical children stack:
    * - makeShape()->baseShape
-   * - addImageBitmap()->image,
    * - addTextChild()->nameText
    */
   tileConstructor() {

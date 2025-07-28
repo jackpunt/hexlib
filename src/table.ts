@@ -1,12 +1,11 @@
 import { AT, C, Constructor, F, S, stime, XY, XYWH } from "@thegraid/common-lib";
-import { afterUpdate, Dispatcher, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer, UtilButton } from "@thegraid/easeljs-lib";
+import { afterUpdate, AliasLoader, Dispatcher, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer, UtilButton } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Graphics, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
 import { TileEvent, type GamePlay } from "./game-play";
 import type { HexAspect } from "./game-setup";
 import type { GameState } from "./game-state";
 import { Hex, HexM, HexMap, IdHex, IHex2, RecycleHex } from "./hex";
-import { AliasLoader } from "./image-loader";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
 import { HexShape } from "./shapes";
