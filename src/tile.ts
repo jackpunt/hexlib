@@ -68,8 +68,8 @@ class Tile0 extends NamedContainer {
    *
    * see also: addImageBitmap() to add child image from AliasLoader
    */
-  makeShape(): Paintable {
-    return new TileShape(this.radius);
+  makeShape(size = this.radius): Paintable {
+    return new TileShape(size);
   }
 
   /** color for this.makeBleed() */
@@ -259,12 +259,8 @@ export class Tile extends Tile0 implements Dragable {
    *
    * uncache(), setBoundsNull(), setBounds(getBounds), maybe cache(scale)
    */
-  reCache(scale = TP.cacheTiles) {
-    if (this.cacheID) this.uncache();
-    this.setBoundsNull(); // remove bounds
-    const b = this.getBounds();    // of tileShape & InfoBox (vis or !vis, new Info)
-    this.setBounds(b.x, b.y, b.width, b.height); // record for debugger
-    if (scale > 0) this.cache(b.x, b.y, b.width, b.height, scale);
+  override reCache(scale = TP.cacheTiles) {
+    super.reCache(scale);
   }
 
 
@@ -501,8 +497,8 @@ export class Tile extends Tile0 implements Dragable {
 /** a half-sized Tile. [hextowns] */
 export class Token extends Tile {
 
-  override makeShape(colorn?: string): PaintableShape {
-    return new HexShape(this.radius * .5, undefined, colorn);
+  override makeShape(size = this.radius, colorn?: string): PaintableShape {
+    return new HexShape(size * .5, undefined, colorn);
   }
 }
 
