@@ -330,7 +330,9 @@ export class GameSetup {
     return new Table(this.stage);
   }
 
-  /** create a Scenario for a new game; based on qParams.
+  /** create a defaultScenario for a new game (turn: 0); based on qParams.
+   *
+   * @qParams typically from URI; may have: mh, nh, hexRad (as HexAspect; from ParamGUI)
    *
    * see also: gameSetup.resetState() which can cleanup or extend the Scenario.
    */
