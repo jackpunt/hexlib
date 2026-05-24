@@ -80,6 +80,7 @@ export class TP {
   /** the current map from PlayerColor to colorn */
   static colorScheme = playerColorRecordF(n => n as string);
   static useEwTopo = true;
+  /** scale for cache/reCache */
   static cacheTiles = 2;
   static snapToPixel = true;
   static textLogLines = 13;

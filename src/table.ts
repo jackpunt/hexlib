@@ -208,18 +208,19 @@ export class Table extends Dispatcher {
     return;
   }
 
+  /** retain last-used cacheScale.  */
   cacheScale = TP.cacheTiles;
   /**
    * re-cache all Tiles with alternate cacheScale; improves resolution at high zoom.
    *
    * Alternate invocations return cacheScale to 0 (un-cached)
-   * @param setScale [TP.cacheTiles === 0] set true to force setting, undefined to toggle
+   * @param setScale [TP.cacheTiles === 0] true: force cache@scale; false: cache@0 (uncache); undefined: toggle.
    * @param cacheScale [max(1, scaleCont.scaleX)] set to use specific scale
    */
   reCacheTiles(setCache = (TP.cacheTiles === 0), cacheScale?: number) {
     this.cacheScale = cacheScale ?? Math.max(1, this.scaleCont.scaleX); // If zoomed in, use that higher scale
     const scale = TP.cacheTiles = setCache ? this.cacheScale : 0;
-    console.log(stime('GamePlay', `.reCacheTiles: `), { setCache: setCache, scale, scaleX: this.scaleCont.scaleX.toFixed(2) });
+    console.log(stime('Table', `.reCacheTiles: `), { setCache: setCache, scale, scaleX: this.scaleCont.scaleX.toFixed(2) });
     this.gamePlay.allTiles.forEach(tile => {
       tile.reCache(scale);  // uncache if (scale == 0)
     });
