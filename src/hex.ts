@@ -546,6 +546,10 @@ export class HexMark extends HexShape {
   }
 }
 
+/** type for allowed names of containers added to HexMap.mapCont; tsc typing hack.
+ *
+ * addContainers() { ...; MapCont.addChild(this[cname as MapContName] = new NamedContainer(cname)) }
+ */
 export type MapContName = 'hexCont' | 'markCont';
 /** MapCont is an empty Container until .addContainers(cNames) */
 export class MapCont extends Container {

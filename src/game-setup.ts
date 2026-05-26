@@ -3,7 +3,7 @@ import { AliasLoader, DropdownChoice, DropdownItem, blinkAndThen, makeStage } fr
 import { Container, Stage, type DisplayObject } from "@thegraid/easeljs-module";
 import JSON5 from 'json5';
 import { GamePlay } from "./game-play";
-import { Hex, Hex2, HexMap, MapCont } from "./hex";
+import { Hex, Hex2, HexMap, MapCont, type IHex2 } from "./hex";
 import { Player } from "./player";
 import { SetupElt, type StartElt } from "./scenario-parser";
 import { LogReader, LogWriter } from "./stream-writer";
@@ -108,12 +108,12 @@ export class GameSetup {
   }
 
   /** set from qParams['n'] */
-  nPlayers = 2;
   makeAllPlayers(gamePlay: GamePlay) {
     // Create and Inject all the Players:
-    const allPlayers = gamePlay.allPlayers;
+    const allPlayers = gamePlay.allPlayers; // the 'final' array; here we populate it
     allPlayers.length = 0;
-    for (let ndx = 0; ndx < this.nPlayers; ndx++) {
+    const numPlayers = TP.numPlayers;     // save while new Player() resets TP.numPlayers
+    for (let ndx = 0; ndx < numPlayers; ndx++) {
       this.makePlayer(ndx, gamePlay); // make real Players...
     }
     gamePlay.curPlayerNdx = 0; // gamePlay.setNextPlayer(0); ???
@@ -317,7 +317,7 @@ export class GameSetup {
     const hexMap = new hexMC(TP.hexRad, true, hexC);
     hexMap.addToMapCont(hexC, cNames);       // addToMapCont(hexC, cNames)
     hexMap.makeAllDistricts();               // determines size for this.bgRect
-    return hexMap;
+    return hexMap as HexMap<IHex2>;           // addToMapCont coerces to HexMap<Hex2>
   }
 
   /**
@@ -338,7 +338,7 @@ export class GameSetup {
    */
   initialScenario(qParams = this.qParams): StartElt {
     // qParams may have: mh, nh, hexRad (as HexAspect; from ParamGUI)
-    const n = this.getNPlayers(qParams)
+    const n = TP.numPlayers ?? this.getNPlayers(qParams);
     return { Aname: 'defaultScenario', n, ...qParams, turn: 0, };
   }
 
@@ -387,7 +387,7 @@ export class GameSetup {
    * - startGame()
    */
   startScenario(scenario: Scenario) {
-    this.nPlayers = this.getNPlayers();        // Scenario may override?
+    TP.numPlayers = TP.numPlayers ?? this.getNPlayers();        // Scenario may override?
     this.hexMap = this.makeHexMap();           // then copied from gameSetup -> gamePlay
     this.table = this.makeTable();
 

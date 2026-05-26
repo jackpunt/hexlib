@@ -86,7 +86,7 @@ export class TP {
   static textLogLines = 13;
   static log = 0; // log level; see also: GamePlay.ll(n)
 
-  static numPlayers = 2;
+  static numPlayers = 2;       // ascertained number of players (typically: qParams.['n'])
   static maxPlayers = 6;
   static mapRows:number = 7;   /// standard: 6 (AnkhMap)
   static mapCols:number = 12;  /// standard: 15

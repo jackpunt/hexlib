@@ -111,7 +111,7 @@ export class TopoNSC extends TopoC<NsDCR> {
   topoDCR(rc: RC) { return (rc.col % 2 == 0) ? this.nsEvenCol : this.nsOddCol };
 
   override xywh(rad = 1, row = 0, col = 0): TopoXYWH {
-    const h = 2 * rad, w = H.sqrt3 * rad, dydr = 1.5 * rad, dxdc = H.sqrt3 * rad;
+    const h = 2 * rad, w = H.sqrt3 * rad, dxdc = 1.5 * rad, dydr = H.sqrt3 * rad;
     const x = (col) * dxdc;   // dist between rows
     const y = (row + Math.abs(Math.floor(col) % 2) / 2) * dydr;
     return { x, y, w, h, dxdc, dydr }
