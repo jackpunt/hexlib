@@ -701,7 +701,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   get minRow() { return this._minRow }
   get maxRow() { return this._maxRow }
   // when called, maxRow, etc are defined...
-  get nRowCol() { return [1 + (this._maxRow as number) - (this._minRow as number), 1 + (this._maxCol as number) - (this._minCol as number)] }
+  get nRowCol() { return [1 + (this._maxRow! - this._minRow!), 1 + (this._maxCol! - this._minCol!)] }
 
   /** center RC, floor((max+min)/2); approx when nRowCol is even; ok for most HEX maps. */
   get centerRC() {
