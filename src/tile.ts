@@ -133,9 +133,11 @@ export class Tile extends Tile0 implements Dragable {
   // static source: TileSource<Tile>[]; // base class Tile does NOT have a 'source'
 
   /**
+   * Override to specialize for your Tile subclass.
+   *
    * @example
    * static TileClass.makeSource(hex: IHex2, player?: Player, n = 0) {
-   *   Tile.makeSource0(TileSource<TileClass>, TileClass, hex, player, n);
+   *   return Tile.makeSource0(TileSource<TileClass>, TileClass, hex, player, n);
    * }
    * - Set a new TileSource into [static] TileClass.source;
    * OR: If a Player is supplied:
@@ -149,14 +151,14 @@ export class Tile extends Tile0 implements Dragable {
    * @returns the source; which is also set in T.source
    */
   static makeSource0<T extends Tile, TS extends TileSource<T>>(
-    TileSource: new (type: Constructor<T>, hex: IHex2, p?: Player) => TS,
+    TileSource: new (type: Constructor<T>, hex: IHex2, attach?: boolean) => TS,
     // IF (per-player) static source: TileSource[] ELSE static source: TileSource
     type: Constructor<T> & { source: TileSource<T>[] | TileSource<T> },
     hex: IHex2,
     player?: Player,
     n = 0,
   ) {
-    const unitSource = new TileSource(type, hex, player);
+    const unitSource = new TileSource(type, hex);
     if (player) {
       if (!type.source) type.source = [] as TileSource<T>[];
       (type.source as TileSource<T>[])[player.index] = unitSource;

@@ -203,6 +203,11 @@ export class Hex1 extends Hex {
   }
 
   // 13-dec-2024: decided this belongs in Hex1, where tile/meep:
+  /**
+   *
+   * @param unit assign unit to this hex as hex.tile or hex.meep
+   * @param isMeep use this.meep vs this.tile
+   */
   setUnit(unit?: Tile, isMeep = unit?.isMeep) {
     const this_unit = (isMeep ? this.meep : this.tile)
     if (unit !== undefined && this_unit !== undefined && unit !== this_unit) {
@@ -219,6 +224,16 @@ export class Hex1 extends Hex {
 
   // from 13-dec-2024: projects should override as necessary;
   // should be handled by isLegal() and override dropFunc()/placeTile()/moveTo()
+  /**
+   * Handle case unit.moveTo(this) when this_unit is already present
+   *
+   * if collision is on the mutual source, push this_unit to source, continue setUnit(unit) on this hex.
+   *
+   * @param this_unit is already ON this hex (and not undefined)
+   * @param unit is being moved TO this hex (and not undefined)
+   * @param isMeep true if unit is a Meeple using this.meep rather than this.tile
+   * @returns
+   */
   unitCollision(this_unit: Tile, unit: Tile, isMeep = false) {
     if (isMeep && this_unit.recycleVerb === 'demolished') return; // ok to collide?
     if (this === this_unit.source?.hex && this === unit.source?.hex) {
@@ -228,7 +243,7 @@ export class Hex1 extends Hex {
       // Resolve by putting this_unit (the 'nextUnit') back in the source.
       // (availUnit will recurse to set this.unit = undefined)
       this_unit.source.availUnit(this_unit);
-    } else if (Hex1.debugCollision) debugger;
+    } else if ((this.constructor as typeof Hex1).debugCollision) debugger;
   }
   static debugCollision = true;
 }

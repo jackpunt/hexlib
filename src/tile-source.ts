@@ -1,4 +1,4 @@
-import { Constructor, permute, removeEltFromArray } from "@thegraid/common-lib";
+import { Constructor, permute, removeEltFromArray, type XY } from "@thegraid/common-lib";
 import { ValueEvent } from "@thegraid/easeljs-lib";
 import { Point } from "@thegraid/easeljs-module";
 import { NumCounter } from "./counters";
@@ -16,40 +16,55 @@ import { Tile } from "./tile";
 export class TileSource<T extends Tile> {
   /** event name: update source counter */
   static update = 'update';
-  readonly Aname: string
+  Aname: string;
   private readonly allUnits: T[] = new Array<T>();
   private readonly available: T[] = new Array<T>();
-  readonly counter: NumCounter;   // counter of available units.
+  counter: NumCounter;   // counter of available units.
 
   /**
+   * Make an instance, makeCounter(...).attachToContainer(mapCont.counterCont)
    *
-   * @param type class of unit sourced from this TileSource
+   * user can override makeCounter OR supply premade Counter.
+   *
+   * @param type class of unit source'd from this TileSource
    * @param hex where to place (& display) nextUnit()
-   * @param player player.index in name of counter
-   * @param counter shows length of available units
+   * @param attachCounter [true] auto-attach Counter
    */
   constructor(
     public readonly type: Constructor<T>,
     public readonly hex: Hex1,
-    public readonly player?: Player,
-    counter?: NumCounter,
+    attachCounter = true,
   ) {
     this.Aname = `${type.name}Source`;
+    attachCounter && this.attachCounter(this.type.name);
+  }
+
+  //     const counter = this.constructor; Object.getPrototypeOf(this);
+  /**
+   *
+   * @param name [this.type.name] Aname for counter
+   * @param offset place counter relative to this.hex [(x: 0, y: 0)]
+   * @param counter BYO vs from this.makeCounter(...)
+ */
+  attachCounter(name = this.type.name, offset: XY = { x: 0, y: 0 }, counter?: NumCounter, ) {
+    const hex = this.hex;
+    const cont = hex.map.mapCont.counterCont; // assumes hexMap ISA HexMap<IHex2>?
     if (counter === undefined) {
-      const cont = hex.map.mapCont.counterCont; // assumes hexMap ISA HexMap<IHex2>?
+      // a new Counter is relocated to the hex; BYO Counter only moved by offset (likely: 0,0)
       const pt = new Point(0, 0);
-      const fs = TP.hexRad / 2, yoff = TP.hexRad / H.sqrt3; // TODO: adjust for NS vs EW topo?
       if (Hex2.isIHex2(hex)) {
-        hex.cont.localToLocal(0, yoff, cont, pt);
+        hex.cont.localToLocal(0, 0, cont, pt);
       }
-      counter = this.makeCounter(`${type.name}:${player?.index ?? 'any'}`, this.numAvailable, `lightblue`, fs);
-      counter.attachToContainer(cont, { x: counter.x + pt.x, y: counter.y + pt.y });
+      counter = this.makeCounter(name, this.numAvailable, 'lightblue', TP.hexRad/2); // may be made with non-zero XY
+      counter.x += pt.x;
+      counter.y += pt.y;
     }
+    counter.attachToContainer(cont, { x: counter.x + offset.x, y: counter.y + offset.y });
     this.counter = counter;
   }
 
   /** can override */
-  makeCounter(name: string, initValue: number, color: string, fontSize: number, fontName?: string, textColors?: string[]) {
+  makeCounter(name: string, initValue?: number, color?: string, fontSize?: number, fontName?: string, textColors?: string[]) {
     return new NumCounter(name, initValue, color, fontSize, fontName, textColors);
   }
 
@@ -127,7 +142,7 @@ export class TileSource<T extends Tile> {
   /**
    * Extract elements from allUnits (or available, in reverse order)
    * @param pred [(unit, ndx) => true] filter function
-   * @param searchAll [true] if false, search only available
+   * @param searchAll [true] if false, search only available (does not include sourceHexUnit)
    * @returns Array of allUnits satisfying predicate
    */
   filterUnits(pred = (unit: T, ndx?: number) => this.isAvailable(unit, true), searchAll = true) {

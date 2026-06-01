@@ -8,7 +8,9 @@ import { TP } from "./table-params";
 import { Tile } from "./tile";
 
 export class MeepleShape extends PaintableShape {
+  /** overrideable static fillColor */
   static fillColor = 'rgba(225,225,225,.7)';
+  /** overrideable static backColor */
   static backColor = 'rgba(210,210,120,.5)'; // transparent light green
 
   constructor(public pColor?: string, public radius = TP.meepleRad) {
@@ -27,7 +29,7 @@ export class MeepleShape extends PaintableShape {
   makeOverlay(y0 = this.y) {
     const { x, width: r2 } = this.getBounds(); // x at left edge
     const over = new Shape();
-    over.graphics.f(MeepleShape.backColor).dc(x + r2 / 2, y0, r2 / 2);
+    over.graphics.f((this.constructor as typeof MeepleShape).backColor).dc(x + r2 / 2, y0, r2 / 2);
     over.visible = false;
     over.name = (over as NamedObject).Aname = 'backSide';
     return over;
@@ -36,7 +38,7 @@ export class MeepleShape extends PaintableShape {
   /** stroke a ring of colorn, stroke-width = 2, r = radius-2; fill disk with (~WHITE,.7) */
   mscgf(color = this.pColor ?? C.grey, ss = 2 * this.radius / 45, rs = 0) {
     const r = this.radius;
-    const g = this.graphics.c().ss(ss).s(color).f(MeepleShape.fillColor).dc(0, 0, r - rs - ss / 2);  // disk & ring
+    const g = this.graphics.c().ss(ss).s(color).f((this.constructor as typeof MeepleShape).fillColor).dc(0, 0, r - rs - ss / 2);  // disk & ring
     return g;
   }
 }
@@ -74,7 +76,7 @@ export class Meeple extends Tile {
   override makeShape(size = this.radius): Paintable { return new MeepleShape(this.player?.color, size); }
   declare baseShape: MeepleShape;
 
-  /** location at start-of-turn; for Meeples.unMove() */
+  /** location at start-of-turn; for Meeple.unMove() */
   startHex?: Hex1;
 
   // we need to unMove meeples in the proper order; lest we get 2 meeps on a hex.
