@@ -51,7 +51,10 @@ export abstract class TopoC<TD extends Partial<TopoDCR>, K extends keyof TD = ke
     return { row: rc.row + dcr.dr, col: rc.col + dcr.dc };
   }
 
-  /** a TopoMetric for graphical layout */
+  /** a TopoMetric for graphical layout;
+   *
+   * location and size of cell at given row, col
+   */
   xywh(rad = 1, row = 0, col = 0): TopoXYWH {
     const r2 = rad * 2;
     return { x: col * r2, y: row * r2, w: r2, h: r2, dxdc: r2, dydr: r2 }
@@ -88,7 +91,10 @@ export class TopoEWC extends TopoC<EwDCR> {
   }
   topoDCR(rc: RC): EwDCR { return (rc.row % 2 == 0) ? this.ewEvenRow : this.ewOddRow };
 
-  /** "odd rows" (based on abs(floor(row))) are shifted 1/2 column to right */
+  /** location and size of hex at given row, col
+   *
+   * "odd rows" (based on abs(floor(row)%2)) are shifted 1/2 column to right
+   */
   override xywh(rad = 1, row = 0, col = 0): TopoXYWH {
     const h = 2 * rad, w = H.sqrt3 * rad, dydr = 1.5 * rad, dxdc = H.sqrt3 * rad;
     const x = (col + Math.abs(Math.floor(row) % 2) / 2) * dxdc;
@@ -110,6 +116,10 @@ export class TopoNSC extends TopoC<NsDCR> {
   }
   topoDCR(rc: RC) { return (rc.col % 2 == 0) ? this.nsEvenCol : this.nsOddCol };
 
+  /** location and size of hex at given row, col
+   *
+   * "odd cols" (based on abs(floor(col)%2)) are shifted 1/2 row down
+   */
   override xywh(rad = 1, row = 0, col = 0): TopoXYWH {
     const h = 2 * rad, w = H.sqrt3 * rad, dxdc = 1.5 * rad, dydr = H.sqrt3 * rad;
     const x = (col) * dxdc;   // dist between rows

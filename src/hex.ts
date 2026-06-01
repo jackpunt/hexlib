@@ -95,9 +95,9 @@ export class Hex {
   get colsp() { return (nf(this.col ?? -1)).padStart(2) } // col== -1 ? S_Skip; -2 ? S_Resign
   /** [row,col] OR special name */
   get rcsp(): string { return (this.row >= 0) ? `[${this.rowsp},${this.colsp}]` : this.Aname.substring(4).padEnd(7) }
-  /** compute ONCE, *after* HexMap is populated with all the Hex! */
-  get rc_linear(): number { return this._rcLinear || (this._rcLinear = this.map.rcLinear(this.row, this.col)) }
-  _rcLinear?: number = undefined;
+  // /** compute ONCE, *after* HexMap is populated with all the Hex! */
+  // get rc_linear(): number { return this._rcLinear || (this._rcLinear = this.map.rcLinear(this.row, this.col)) }
+  // _rcLinear?: number = undefined;
   /** accessor so Hex2 can override-advise */
   _district: number | undefined // district ID
   get district() { return this._district }
@@ -573,9 +573,9 @@ export class MapCont extends Container {
     this.name = 'mapCont';
   }
 
-  /** initial, default, readonly Container names, fieldNames */
+  /** initial, default, const Container names, fieldNames */
   static cNames = ['backCont', 'hexCont', 'tileCont', 'markCont', 'counterCont'] as const;
-  /** actual cNames being used for this MapCont, set in addContainers() */
+  /** actual cNames being used for this MapCont, set only by addContainers(cNames) */
   private _cNames: string[] = MapCont.cNames.concat();
   get cNames() { return this._cNames; }
   backCont: Container    // playerPanels
@@ -592,7 +592,7 @@ export class MapCont extends Container {
     this._cNames = cNames.concat();
     this.removeAllChildren(); // TODO: remove all the field references also
     this.cNames.forEach(cname => {
-      const cont = new NamedContainer(cname);
+      const cont = new NamedContainer(cname); // aligned with mapCont at (0,0)
       this[cname as MapContName] = cont;
       this.addChild(cont);
     })
@@ -629,23 +629,51 @@ export class MapCont extends Container {
  * Expect HexM\<IHex2\> for many cases; HexM\<Hex1\> for robo-planner?
  */
 export interface HexM<T extends Hex> {
-  readonly district: T[][]        // all the Hex in a given district
+  /** all the Hex in a given district */
+  readonly district: T[][]
+  /** Contains aligned allContainers(cNames) */
   readonly mapCont: MapCont
-  rcLinear(row: number, col: number): number
+  // rcLinear(row: number, col: number): number
+  /** Evaluate fn(hex) for each hex in array.
+   *
+   * Note: impl uses _for (hexRow of this)_ which does not use negative indices;
+   *
+   * Therefore: ASSERT all row & col indices are non-negative (so 'of' works)
+   */
   forEachHex(fn: (hex: T) => void): void // stats forEachHex(incCounters(hex))
   update(): void
   showMark(hex?: T): void
   // Table also uses:
   radius: number;
+  /** center RC, floor((max+min)/2); approx when nRowCol is even; ok for most HEX maps. */
   centerHex: T;
+  /**
+   * this.topo.xyhw(radius, row, col)
+   * @param rad [this.radius]
+   * @param row [0]
+   * @param col [0]
+   * @returns TopoXYWH = XYWH & { dxdc, dydr }
+   */
   xywh(rad?: number, row?: number, col?: number): XYWH & { dxdc: number; dydr: number; }
   /** the mh & nh parameters of this HexMap */
   getSize(): { mh: number, nh: number };
   topo: TopoC<Partial<Record<HexDir, DCR>>, HexDir>;
+  /** set target.xy to topo.xywh(row, col) of this HexMap.hexCont;
+   * @returns the xywh coordinates
+   *
+   * see also: Table.setToRowCol(cont, row, col)
+   */
   xyFromMap(target: DisplayObject, row: number, col: number): XYWH;
   /** constructor of constituent Hex cells. */
   hexC: Constructor<T>
+  /**
+   * Search mapCont.[markCont, hexCont] for an object under dragObj, using hexUnderPoint()
+   * @param dragObj typically being dragged on table.dragCont
+   * @param legalOnly restrict to only LegalMark on markCont.
+   * @returns the IHex2 associated with LegalMark or Hex2.
+   */
   hexUnderObj(dragObj: DisplayObject, legalOnly?: boolean): T | undefined
+  /* Get a hex based on row & col */
   getHex(id: RC): T;
 }
 
@@ -736,19 +764,18 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return { row, col }
   }
 
-  /**
-   * this.topo.xyhw(radius, row, col)
-   * @param rad [this.radius]
-   * @param row [0]
-   * @param col [0]
-   * @returns TopoXYWH = XYWH & { dxdc, dydr }
-   */
   xywh(rad = this.radius, row = 0, col = 0) { return this.topo.xywh(rad, row, col); }
 
   getCornerHex(dn: HexDir) {
     return this.centerHex.lastHex(dn)
   }
 
+  /**
+   * Get a hex based on row & col.
+   * @param ihex { row, col }
+   * @returns indicated Hex of this map
+   * @throws err if index out of range
+   */
   getHex(ihex: RC) {
     /** return indicated Hex from otherMap */
     try {
@@ -759,7 +786,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     }
   }
 
-  rcLinear(row: number, col: number): number { return col + row * (1 + (this._maxCol ?? 0) - (this._minCol ?? 0)) }
+  // rcLinear(row: number, col: number): number { return col + row * (1 + (this._maxCol ?? 0) - (this._minCol ?? 0)) }
 
   mark: DisplayObject         // a cached DisplayObject, used by showMark
 
@@ -805,7 +832,6 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return hex
   }
 
-  /** find object under dragObj, using hexUnderPoint() */
   hexUnderObj(dragObj: DisplayObject, legalOnly = true) {
     const pt = dragObj.parent.localToLocal(dragObj.x, dragObj.y, this.mapCont.markCont);
     return this.hexUnderPoint(pt.x, pt.y, legalOnly);
@@ -853,7 +879,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
       mark.scaleX = hex.scaleX; mark.scaleY = hex.scaleY;
       mark.visible = true;
       // put the mark, at location of hex, on hex.markCont:
-      hex.cont.localToLocal(0, 0, hex.markCont, mark);
+      hex.cont.parent.localToLocal(hex.cont.x, hex.cont.y, hex.markCont, mark);
       hex.markCont.addChild(mark);
       this.update();
     }
@@ -918,16 +944,19 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
       }
     });
   }
+
   /**
-   * Return the Hex under the given x,y coordinates.
+   * Return the IHex2 under the given markCont[x,y] coordinates.
    *
-   * Conceptually: (legal ? LegalMark : HexCont)?.hex2 as \<T extends IHex2\>;
+   * Search for a LegalMark on this.markCont;
+   *
+   * If (!legal) also consider all HexCont on this.hexCont
    *
    * If multiple HexCont at x,y, return the top (last drawn) HexCont.
    * @param x in local coordinates of this HexMap.mapCont
-   * @param y
-   * @param legal - return ONLY a Hex with LegalMark visible & mouseenabled.
-   * @returns the IHex2 of the LegalMark or HexCont at the given point (or undefined if no such HexCont)
+   * @param y in local coordinates of this HexMap.mapCont
+   * @param legal [true] return ONLY a Hex with LegalMark visible & mouseenabled.
+   * @returns the IHex2 of a LegalMark or HexCont at the given point (or undefined if no such HexCont)
    */
   hexUnderPoint(x: number, y: number, legal = true): T | undefined {
     const mark = this.mapCont.markCont.getObjectUnderPoint(x, y, 1);
@@ -939,11 +968,6 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return undefined;
   }
 
-  /** set target.xy to topo.xywh(row, col) of this HexMap.hexCont;
-   * @returns the xywh coordinates
-   *
-   * see also: Table.setToRowCol(cont, row, col)
-   */
   xyFromMap(target: DisplayObject, row = 0, col = 0) {
     const xywh = this.topo.xywh(this.radius, row, col)
     const xy = this.mapCont.hexCont.localToLocal(xywh.x, xywh.y, target, xywh); // offset from hexCont to target

@@ -727,6 +727,12 @@ export class Table extends Dispatcher {
     this.dragger.clickToDrag(tile, true); // also enable clickToDrag;
   }
 
+  /**
+   * Basic: this.hexMap.hexUnderObj(dragObj, legalOnly)
+   * @param dragObj
+   * @param legalOnly only consider LegalMark instances
+   * @returns this.hexMap.hexUnderObj(dragObj, legalOnly)
+   */
   hexUnderObj(dragObj: DisplayObject, legalOnly = true) {
     return this.hexMap.hexUnderObj(dragObj, legalOnly);
   }
