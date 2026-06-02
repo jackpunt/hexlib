@@ -505,7 +505,7 @@ export class Table extends Dispatcher {
    * see also: HexMap.xyFromMap(target, row, col)
    * @param cont could be the HexCont of a UnitSourceHex or a panel or ...
    */
-  setToRowCol(cont: Container, row = 0, col = 0, hexCont = this.hexMap.mapCont.hexCont) {
+  setToRowCol(cont: DisplayObject, row = 0, col = 0, hexCont = this.hexMap.mapCont.hexCont) {
     if (!cont.parent) this.scaleCont.addChild(cont); // localToLocal requires being on stage
     //if (cont.parent !== hexCont) debugger;
     const cHex = this.hexMap.centerHex;

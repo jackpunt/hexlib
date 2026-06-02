@@ -567,10 +567,9 @@ export class HexMark extends HexShape {
  */
 export type MapContName = 'hexCont' | 'markCont';
 /** MapCont is an empty Container until .addContainers(cNames) */
-export class MapCont extends Container {
-  constructor() {
-    super()
-    this.name = 'mapCont';
+export class MapCont extends NamedContainer {
+  constructor(Aname = 'mapCont') {
+    super(Aname)
   }
 
   /** initial, default, const Container names, fieldNames */

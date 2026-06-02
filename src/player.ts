@@ -67,7 +67,7 @@ export class Player {
     this._score = Math.floor(score);
   }
 
-  // Created in masse by Table.layoutCounter
+  /** true value of Player.coins; counter.incValue() update actual value */
   coinCounter: NumCounter; // set by layoutCounters: `${'Coin'}Counter`
   get coins() { return this.coinCounter?.value; }
   set coins(v: number) { this.coinCounter?.updateValue(v); }
