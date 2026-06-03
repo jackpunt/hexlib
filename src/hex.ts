@@ -413,8 +413,10 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       if (cont.cacheID) cont.uncache()
       cont.setBoundsNull(); // remove bounds
       const b = cont.getBounds();    // of hexShape & others?
-      cont.setBounds(b.x, b.y, b.width, b.height); // record for debugger
-      if (scale > 0) cont.cache(b.x, b.y, b.width, b.height, scale);
+      if (b) {
+        cont.setBounds(b.x, b.y, b.width, b.height); // record for debugger
+        if (scale > 0) cont.cache(b.x, b.y, b.width, b.height, scale);
+      }
     }
 
     makeHexShape(colorn = C.grey224): Paintable {
