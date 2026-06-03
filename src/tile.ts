@@ -364,6 +364,12 @@ export class Tile extends Tile0 implements Dragable {
     ctx.targetHex?.map.showMark(ctx.targetHex); // else prev mark still showing
   }
 
+  // backward compatible -- new code can specialize
+  makeDragable(table: Table) {
+    table.dragger.makeDragable(this, table, table.dragFunc, table.dropFunc);
+    table.dragger.clickToDrag(this, true); // also enable clickToDrag;
+  }
+
   /**
    * Invoked for each mouseMove when dragging this Tile.
    *
@@ -378,7 +384,7 @@ export class Tile extends Tile0 implements Dragable {
    */
   dragFunc0(hex: IHex2 | undefined, ctx: DragContext): void {
     ctx.targetHex = hex?.isLegal ? hex : this.fromHex;
-    this.showTargetMark(hex, ctx);
+    this.showTargetMark(hex, ctx);      // move mark to target = this.fromHex
     this.dragFunc(hex, ctx);
   }
 

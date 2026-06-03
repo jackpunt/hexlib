@@ -705,7 +705,7 @@ export class Table extends Dispatcher {
 
   /** update table when a new Game is started.
    *
-   * default: [scaleCont.addChild(overlayCont); allTiles.makeDragable()]
+   * default: [scaleCont.addChild(overlayCont); allTiles.makeDragable(this)]
    *
    * A Tile or class of Tile may stopDragging() due to noLegalTargets().
    */
@@ -713,7 +713,7 @@ export class Table extends Dispatcher {
     this.scaleCont.addChild(this.overlayCont); // now at top of the list.
     // All Tiles (& Meeple) are Dragable: (Note: if noLegal then stopDragging)
     this.gamePlay.allTiles.forEach(tile => {
-      this.makeDragable(tile);
+      tile.makeDragable(this);
     });
     // this.stage.enableMouseOver(10);
   }
@@ -721,6 +721,7 @@ export class Table extends Dispatcher {
   /**
    * makeDragable & clickToDrag
    * @param tile a Tile with .dragFunc0() and .markLegal()
+   * @deprecated use tile.makeDragable(table) [6/3/2026]
    */
   makeDragable(tile: Tile) {
     this.dragger.makeDragable(tile, this, this.dragFunc, this.dropFunc);
