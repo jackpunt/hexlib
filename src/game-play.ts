@@ -469,7 +469,7 @@ export class GamePlay extends GamePlay0 {
     this.table.stopDragging() // drop on fromHex (no Move)
     let move = this.redoMoves[0]// addStoneEvent will .shift() it off
     if (!move) return
-    this.table.doTableMove(move.hex)
+    // this.table.doTableMove(move.hex); // unused hook
     this.showRedoMark()
     this.hexMap.update()
   }

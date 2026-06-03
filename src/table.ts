@@ -945,27 +945,6 @@ export class Table extends Dispatcher {
     return this._tablePlanner ??
       (this._tablePlanner = new TablePlanner(this.gamePlay))
   }
-  /**
-   * All manual moves feed through this (drop & redo)
-   *
-   * TablePlanner.logMove(); then dispatchEvent() --> gamePlay.doPlayerMove()
-   *
-   * New: let Meeple (Drag & Drop) do this.
-   */
-  doTableMove(ihex: IdHex) {
-  }
-
-  /** All moves (GUI & plannerMove) feed through here:
-   *
-   * gamePlay listens with playerMoveEvent(TileEvent)
-   *
-   * and eventually get to Player.doPlayerMove()
-   */
-  moveTileToHex(tile: Tile, ihex: IdHex) {
-    const hex = this.hexMap.getHex(ihex);
-    this.hexMap.showMark(hex);
-    this.dispatchEvent(new TileEvent(S.add, tile, hex)) // -> GamePlay.playerMoveEvent(hex, sc)
-  }
 
   /** default scaling-up value */
   upscale: number = 1.5;
