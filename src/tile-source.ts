@@ -3,9 +3,7 @@ import { ValueEvent } from "@thegraid/easeljs-lib";
 import { Point } from "@thegraid/easeljs-module";
 import { NumCounter } from "./counters";
 import { Hex2, type Hex1 } from "./hex";
-import { H } from "./hex-intfs";
 import { Meeple } from "./meeple";
-import type { Player } from "./player";
 import { TP } from "./table-params";
 import { Tile } from "./tile";
 
@@ -45,7 +43,7 @@ export class TileSource<T extends Tile> {
    * @param name [this.type.name] Aname for counter
    * @param offset place counter relative to this.hex [(x: 0, y: 0)]
    * @param counter BYO vs from this.makeCounter(...)
- */
+   */
   attachCounter(name = this.type.name, offset: XY = { x: 0, y: 0 }, counter?: NumCounter, ) {
     const hex = this.hex;
     const cont = hex.map.mapCont.counterCont; // assumes hexMap ISA HexMap<IHex2>?
@@ -124,6 +122,7 @@ export class TileSource<T extends Tile> {
   /** move ALL units to undefined, and remove from parent container.
    * remove all from available (and allUnits)
    * @param doAlso invoke doAlso(unit) after removing from source
+   * @param unparent [true] also remove from display list.
    * @return number of units deleted (previous length of allUnits).
    */
   deleteAll(doAlso = (unit: T) => { }, unparent = true) {

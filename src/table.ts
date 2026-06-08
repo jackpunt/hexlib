@@ -880,7 +880,6 @@ export class Table extends Dispatcher {
     // invoke Tile.dropFunc0() which will delegate to Tile.dropFunc(targetHex, ctx)
     tile.dropFunc0(hex as IHex2, this.dragContext); // generally: hex == ctx.targetHex
     tile.markLegal(this); // hex => hex.isLegal = false;
-    // this.gamePlay.recycleHex.isLegal = false;
     this.dragContext.lastShift = undefined;
     this.dragContext.tile = undefined; // mark not dragging
   }

@@ -17,12 +17,16 @@ export class Player {
    * @returns colorScheme[ndx] as HTML color string
    */
   static playerColor(cname: number | keyof typeof Player.colorScheme) {
-    if (typeof cname === 'number') cname = Object.keys(Player.colorScheme)[cname] as keyof typeof Player.colorScheme;
-    return Player.colorScheme[cname];
+    if (typeof cname === 'number') {
+      // QQQ: what about 'typeof Player.colorScheme' [eh... let subclass do their own type of cname]
+      // allow override of static colorScheme in subclass:
+      cname = Object.keys(this.colorScheme)[cname] as keyof typeof Player.colorScheme;
+    }
+    return this.colorScheme[cname];
   }
   /** invert from HTML color to find canonical cname */
-  static colorName(color: string) {
-    return Object.keys(Player.colorScheme).find(k => Player.playerColor(k) === color)
+  static colorName(htmlColor: string) {
+    return Object.keys(this.colorScheme).find(cname => this.colorScheme[cname] === htmlColor)
   }
 
   readonly Aname: string;
@@ -32,16 +36,16 @@ export class Player {
   ) {
     gamePlay.allPlayers[index] = this;
     TP.numPlayers = gamePlay.allPlayers.length; // incrementing up to gamePlay.nPlayers
-    this.color = Player.playerColor(index);
+    this.color = (this.constructor as typeof Player).playerColor(index);
     this.Aname = `P${index}:${this.cname}`;
-    Player.logNewPlayer && Player.logNewPlayer(this);
   }
-  /** action at end of Player.constructor() */
-  static logNewPlayer = (plyr: Player): any => {
-    console.log(stime(plyr, `.new:`), plyr.Aname);
-  };
 
-  get cname() { return Player.colorName(this.color) }
+  // historically there was simply: this.color; the cname was added later.
+  // IWHITDAOA would maybe use cname as the reference and cache htmlColor.
+  // (although: we don't often need cname, esp after Aname is set)
+  // (long ago TP.colorScheme tried to operate with a cname like approach and we moved to this...)
+  /** canonical name of this player.color (which is a HTML color string: 'rgb(...)' or '#AA1B80') */
+  get cname() { return (this.constructor as typeof Player).colorName(this.color) }
   _color: string;
   /** HTML color string */
   get color() { return this._color; }
@@ -54,8 +58,12 @@ export class Player {
   /** much useful context about this Player. */
   panel: PlayerPanel;
 
-  allOf<T extends Tile>(claz: Constructor<T>) { return (this.gamePlay.allTiles as T[]).filter(t => t instanceof claz && t.player === this); }
-  allOnMap<T extends Tile>(claz: Constructor<T>) { return this.allOf(claz).filter(t => t.hex?.isOnMap); }
+  allOf<T extends Tile>(claz: Constructor<T>) {
+    return (this.gamePlay.allTiles as T[]).filter(t => t instanceof claz && t.player === this);
+  }
+  allOnMap<T extends Tile>(claz: Constructor<T>) {
+    return this.allOf(claz).filter(t => t.hex?.isOnMap);
+  }
   /** Resi/Busi/PS/Lake/Civics in play on Map */
   get mapTiles() { return this.allOf(MapTile) as MapTile[] }
   // Player's Leaders, Police & Criminals
