@@ -4,12 +4,12 @@ import { Event } from "@thegraid/easeljs-module";
 import type { GameSetup, Scenario } from "./game-setup";
 import { GameState } from "./game-state";
 import { Hex, Hex1, HexMap, IdHex } from "./hex";
-import { Meeple } from "./meeple";
-import { Planner } from "./plan-proxy";
-import { Player } from "./player";
-import { Table } from "./table";
-import { PlayerColor, TP } from "./table-params";
-import { Tile } from "./tile";
+import type { Meeple } from "./meeple";
+import type { Planner } from "./plan-proxy";
+import type { Player } from "./player";
+import type { Table } from "./table";
+import { type PlayerColor, TP } from "./table-params";
+import type { Tile } from "./tile";
 import { ScenarioParser, SetupElt } from "./scenario-parser";
 
 /**
@@ -78,15 +78,28 @@ export class GamePlay0 {
   }
   nCols: number
   nRows: number
-  // in prep for setNextPlayer or parseScenario:
-  turnNumber: number = -1    // = history.lenth + 1 [by this.setNextPlayer]
+  // initialize to -1; in prep for setNextPlayer or parseScenario:
+  _turnNumber: number = -1    // = history.lenth + 1 [by this.setNextPlayer]
+  get turnNumber() { return this._turnNumber; }
+  set turnNumber(n: number) { this._turnNumber = n; }
+  /** @return string for log */
   get turnId() { return `${this.turnNumber}`}
-  curPlayerNdx: number = 0  // curPlayer defined in GamePlay extends GamePlay0
-  curPlayer: Player;
+
+  _curPlayer: Player;
+  get curPlayer() { return this._curPlayer; } // also refernced as: gameState.curPlayer
+  set curPlayer(plyr: Player) { this._curPlayer = plyr; }
+  get curPlayerNdx() { return this._curPlayer.index; }
+
   preGame = true;
 
-  nextPlayer(plyr: Player = this.curPlayer) {
-    return plyr.nthPlayer();
+  /**
+   * next player by player.index (table order)
+   * @param plyr [this.curPlayer] reference player
+   * @param nth [1] increment
+   * @returns the nth Player after the given Player
+   */
+  nextPlayer(plyr = this.curPlayer, nth = 1) {
+    return this.allPlayers[(plyr.index + nth) % this.allPlayers.length]
   }
 
   forEachPlayer(f: (p: Player, index: number, players: Player[]) => void) {
@@ -119,32 +132,22 @@ export class GamePlay0 {
   }
 
   /**
-   * hook invoked by GamePlay0.setNextPlayer() increments turnNumber.
-   *
-   * override to [for ex] saveState at beginning of this turn.
-   * @param the NEW turnNumber
-   */
-  newTurnNumber(turnNumber: number) {}
-
-  /**
    * Advance to given turnNumber
    * @param turnNumber [undefined -> auto-incr; curPlayer.newTurn()]
    */
   setNextPlayer(turnNumber?: number): void {
     if (turnNumber === undefined) {
       turnNumber = this.turnNumber + 1;
-      this.newTurnNumber(turnNumber);
-      this.turnNumber = turnNumber;
     }
     this.turnNumber = turnNumber;
     this.preGame = false;   // TODO: use gameState.isPhase() ??
-    this.setCurPlayer(this.allPlayers[0].nthPlayer(turnNumber));
+    this.setCurPlayer(this.nextPlayer(this.allPlayers[0], turnNumber)); // works for a certain class of games
     this.curPlayer.newTurn();
   }
 
+  /** useful explicit setting of player, and override (vs override the set curPlayer(...) function) */
   setCurPlayer(player: Player) {
     this.curPlayer = player;
-    this.curPlayerNdx = player.index;
   }
 
   isEndOfGame() {
@@ -349,10 +352,6 @@ export class GamePlay extends GamePlay0 {
     table.toggleText(true);
     debugger;
     return;
-  }
-
-  /** when turnNumber auto-increments. */
-  override newTurnNumber(): void {
   }
 
   readFileState() {

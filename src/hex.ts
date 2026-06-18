@@ -130,8 +130,13 @@ export class Hex {
 
   /** convert LINKS object to Array of Hex */
   get linkHexes(): this[] {
-    return (Object.keys(this.links) as HexDir[]).map((dir: HexDir) => this.links[dir] as this)
+    return this.linkDirs.map((dir: HexDir) => this.links[dir] as this)
   }
+  /**
+   * dir is defined unless inclCenter is false
+   * @param func
+   * @param inclCenter [false] if true; invoke func(this, undefined, this)
+   */
   forEachLinkHex(func: (hex: this | undefined, dir: HexDir | undefined, hex0: this) => unknown, inclCenter = false) {
     if (inclCenter) func(this, undefined, this);
     this.linkDirs.forEach((dir: HexDir) => func(this.links[dir], dir, this));
@@ -530,36 +535,8 @@ export class HexMark extends HexShape {
     this.cache(-radius, -radius, 2 * radius, 2 * radius); // oversize; see Hex.xywh()
     this.graphics.c().f(C.BLACK).dc(0, 0, radius0)
     this.updateCache('destination-out')
-    this.setHexBounds();      // bounds are based on readonly, should be const
+    this.setBounds(undefined, 0, 0, 0);      // bounds are based on readonly, should be const
     this.mouseEnabled = false;
-  }
-
-  // Fail: markCont to be 'above' tileCont...
-  /**
-   * Show or hide mark on given hex; and hex.updateCache.
-   *
-   * (this.hex = hex) ? hex.cont.addChild(this.cont) : this.visible = false
-   */
-  showOn(hex: IHex2 | undefined) {
-    // when mark is NOT showing, this.visible === false && this.hex === undefined.
-    // when mark IS showing, this.visible === true && (this.hex instanceof Hex2)
-    if (this.hex === hex) return;
-    let ohex = this.hex, map = ohex?.map;
-    if (ohex) {
-      this.visible = false;
-      if (!ohex.cont.cacheID) debugger;
-      ohex.reCache();
-      map = ohex.map;
-    }
-    if (hex) {
-      this.visible = true;
-      hex.cont.addChild(this);
-      if (!hex.cont.cacheID) debugger;
-      hex.reCache();
-      map = hex.map;
-    }
-    this.hex = hex;
-    map?.update(); // remove old hex, add new hex
   }
 }
 
@@ -791,8 +768,14 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
 
   mark: DisplayObject         // a cached DisplayObject, used by showMark
 
-  makeMark(): DisplayObject {
-    const mark = new HexMark(this.radius, this.radius / 2.5);
+  /**
+   *
+   * @param rh radius of hex
+   * @param rc radius of circle removed
+   * @returns new HexMark(rh, rc)
+   */
+  makeMark(rh = this.radius, rc = this.radius / 2.5): DisplayObject {
+    const mark = new HexMark(rh, rc);
     return mark;
   }
 

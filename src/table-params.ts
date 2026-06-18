@@ -1,4 +1,5 @@
 const playerColorsLib = ['b', 'w'] as const // Player Colors!
+/** @deprecated mostly obsolete; see Player.playerColor & Player.colorScheme */
 export const playerColors = playerColorsLib.concat();
 /** Default type for PlayerColor. Maybe don't import, define your own locally.
  *
@@ -10,18 +11,24 @@ export const playerColors = playerColorsLib.concat();
 export type PlayerColor = typeof playerColorsLib[number];
 // Locally (for example, hextowns):
 
+/** @deprecated */
 export const playerColor0 = playerColors[0]
+/** @deprecated */
 export const playerColor1 = playerColors[1]
 // export const playerColor2 = playerColorsC[2]
+/** @deprecated 2-player only */
 export function otherColor(color: PlayerColor): PlayerColor { return color === playerColor0 ? playerColor1 : playerColor0 }
 
+/** @deprecated see Player.playerColor & Player.colorScheme */
 export type PlayerColorRecord<T> = Record<PlayerColor, T>
 /** @return \{ pc0: arg0 as T, pc1: arg1 as T, ...}: PlayerColorRecord\<T> */
+/** @deprecated see Player.playerColor & Player.colorScheme */
 export function playerColorRecord<T>(...args: T[]) {
   const rv = {} as PlayerColorRecord<T>
   playerColors.forEach((key, ndx) => rv[key] = (args[ndx]))
   return rv;
 }
+/** @deprecated see Player.playerColor & Player.colorScheme */
 export function playerColorRecordF<T>(f: (sc: PlayerColor) => T) {
   return playerColorRecord(...playerColors.map(pc => f(pc)))
 }

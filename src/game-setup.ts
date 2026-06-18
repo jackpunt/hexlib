@@ -107,7 +107,7 @@ export class GameSetup {
     return new Player(ndx, gamePlay);
   }
 
-  /** set from qParams['n'] */
+  /** set from qParams['n'], curPlayerNdx = 0; */
   makeAllPlayers(gamePlay: GamePlay) {
     // Create and Inject all the Players:
     const allPlayers = gamePlay.allPlayers; // the 'final' array; here we populate it
@@ -116,8 +116,8 @@ export class GameSetup {
     for (let ndx = 0; ndx < numPlayers; ndx++) {
       this.makePlayer(ndx, gamePlay); // make real Players...
     }
-    gamePlay.curPlayerNdx = 0; // gamePlay.setNextPlayer(0); ???
-    gamePlay.curPlayer = allPlayers[gamePlay.curPlayerNdx];
+    // gamePlay.curPlayerNdx = 0; // gamePlay.setNextPlayer(0); ???
+    gamePlay.curPlayer = allPlayers[0];
   }
 
   _netState = ' ' // or 'yes' or 'ref'

@@ -31,8 +31,8 @@ export class GameState {
    * The current state: a Phase identified by Aname, with a start() function.
    */
   state: Phase;
-  get table() { return this.gamePlay.table; }
-  get curPlayer() { return this.gamePlay.curPlayer; }
+  get table() { return this.gamePlay.table; }         // refernced in doneButton()
+  get curPlayer() { return this.gamePlay.curPlayer; } // refernced in doneButton()
 
   // [eventName, eventSpecial, phase, args]
   /** create gameState component of ScenarioParser.SetupElt */

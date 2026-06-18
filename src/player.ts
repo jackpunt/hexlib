@@ -41,7 +41,7 @@ export class Player {
   }
 
   // historically there was simply: this.color; the cname was added later.
-  // IWHITDAOA would maybe use cname as the reference and cache htmlColor.
+  // IIHITDAOA would maybe use cname as the reference and cache htmlColor.
   // (although: we don't often need cname, esp after Aname is set)
   // (long ago TP.colorScheme tried to operate with a cname like approach and we moved to this...)
   /** canonical name of this player.color (which is a HTML color string: 'rgb(...)' or '#AA1B80') */
@@ -80,9 +80,8 @@ export class Player {
   get coins() { return this.coinCounter?.value; }
   set coins(v: number) { this.coinCounter?.updateValue(v); }
 
-  /** @deprecated only works for 2-players; use nthPlayer() */
+  /** @deprecated only works for 2-players; use gamePlay.nextPlayer() */
   get otherPlayer() { return this.gamePlay.allPlayers[1 - this.index] }
-  nthPlayer(nth = 1) { return this.gamePlay.allPlayers[(this.index + nth) % this.gamePlay.allPlayers.length] }
 
   planner?: IPlanner;
   /** if true then invoke plannerMove */
