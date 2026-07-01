@@ -620,7 +620,7 @@ export interface HexM<T extends Hex> {
    */
   forEachHex(fn: (hex: T) => void): void // stats forEachHex(incCounters(hex))
   update(): void
-  showMark(hex?: T): void
+  showMark(hex?: T, disp?: DisplayObject): void
   // Table also uses:
   radius: number;
   /** center RC, floor((max+min)/2); approx when nRowCol is even; ok for most HEX maps. */

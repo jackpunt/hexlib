@@ -19,7 +19,7 @@ export class GameState {
     this.defineStates(states, purge);
   }
   defineStates(states = this.states, purge: boolean | string[] = false) {
-    if (purge) {
+    if (purge) {   // true or string[]
       const keys = (purge === true) ? Object.keys(this.states) : purge;
       keys.forEach((key) => delete this.states[key]);
     }

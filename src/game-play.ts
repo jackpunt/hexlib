@@ -1,7 +1,7 @@
 import { S, Undo, json, stime } from "@thegraid/common-lib";
 import { KeyBinder, NamedObject, blinkAndThen } from "@thegraid/easeljs-lib";
 import { Event } from "@thegraid/easeljs-module";
-import type { GameSetup, Scenario } from "./game-setup";
+import type { GameSetup } from "./game-setup";
 import { GameState } from "./game-state";
 import { Hex, Hex1, HexMap, IdHex } from "./hex";
 import type { Meeple } from "./meeple";
@@ -10,7 +10,7 @@ import type { Player } from "./player";
 import type { Table } from "./table";
 import { type PlayerColor, TP } from "./table-params";
 import type { Tile } from "./tile";
-import { ScenarioParser, SetupElt } from "./scenario-parser";
+import { ScenarioParser, type SetupElt } from "./scenario-parser";
 
 /**
  * Event indicating a Tile has been placed on a Hex.
@@ -232,6 +232,8 @@ export class GamePlay0 {
    * Place Tiles and Meeples on HexMap, set GameState.
    *
    * new ScenarioParser(hexMap, gamePlay).parseScenario(scenario);
+   *
+   * ScenarioParser.parseScenario() may call back to GamePlay to establish correct state of game.
    */
   parseScenario(scenario: SetupElt) {
     const scenarioParser = this.scenarioParser = this.makeScenarioParser();
@@ -264,7 +266,7 @@ export class GamePlay extends GamePlay0 {
   override readonly gameState: GameState = new GameState(this);
 
   /** GamePlay is the GUI-augmented extension of GamePlay0; uses Table */
-  constructor(gameSetup: GameSetup, scenario: Scenario) {
+  constructor(gameSetup: GameSetup, scenario: SetupElt) {
     super(gameSetup);            // hexMap, history, gStats...
     this.table = gameSetup.table;
     if (this.table.stage.canvas) this.bindKeys();
