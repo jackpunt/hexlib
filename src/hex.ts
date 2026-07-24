@@ -852,16 +852,21 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return rv
   }
 
+  visMark?: DisplayObject;  // last visible mark from showMark;
+
   /** make this.mark visible (or not) above the given Hex
    * @param hex [undefined] if supplied mark.visible = true; else mark.visible = false
    * @param mark [this.mark] can supply alternate mark to be moved and visiblized.
    */
   showMark(hex?: Hex, mark = this.mark) {
-    if (!hex) {  // || hex.Aname === S_Skip || hex.Aname === S_Resign) {
-      mark.visible = false;
-    } else if (Hex.isIHex2(hex)) {
+    if (this.visMark) {
+      this.visMark.visible = false;
+      this.visMark = undefined;
+    }
+    if (hex && Hex.isIHex2(hex)) {
       mark.scaleX = hex.scaleX; mark.scaleY = hex.scaleY;
       mark.visible = true;
+      this.visMark = mark;
       // put the mark, at location of hex, on hex.markCont:
       hex.cont.parent.localToLocal(hex.cont.x, hex.cont.y, hex.markCont, mark);
       hex.markCont.addChild(mark);
