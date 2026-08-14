@@ -60,7 +60,9 @@ export class ScenarioParser {
     this.gamePlay.hexMap.update();
   }
 
-  /** add any optional game-specific bits to SetupElt */
+  /** add any optional game-specific bits to SetupElt
+   * @param setupElt saveState by default supplies { turn, time }
+  */
   addStateElements(setupElt: SetupElt) {
     this.gamePlay.saveState(setupElt);  // saved in top-level!
     setupElt.gameState = this.gamePlay.gameState.saveState();
@@ -75,11 +77,16 @@ export class ScenarioParser {
     }
   }
 
-  /** override/replace to create a SetupElt and logState(logWriter) */
-  saveState(logWriter: LogWriter | false = this.gamePlay.logWriter ?? false): SetupElt {
+  /**
+   * override/replace to create a SetupElt and logState(logWriter)
+   * @param logWriter if 'false' then do not write to log
+   * @param setupElt0 additional fields for addStateElements({ turn, time, ...setupElt0 })
+   * @returns setupElt (after logState)
+   */
+  saveState(logWriter: LogWriter | false = this.gamePlay.logWriter ?? false, setupElt0: SetupElt = {}): SetupElt {
     const turn = Math.max(0, this.gamePlay.turnNumber);
     const time = stime.fs();
-    const setupElt = this.addStateElements({ turn, time, } as SetupElt);
+    const setupElt = this.addStateElements({ turn, time, ...setupElt0 } as SetupElt);
     if (logWriter) this.logState(setupElt, logWriter);
     return setupElt;
   }
