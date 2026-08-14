@@ -1,5 +1,6 @@
 import { C } from "@thegraid/common-lib";
 import { PaintableShape, type NamedObject, type Paintable } from "@thegraid/easeljs-lib";
+import type { Graphics } from "@thegraid/easeljs-module";
 import { Shape } from "@thegraid/easeljs-module";
 import type { Hex1 } from "./hex";
 import type { Player } from "./player";
@@ -13,8 +14,8 @@ export class MeepleShape extends PaintableShape {
   /** overrideable static backColor */
   static backColor = 'rgba(210,210,120,.5)'; // transparent light green
 
-  constructor(public pColor?: string, public radius = TP.meepleRad) {
-    super((color) => this.mscgf(color));
+  constructor(public pColor?: string, public radius = TP.meepleRad, g0?: Graphics) {
+    super((color) => this.mscgf(color, undefined, undefined, g0));
     this.y = TP.meepleY0;
     this.setMeepleBounds();
     this.backSide = this.makeOverlay();
@@ -35,11 +36,18 @@ export class MeepleShape extends PaintableShape {
     return over;
   }
 
-  /** stroke a ring of colorn, stroke-width = 2, r = radius-2; fill disk with (~WHITE,.7) */
-  mscgf(color = this.pColor ?? C.grey, ss = 2 * this.radius / 45, rs = 0) {
+  /**
+   * circle of fillcolor (~WHITE,.7), stroke a ring of colorn (size radius - rs)
+   * @param colorn of this circular Meeple (this.pColor)
+   * @param ss stroke style/thickness (2 * radius/45)
+   * @param rs ring size (0)
+   * @param g0 (this.graphics)
+   * @returns
+   */
+  mscgf(colorn = this.pColor ?? C.grey, ss = 2 * this.radius / 45, rs = 0, g0 = this.graphics.c()) {
     const r = this.radius;
-    const g = this.graphics.c().ss(ss).s(color).f((this.constructor as typeof MeepleShape).fillColor).dc(0, 0, r - rs - ss / 2);  // disk & ring
-    return g;
+    g0.ss(ss).s(colorn).f((this.constructor as typeof MeepleShape).fillColor).dc(0, 0, r - rs - ss / 2);  // disk & ring
+    return g0;
   }
 }
 
@@ -49,6 +57,8 @@ export class MeepleShape extends PaintableShape {
 export class Meeple extends Tile {
 
   override get isMeep() { return true; }
+
+  declare baseShape: Paintable & { backSide: Paintable };
   get backSide() { return this.baseShape.backSide; }
   override get recycleVerb() { return 'dismissed'; }
 
@@ -72,9 +82,8 @@ export class Meeple extends Tile {
 
   /** Meeple.radius == TP.meepleRad; same for all instances */
   override get radius() { return TP.meepleRad } // 31.578 vs 60*.4 = 24
-  override textVis(v: boolean) { super.textVis(true); }
+
   override makeShape(size = this.radius): Paintable { return new MeepleShape(this.player?.color, size); }
-  declare baseShape: MeepleShape;
 
   /** location at start-of-turn; for Meeple.unMove() */
   startHex?: Hex1;
@@ -103,7 +112,7 @@ export class Meeple extends Tile {
     }
   }
 
-  override moveTo(hex: Hex1) {
+  override moveTo(hex?: Hex1) {
     const destMeep = hex?.meep as Meeple;
     if (destMeep && destMeep !== this) {
       destMeep.x += 10; // make double occupancy apparent [until this.unMove()][hextowns]
