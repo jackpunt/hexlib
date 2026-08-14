@@ -117,8 +117,6 @@ export class Hex {
   readonly links: LINKS<this> = {}
   metaLinks: LINKS<this>;     // defined only for the center Hex of a metaHex
 
-  get linkDirs() { return Object.keys(this.links) as HexDir[]; }
-
   /** Hex(playerColor)@rcs */
   toString() {
     return `Hex@${this.rcs}` // hex.toString => Hex@[r,c] | Hex@Skip , Hex@Resign
@@ -128,19 +126,20 @@ export class Hex {
     return `Hex@${this.rcsp}`
   }
 
-  /** convert LINKS object to Array of Hex */
-  get linkHexes(): this[] {
-    return this.linkDirs.map((dir: HexDir) => this.links[dir] as this)
-  }
+  /** Directions with an adjacent Hex: { return Object.keys(this.links) as HexDir[] } */
+  get linkDirs() { return Object.keys(this.links) as HexDir[]; }
+
+  /** Array of adjacent Hexes: { return Object.values(this.links) } */
+  get linkHexes() { return Object.values(this.links) as this[]; }
+
   /**
-   * dir is defined unless inclCenter is false
+   * invoke func(hex, dir) for each Hex in this.links
    * @param func
-   * @param inclCenter [false] if true; invoke func(this, undefined, this)
    */
-  forEachLinkHex(func: (hex: this | undefined, dir: HexDir | undefined, hex0: this) => unknown, inclCenter = false) {
-    if (inclCenter) func(this, undefined, this);
-    this.linkDirs.forEach((dir: HexDir) => func(this.links[dir], dir, this));
+  forEachLinkHex(func: (hex: this, dir: HexDir, hex0: this) => unknown) {
+    (Object.entries(this.links).slice() as [HexDir, this][]).forEach(([dir, hex]) => func(hex, dir, this))
   }
+
   /** return HexDir to the first linked hex that satisfies predicate. */
   findLinkHex(pred: (hex: this | undefined, dir: HexDir, hex0: this) => boolean) {
     return this.linkDirs.find((dir: HexDir) => pred(this.links[dir], dir, this));
@@ -162,7 +161,7 @@ export class Hex {
     return rv;
   }
 
-  /** for each Hex in each Dir: func(hex, dir, this) */
+  /** For each Hex (in the line) in each Dir: func(hex, dir, this) */ // from HexTowns influence calculations
   forEachHexDir(func: (hex: this, dir: HexDir, hex0: this) => unknown) {
     this.linkDirs.forEach((dir: HexDir) => this.hexesInDir(dir).filter(hex => !!hex).map(hex => func(hex, dir, this)));
   }
@@ -921,7 +920,7 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    * @param rc Row-Col at which to place the hex
    * @param map the Array[row][col] to hold the hex
    * @param topo selects a Topo; Topo maps from (RowCol x Dir) to a \<T extends Hex\> in Array.
-   * @param lf selects a LINKS; hex.LINKS[dir] --> nHex(hex, dir)
+   * @param lf selects a LINKS; hex.links[dir] --> nHex(hex, dir)
    */
   link(hex: T, rc: RC = hex, map: T[][] = this, topo = this.topo, lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
     topo.linkDirs.forEach(dir => {
@@ -933,6 +932,23 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
       }
     });
   }
+
+  /**
+   * Remove links to the hexes indicated by the given predicate.
+   *
+   * HexMap.link links all the phyically adjacent hexes; unlink() can remove all or specific links.
+   * @param hex a Hex to be unlinked
+   * @param pred (nextHex) if true: break adjacency between hex and nextHex.
+   */
+  unlink(hex: T, pred: (nHex: T, dir: HexDir) => boolean = () => true ) {
+    // check each direction for a nHex satisfying pred(nHex, dir)
+    hex.forEachLinkHex((nHex, dir) => {
+      if (pred(nHex, dir)) {
+        delete hex.links[dir];
+        delete nHex.links[H.dirRev[dir]];
+      }
+    })
+  };
 
   /**
    * Return the IHex2 under the given markCont[x,y] coordinates.
