@@ -117,7 +117,7 @@ export class GameSetup {
       this.makePlayer(ndx, gamePlay); // make real Players...
     }
     // gamePlay.curPlayerNdx = 0; // gamePlay.setNextPlayer(0); ???
-    gamePlay.curPlayer = allPlayers[0];
+    gamePlay.setCurPlayer(allPlayers[0]);
   }
 
   _netState = ' ' // or 'yes' or 'ref'

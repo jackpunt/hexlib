@@ -78,6 +78,9 @@ export class GamePlay0 {
   }
   nCols: number
   nRows: number
+
+  preGame = true;
+
   // initialize to -1; in prep for setNextPlayer or parseScenario:
   _turnNumber: number = -1    // = history.lenth + 1 [by this.setNextPlayer]
   get turnNumber() { return this._turnNumber; }
@@ -88,9 +91,27 @@ export class GamePlay0 {
   _curPlayer: Player;
   get curPlayer() { return this._curPlayer; } // also refernced as: gameState.curPlayer
   set curPlayer(plyr: Player) { this._curPlayer = plyr; }
+  /** readonly, use setCurPlayer() */
   get curPlayerNdx() { return this._curPlayer.index; }
 
-  preGame = true;
+  /** useful explicit setting of player, and override (vs override the set curPlayer(...) function) */
+  setCurPlayer(player: Player) {
+    this.curPlayer = player;
+  }
+
+  /**
+   * Advance to given turnNumber; assuming table order modulo allPlayers.length
+   * @param turnNumber [undefined -> auto-incr; curPlayer.newTurn()]
+   */
+  setNextPlayer(turnNumber?: number): void {
+    if (turnNumber === undefined) {
+      turnNumber = this.turnNumber + 1;
+    }
+    this.turnNumber = turnNumber;
+    this.preGame = false;   // TODO: use gameState.isPhase() ??
+    this.setCurPlayer(this.nextPlayer(this.allPlayers[0], turnNumber)); // works for a certain class of games
+    this.curPlayer.newTurn();
+  }
 
   /**
    * next player by player.index (table order)
@@ -129,25 +150,6 @@ export class GamePlay0 {
     console.log(stime(this, `.endGame: Game Over`), );
 
     // console.log(stime(this, `.endGame: Winner = ${winner.Aname}`), scores);
-  }
-
-  /**
-   * Advance to given turnNumber
-   * @param turnNumber [undefined -> auto-incr; curPlayer.newTurn()]
-   */
-  setNextPlayer(turnNumber?: number): void {
-    if (turnNumber === undefined) {
-      turnNumber = this.turnNumber + 1;
-    }
-    this.turnNumber = turnNumber;
-    this.preGame = false;   // TODO: use gameState.isPhase() ??
-    this.setCurPlayer(this.nextPlayer(this.allPlayers[0], turnNumber)); // works for a certain class of games
-    this.curPlayer.newTurn();
-  }
-
-  /** useful explicit setting of player, and override (vs override the set curPlayer(...) function) */
-  setCurPlayer(player: Player) {
-    this.curPlayer = player;
   }
 
   isEndOfGame() {
@@ -244,7 +246,10 @@ export class GamePlay0 {
   saveGame() {
     this.scenarioParser.saveState()
   }
-  /** GamePlay contribution to saved Scenario */
+  /** GamePlay contribution to saved Scenario;
+   *
+   * for ex: add coins: [...] for allPlayers
+   */
   saveState(setupElt: SetupElt) {
     setupElt.coins = this.allPlayers.map(p => p.coins);
   }

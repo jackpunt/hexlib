@@ -55,7 +55,7 @@ export class PlayerPanel extends NamedContainer {
   }
 
   /**
-   *
+   * highlight the panel by showing outline RectShape at child=0
    * @param ss stroke size (4 or 8)
    * @param bgc fill color
    */
