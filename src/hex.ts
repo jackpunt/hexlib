@@ -54,14 +54,13 @@ export class Hex {
   /** Identify Hex instance derived from Hex2Mixin; and so implements IHex2. */
   static isIHex2(hex: Hex): hex is IHex2 { return (hex as any)?.implementsIHex2 as boolean; }
 
-  /** return indicated Hex from otherMap */
+  /** return indicated Hex from otherMap
+   * @param ihex { row, col }
+   * @returns indicated Hex of otherMap; or undefined if out of range.
+   * @deprecated: use otherMap.getHex(ihex)
+   */
   static ofMap(ihex: IdHex, otherMap: HexMap<Hex>) {
-    try {
-      return otherMap[ihex.row][ihex.col]
-    } catch (err) {
-      console.warn(`ofMap failed:`, err, { ihex, otherMap }) // eg: otherMap is different (mh,nh)
-      throw err
-    }
+    return otherMap.getHex(ihex);
   }
 
   static aname(row: number, col: number) {
@@ -750,17 +749,11 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   /**
    * Get a hex based on row & col.
    * @param ihex { row, col }
-   * @returns indicated Hex of this map
-   * @throws err if index out of range
+   * @returns indicated Hex of this map; or undefined if out of range.
    */
   getHex(ihex: RC) {
     /** return indicated Hex from otherMap */
-    try {
-      return this[ihex.row][ihex.col]
-    } catch (err) {
-      console.warn(`ofMap failed:`, err, { ihex, hexMap: this }) // eg: id is from different (mh,nh)
-      throw err
-    }
+    return this[ihex.row]?.[ihex.col];
   }
 
   // rcLinear(row: number, col: number): number { return col + row * (1 + (this._maxCol ?? 0) - (this._minCol ?? 0)) }
@@ -916,6 +909,8 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
    *
    * lookup nextRowCol(hex, dir, topo) and cache in LINKS (bi-directional: hex <--> next)
    *
+   * parameterized to support metaLink()
+   *
    * @param hex the \<T extends Hex\> to be linked
    * @param rc Row-Col at which to place the hex
    * @param map the Array[row][col] to hold the hex
@@ -936,9 +931,9 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   /**
    * Remove links to the hexes indicated by the given predicate.
    *
-   * HexMap.link links all the phyically adjacent hexes; unlink() can remove all or specific links.
+   * Note: HexMap.link() links all the phyically adjacent hexes; unlink() can remove all or specific links.
    * @param hex a Hex to be unlinked
-   * @param pred (nextHex) if true: break adjacency between hex and nextHex.
+   * @param pred (nextHex, dir) if true: break adjacency between hex and nextHex. [() => true]
    */
   unlink(hex: T, pred: (nHex: T, dir: HexDir) => boolean = () => true ) {
     // check each direction for a nHex satisfying pred(nHex, dir)
