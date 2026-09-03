@@ -85,15 +85,15 @@ class Tile0 extends NamedContainer {
     bleedShape.scaleX = (width + 2 * bleed) / width;
     bleedShape.scaleY = (height + 2 * bleed) / height;
     bleedShape.paint(this.bleedColor, true);
-    // TODO: move to makeBleed for specific use-case.
-    if (this.baseShape instanceof TileShape) {
-      // add backing circle, so bleed does not show through;
-      const rv = new NamedContainer('bleed')
-      const backRad = this.radius * H.sqrt3_2 * (55 / 60);
-      const back = new CircleShape(C.WHITE, backRad);
-      rv.addChild(back, bleedShape)
-      return rv;
-    }
+    // TODO: move to makeBleed for specific use-case. (hexpath?)
+    // if (this.baseShape instanceof TileShape) {
+    //   // add backing circle, so bleed does not show through;
+    //   const rv = new NamedContainer('bleed')
+    //   const backRad = this.radius * H.sqrt3_2 * (55 / 60);
+    //   const back = new CircleShape(C.WHITE, backRad);
+    //   rv.addChild(back, bleedShape)
+    //   return rv;
+    // }
     return bleedShape;
   }
 
