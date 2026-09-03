@@ -208,7 +208,7 @@ export class Tile extends Tile0 implements Dragable {
     this.name = cName;  // used for saveState!
     if (!this.Aname) this.Aname = `${cName}-${this.gamePlay.allTiles.length}`;
     this.nameText = this.addTextChild(); // y0=radius/2, text=f(Aname), size=radius/3, vis=false
-    if (Tile.paintInConstructor && this.player) // specific to hextowns; also Meeple may provide player
+    if ((this.constructor as typeof Tile).paintInConstructor && this.player) // specific to hextowns; also Meeple may provide player
       this.setPlayerAndPaint(this.player);  // dubious: subclasses are not yet constructed!
   }
   static paintInConstructor = false;
@@ -505,7 +505,7 @@ export class Tile extends Tile0 implements Dragable {
 /** a half-sized Tile. [hextowns] */
 export class Token extends Tile {
 
-  override makeShape(size = this.radius, colorn?: string): PaintableShape {
+  override makeShape(size = this.radius, colorn?: string): Paintable {
     return new HexShape(size * .5, undefined, colorn);
   }
 }

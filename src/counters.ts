@@ -26,7 +26,7 @@ export class ButtonBox extends ValueCounterBox {
   }
 }
 
-/** ValueCounter specifically for number values (not string), includes incValueEvent() and clickToInc() */
+/** ValueCounter specifically for number values (not string), includes ValueEvent('incr') and clickToInc() */
 export class NumCounter extends ValueCounter {
 
   override get value() { return this._value as number }
@@ -38,6 +38,7 @@ export class NumCounter extends ValueCounter {
       super.setValue(value, color, fontSize, fontName, textColor)
   }
 
+  /** increment by incr value & dispatch 'incr' event */
   incValue(incr: number) {
     this.updateValue(this.value + incr);
     this.dispatchEvent(new ValueEvent('incr', incr));

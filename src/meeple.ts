@@ -1,5 +1,5 @@
 import { C } from "@thegraid/common-lib";
-import { PaintableShape, type NamedObject, type Paintable } from "@thegraid/easeljs-lib";
+import { CircleShape, PaintableShape, type NamedObject, type Paintable } from "@thegraid/easeljs-lib";
 import type { Graphics } from "@thegraid/easeljs-module";
 import { Shape } from "@thegraid/easeljs-module";
 import type { Hex1 } from "./hex";
@@ -25,12 +25,11 @@ export class MeepleShape extends PaintableShape {
     this.setBounds(-r, -r, 2 * r, 2 * r);
   }
 
-  backSide: Shape;  // visible when Meeple is 'faceDown' after a move.
-  /** make an overlay shape for the backside of baseShape. */
-  makeOverlay(y0 = this.y) {
-    const { x, width: r2 } = this.getBounds(); // x at left edge
-    const over = new Shape();
-    over.graphics.f((this.constructor as typeof MeepleShape).backColor).dc(x + r2 / 2, y0, r2 / 2);
+  backSide: Paintable | undefined;  // visible when Meeple is 'faceDown' after a move.
+  /** make an overlay shape for the backSide of baseShape: a circle shape filled with static backColor */
+  makeOverlay(y0 = this.y): PaintableShape {
+    const { x, width } = this.getBounds(); // x at left edge
+    const over = new CircleShape((this.constructor as typeof MeepleShape).backColor, width / 2);
     over.visible = false;
     over.name = (over as NamedObject).Aname = 'backSide';
     return over;
@@ -51,6 +50,8 @@ export class MeepleShape extends PaintableShape {
   }
 }
 
+export type PaintableWithBackSide = Paintable & { backSide: Paintable | undefined };
+
 /**
  * canonical base class for Meeples; ASSERT (.isMeep === true)
  */
@@ -58,8 +59,8 @@ export class Meeple extends Tile {
 
   override get isMeep() { return true; }
 
-  declare baseShape: Paintable & { backSide: Paintable };
-  get backSide() { return this.baseShape.backSide; }
+  declare baseShape: PaintableWithBackSide;
+  get backSide() { return this.baseShape.backSide as (Paintable | undefined); }
   override get recycleVerb() { return 'dismissed'; }
 
   /**
@@ -72,7 +73,7 @@ export class Meeple extends Tile {
     player?: Player,
   ) {
     super(Aname, player);
-    this.addChild(this.backSide);
+    this.addChild(this.backSide!);
     this.nameText.visible = true;
     this.nameText.y = this.baseShape.y;
     // this.paint();
