@@ -50,7 +50,8 @@ export class MeepleShape extends PaintableShape {
   }
 }
 
-export type PaintableWithBackSide = Paintable & { backSide: Paintable | undefined };
+// assert that Meeple *has* a slot named backSide, but it does not require a value
+export type PaintableWithBackSide = Paintable & { backSide?: Paintable };
 
 /**
  * canonical base class for Meeples; ASSERT (.isMeep === true)
@@ -60,7 +61,9 @@ export class Meeple extends Tile {
   override get isMeep() { return true; }
 
   declare baseShape: PaintableWithBackSide;
+
   get backSide() { return this.baseShape.backSide as (Paintable | undefined); }
+
   override get recycleVerb() { return 'dismissed'; }
 
   /**
