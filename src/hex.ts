@@ -808,6 +808,12 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     return hex
   }
 
+  /**
+   * Find hexUnderPoint(dragObj.x, dragObj.y)
+   * @param dragObj
+   * @param legalOnly [true] ? search markCont : also search hexCont
+   * @returns Hex | undefined
+   */
   hexUnderObj(dragObj: DisplayObject, legalOnly = true) {
     const pt = dragObj.parent.localToLocal(dragObj.x, dragObj.y, this.mapCont.markCont);
     return this.hexUnderPoint(pt.x, pt.y, legalOnly);

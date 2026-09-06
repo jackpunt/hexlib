@@ -1,5 +1,5 @@
 import { S, XY } from "@thegraid/common-lib";
-import { RectShape, ValueCounter, ValueEvent } from "@thegraid/easeljs-lib";
+import { RectShape, ValueCounter, ValueEvent, type PaintableShape } from "@thegraid/easeljs-lib";
 import { MouseEvent, Text } from "@thegraid/easeljs-module";
 
 /** ValueCounter in a Rectangle. */ // TODO: RectWithText
@@ -14,7 +14,7 @@ export class ValueCounterBox extends ValueCounter {
     return { width: wide, height: high };
   }
 
-  protected override makeBox(color: string, high: number, wide: number) {
+  protected override makeBox(color: string, high: number, wide: number): PaintableShape {
     return new RectShape({ x: -wide / 2, y: -high / 2, w: wide, h: high }, color, '');
   }
 }
@@ -50,11 +50,11 @@ export class NumCounter extends ValueCounter {
    * - !false: click -> this.incValue()
    * - NumCounter: this.incValue(x) -> incr.incValue(x)
    */
-  clickToInc(incr: NumCounter | boolean = true) {
-    const incv = (evt: NativeMouseEvent) => (evt?.ctrlKey ? -1 : 1) * (evt?.shiftKey ? 10 : 1);
+  clickToInc(incr: NumCounter | boolean = true, shiftVal = 10) {
+    const incf = (evt: NativeMouseEvent) => (evt?.ctrlKey ? -1 : 1) * (evt?.shiftKey ? shiftVal : 1);
     if (incr) {
       this.mouseEnabled = true;
-      this.on(S.click, (evt: Object) => this.incValue(incv((evt as MouseEvent).nativeEvent)));
+      this.on(S.click, (evt: Object) => this.incValue(incf((evt as MouseEvent).nativeEvent)));
       if (incr instanceof NumCounter) {
         this.on('incr', (evt: Object) => incr.incValue((evt as ValueEvent).value as number));
       }
@@ -76,7 +76,7 @@ export class NumCounterBox extends NumCounter {
     this.setBoxWithValue(this.value);
   }
 
-  protected makeBox0(color: string, high: number, wide: number) {
+  protected makeBox0(color: string, high: number, wide: number): PaintableShape {
     return new RectShape({ x: -wide / 2, y: -high / 2, w: wide, h: high }, color, '')
   }
 

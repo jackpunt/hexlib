@@ -122,6 +122,7 @@ export class Meeple extends Tile {
       destMeep.x += 10; // make double occupancy apparent [until this.unMove()][hextowns]
       destMeep.unMove();
     }
+    // logic from hextown? to faceDown meeples that have moved from [this turn's] startHex:
     const fromHex = this.fromHex;
     super.moveTo(hex); // hex.set(meep) = this; this.x/y = hex.x/y
     this.faceUp(!(hex?.isOnMap && fromHex?.isOnMap && hex !== this.startHex));

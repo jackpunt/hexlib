@@ -731,7 +731,7 @@ export class Table extends Dispatcher {
   /**
    * Basic: this.hexMap.hexUnderObj(dragObj, legalOnly)
    * @param dragObj
-   * @param legalOnly only consider LegalMark instances
+   * @param legalOnly [true] ? search MarkCont : also search HexCont
    * @returns this.hexMap.hexUnderObj(dragObj, legalOnly)
    */
   hexUnderObj(dragObj: DisplayObject, legalOnly = true) {
