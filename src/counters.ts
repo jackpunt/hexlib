@@ -43,21 +43,35 @@ export class NumCounter extends ValueCounter {
     this.updateValue(this.value + incr);
     this.dispatchEvent(new ValueEvent('incr', incr));
   }
+
+  /** invoke incValue(value based on click event)
+   * @param evt has nativeEvent with ctrl & shift state (ctrl negates value)
+   * @param shiftVal [10] provide alternate increment value when shift is down
+   * @param baseVal [1] basic increment value (when not shift)
+   */
+  incValueOnClick(evt: MouseEvent, shiftVal = 10, baseVal = 1) {
+    const nevt = evt.nativeEvent;
+    const incr = (nevt?.ctrlKey ? -1 : 1) * (nevt?.shiftKey ? shiftVal : baseVal);
+    this.incValue(incr); // --> dispatchEvent('incr', incr)
+  }
+
   /**
-   *
+   * addListener: on(click) & maybe: on('incr') -> incr.incValue(evt.value)
    * @param incr configure click/incValue:
    * - false: click does nothing
-   * - !false: click -> this.incValue()
+   * - !false: click -> this.incValueOnClick()
    * - NumCounter: this.incValue(x) -> incr.incValue(x)
+   * @param shiftVal see - incValueOnClick
+   * @param baseVal see - incValueOnClick
    */
-  clickToInc(incr: NumCounter | boolean = true, shiftVal = 10) {
-    const incf = (evt: NativeMouseEvent) => (evt?.ctrlKey ? -1 : 1) * (evt?.shiftKey ? shiftVal : 1);
-    if (incr) {
-      this.mouseEnabled = true;
-      this.on(S.click, (evt: Object) => this.incValue(incf((evt as MouseEvent).nativeEvent)));
-      if (incr instanceof NumCounter) {
-        this.on('incr', (evt: Object) => incr.incValue((evt as ValueEvent).value as number));
-      }
+  clickToInc(incr: NumCounter | boolean = true, shiftVal?: number, baseVal?: number) {
+    if (!incr) return;
+    this.mouseEnabled = true;
+    // clickToInc.name = 'clickToInc' so we can find on _listeners.
+    const clickToInc = (evt: Object) => this.incValueOnClick(evt as MouseEvent, shiftVal, baseVal);
+    this.addEventListener(S.click, clickToInc);
+    if (incr instanceof NumCounter) {
+      this.on('incr', (evt: Object) => incr.incValue((evt as ValueEvent).value as number));
     }
   }
 }
