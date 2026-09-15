@@ -16,7 +16,6 @@
     "testEdit": "test/testEditBox.sh",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -f dist/*",
-    "build": "date && npm run clean && npm run tsc && date",
     "buildz": "date && npm run clean && npm run tsc && npm run tgz && date",
     "tsc": "tsc"
   },
@@ -36,7 +35,7 @@
   "homepage": "https://github.com/jackpunt/hexlib#readme",
   "dependencies": {
     "@thegraid/common-lib": "file:../common-lib/thegraid-common-lib-1.3.53.tgz",
-    "@thegraid/easeljs-lib": "file:../createjs-lib/thegraid-easeljs-lib-1.5.8.tgz",
+    "@thegraid/easeljs-lib": "file:../createjs-lib/thegraid-easeljs-lib-1.5.9.tgz",
     "@thegraid/easeljs-module": "^1.4.0",
     "json5": "^2.2.3"
   },

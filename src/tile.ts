@@ -6,11 +6,23 @@ import { Hex1, IHex2 } from "./hex";
 import { H } from "./hex-intfs";
 import type { Player } from "./player";
 import { HexShape, TileShape } from "./shapes";
-import type { DragContext, Dragable, Table } from "./table";
+import type { DragContext, DragFuncs, Dragable, HasDragger, Table } from "./table";
 import { TP } from "./table-params";
 import { TileSource } from "./tile-source";
 
-export function rightClickable(dobj: DisplayObject, onRightClick: (evt: MouseEvent) => void) {
+/**
+ * Install 'click' Listener that checks for right-mouse button.
+ * Invokes the given onRightClick(evt).
+ *
+ * Blocks the nativeEvent! preventDefault() & stopImmediatePropation()
+ *
+ * User may need to also evt.stopPropagation() on the EaselJS MouseEvent
+ * @param dobj
+ * @param onRightClick
+  * @param cap [false] supply true for backward compatibilty for hexmarket
+ * - cap will be removed; it used 'capture' mode for hexmarket
+ */
+export function rightClickable(dobj: DisplayObject, onRightClick: (evt: MouseEvent) => void, cap = false) {
   const ifRightClick = (evt: MouseEvent) => {
     const nevt = evt.nativeEvent;
     if (nevt.button === 2) {
@@ -19,7 +31,7 @@ export function rightClickable(dobj: DisplayObject, onRightClick: (evt: MouseEve
       nevt.stopImmediatePropagation(); // TODO: prevent Dragger.clickToDrag() when button !== 0
     }
   };
-  dobj.on(S.click, ifRightClick as any, dobj, false, {}, true); // TS fails with overload
+  dobj.on(S.click, ifRightClick as any, dobj, false, {}, cap); // TS fails with overload
 }
 
 /** Someday refactor: all the cardboard bits (Tiles, Meeples & Coins) */
@@ -308,8 +320,8 @@ export class Tile extends Tile0 implements Dragable {
    * Install onRightClick(evt) handler on this Tile.
    * @param onRightClick [(evt)=this.onRightClick(evt)]
    */
-  rightClickable(onRightClick = (evt: MouseEvent) => this.onRightClick(evt)) {
-    rightClickable(this, onRightClick);
+  rightClickable(onRightClick = (evt: MouseEvent) => this.onRightClick(evt), cap?: boolean) {
+    rightClickable(this, onRightClick, cap);
   }
 
   /** default rightClick handler for this Tile. */
@@ -365,8 +377,10 @@ export class Tile extends Tile0 implements Dragable {
   }
 
   // backward compatible -- new code can specialize
-  makeDragable(table: Table) {
+  makeDragable(table: HasDragger & DragFuncs) {
+    // this.on(S.pressmove, dragger.pressmove, this, false, data)
     table.dragger.makeDragable(this, table, table.dragFunc, table.dropFunc);
+    // this.on(S.click, dragger.clickr, this, false, data)
     table.dragger.clickToDrag(this, true); // also enable clickToDrag;
   }
 

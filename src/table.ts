@@ -1,11 +1,11 @@
 import { AT, C, Constructor, F, S, stime, XY, XYWH } from "@thegraid/common-lib";
-import { afterUpdate, AliasLoader, Dispatcher, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer, UtilButton } from "@thegraid/easeljs-lib";
+import { afterUpdate, AliasLoader, Dispatcher, Dragger, DragInfo, DropdownStyle, KeyBinder, NamedContainer, NamedObject, ParamGUI, ParamItem, RectShape, ScaleableContainer, UtilButton, type DnDFunc } from "@thegraid/easeljs-lib";
 import { Container, DisplayObject, Graphics, Shape, Stage, Text } from "@thegraid/easeljs-module";
 import { EBC, PidChoice } from "./choosers";
-import { TileEvent, type GamePlay } from "./game-play";
+import { type GamePlay } from "./game-play";
 import type { HexAspect } from "./game-setup";
 import type { GameState } from "./game-state";
-import { Hex, HexM, HexMap, IdHex, IHex2, RecycleHex } from "./hex";
+import { Hex, HexM, HexMap, IHex2, RecycleHex } from "./hex";
 import { Player } from "./player";
 import { PlayerPanel } from "./player-panel";
 import { HexShape } from "./shapes";
@@ -15,9 +15,34 @@ import { Tile } from "./tile";
 import { TileSource } from "./tile-source";
 //import { TablePlanner } from "./planner";
 
+// from Dragger (easeljs-lib)
+// type DnDFunc = (c: DisplayObject | Container, ctx?: DragInfo) => void
+
+export interface HasDragger {
+  /** An instance that is holding a Dragger */
+  dragger: Dragger;
+}
+
+/** Dragger invokes dragFunc & dropFunc */
+export interface DragFuncs {
+  dragFunc: DnDFunc;
+  dropFunc: DnDFunc;
+}
+
+/** Table (as DragFuncs) invokes dragFunc0/dropFunc0 on Dragable target (a Tile) */
 export interface Dragable {
+  /** Table.dragFunc invokes target.dragFunc0 */
   dragFunc0(hex: IHex2, ctx: DragContext): void;
+  /** Table.dropFunc invokes target.dropFunc0 */
   dropFunc0(hex: IHex2, ctx: DragContext): void;
+
+  // Tile also implements all these:   TODO: someday delete more of these to dragFunc0?
+  cantBeMovedBy(player: Player, ctx: DragContext): string | boolean | undefined;
+  dragStart(ctx: DragContext): void;
+  moveTo(hex?: Hex): void;
+  noLegalTarget(ctx: DragContext): void;
+  isLegalTarget(toHex: Hex, ctx: DragContext): boolean;
+  markLegal(table: Table, setLegal?: (hex: IHex2) => void, ctx?: DragContext): void;
 }
 
 /** to own file... */
@@ -890,6 +915,7 @@ export class Table extends Dispatcher {
     const toHex2 = toHex as IHex2, info = { first: true } as DragInfo; // event: undefined
     this.dragFunc0(tile, info, tile.hex as IHex2); // table.dragStart(tile)->tile.dragstart(ctx); tile.dragFunc0(fromHex)
     tile.dragFunc0(toHex2, this.dragContext);      // tile.dragFunc0(toHex)
+    tile.x = toHex2.x; tile.y = toHex2.y;          // what dragger does
     this.dropFunc(tile, info, toHex2);             // table.dropFunc(toHex)->tile.dropFunc0(toHex,ctx)
   }
 
@@ -908,7 +934,7 @@ export class Table extends Dispatcher {
       this.dragger.stopDrag(); // ---> dropFunc(this.dragContext.tile, info)
     }
     const data = this.dragger.getDragData(this.scaleCont);
-    if (data) data.dragStopped = true;
+    return;
   }
 
   /**

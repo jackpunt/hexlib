@@ -468,7 +468,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
     }
 
     /** Location of corner on radial of given dir */
-    cornerXY(dir: HexDir, rad = this.radius, point = new Point(0, 0)) {
+    cornerXY(dir: HexDir, rad = this.radius, point: XY = new Point(0, 0)) {
       const deg = H.dirRot[dir];
       const a = deg * H.degToRadians
       point.x += Math.sin(a) * rad;
@@ -482,14 +482,14 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
      * @param point [new Point()] set location-x,y in point and return it.
      * @param rad [this.radius]
      */
-    cornerPoint(dir0: HexDir, dir1: HexDir, rad = this.radius, point = new Point()) {
+    cornerPoint(dir0: HexDir, dir1: HexDir, rad = this.radius, point: XY = new Point()) {
       const d0 = H.dirRot[dir0], d1 = H.dirRot[dir1];
       let a2 = (d0 + d1) / 2;
       if (Math.abs(d0 - d1) > 180) a2 += 180
       const a = a2 * H.degToRadians
       point.x = this.x + Math.sin(a) * rad;
       point.y = this.y - Math.cos(a) * rad;
-      return point;
+      return point as XY;
     }
     /** Location of edge point in dir; in parent coordinates.
      * @param dir indicates direction to edge
@@ -500,7 +500,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       const a = H.dirRot[dir] * H.degToRadians, h = rad * this.radius * H.sqrt3_2;
       point.x = this.x + Math.sin(a) * h;
       point.y = this.y - Math.cos(a) * h;
-      return point as Point;
+      return point as XY;
     }
   }
 }

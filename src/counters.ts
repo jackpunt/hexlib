@@ -53,6 +53,7 @@ export class NumCounter extends ValueCounter {
     const nevt = evt.nativeEvent;
     const incr = (nevt?.ctrlKey ? -1 : 1) * (nevt?.shiftKey ? shiftVal : baseVal);
     this.incValue(incr); // --> dispatchEvent('incr', incr)
+    evt.stopImmediatePropagation();
   }
 
   /**
