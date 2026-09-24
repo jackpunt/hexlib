@@ -76,11 +76,19 @@ class Tile0 extends NamedContainer {
 
   /** Default is TileShape; a HexShape with translucent disk [hextowns].
    *
+   * To override: static override makeShape(size = defaultSize) { ... }
+   *
+   * The static method will be used by TileConstructor();
+   *
    * add more graphics with paint(colorn)
    *
    * see also: addImageBitmap() to add child image from AliasLoader
    */
   makeShape(size = this.radius): Paintable {
+    return (this.constructor as typeof Tile0).makeShape(size);
+  }
+  static defaultSize = TP.hexRad;
+  static makeShape(size = this.defaultSize): Paintable {
     return new TileShape(size);
   }
 
@@ -189,7 +197,18 @@ export class Tile extends Tile0 implements Dragable {
   source!: TileSource<Tile>;
 
   // Tile
-  /** Build the Tile [baseShape, image?, nameText] and reCache the graphics. */
+  /** Build the Tile [baseShape, image?, nameText] and reCache the graphics.
+   *
+   * subclass can uncache with: this.reCache(0)
+   *
+   * @example:
+   * static tileConstructor(tile);  // tile.baseShape = this.makeShape()
+   * static makeShape(size = mySize);
+   * static paintInConstructor: boolean;
+   *
+   * @param Aname name assigned to Tile
+   * @param player player if Tile has a known owner
+   */
   constructor(
     /** typically: className-serial; may be supplied as 'name' or undefined */
     Aname: string,
@@ -197,11 +216,10 @@ export class Tile extends Tile0 implements Dragable {
     player?: Player,
   ) {
     super(Aname, player); // both are set as this.Aname & this.player
-    this.tileConstructor()
-    this.reCache();       // TP.cacheTiles ? use H.HexBounds()
+    (this.constructor as typeof Tile).tileConstructor(this);
   }
 
-  /** invoked by constructor; set name & Aname if undefined
+  /** invoked by Tile.constructor; supply values for name & Aname if undefined
    *
    * - gamePlay = Tile.gamePlay
    * - gamePlay.allTiles.push(this)
@@ -209,21 +227,24 @@ export class Tile extends Tile0 implements Dragable {
    * typical children stack:
    * - makeShape()->baseShape
    * - addTextChild()->nameText
+   *
+   * If you do all this in your subclass constructor() then override tileConstructor to do nothing.
    */
-  tileConstructor() {
-    this.gamePlay = Tile.gamePlay;
-    this.gamePlay?.allTiles.push(this);
-    this.baseShape = this.makeShape();
-    this.addChild(this.baseShape);
+  static tileConstructor(tile: Tile) {
+    tile.gamePlay = this.gamePlay; // static Tile.gamePlay; // the latest gamePlay created.
+    tile.gamePlay?.allTiles.push(tile);
+    tile.baseShape = tile.makeShape();
+    tile.addChild(tile.baseShape);
     // from Ankh: extract class name for saveState
-    const cName = this.Aname?.split('-')[0] ?? className(this); // className is subject to uglification!
-    this.name = cName;  // used for saveState!
-    if (!this.Aname) this.Aname = `${cName}-${this.gamePlay.allTiles.length}`;
-    this.nameText = this.addTextChild(); // y0=radius/2, text=f(Aname), size=radius/3, vis=false
-    if ((this.constructor as typeof Tile).paintInConstructor && this.player) // specific to hextowns; also Meeple may provide player
-      this.setPlayerAndPaint(this.player);  // dubious: subclasses are not yet constructed!
+    const cName = tile.Aname?.split('-')[0] ?? className(tile); // Note: in production className is subject to uglification!
+    tile.name = cName;  // used for saveState!
+    if (!tile.Aname) tile.Aname = `${cName}-${tile.id}`; // Was: tile.gamePlay.allTiles.length
+    tile.nameText = tile.addTextChild(); // y0=radius/2, text=f(Aname), size=radius/3, vis=false
+    tile.reCache();       // TP.cacheTiles ? use H.HexBounds()
   }
-  static paintInConstructor = false;
+  // hextowns can do its own override for paintInConstructor!
+  // if ((this.constructor as typeof Tile).paintInConstructor && this.player) // specific to hextowns; also Meeple may provide player
+  //   this.setPlayerAndPaint(this.player);  // dubious: subclasses are not yet constructed!
 
   nameText: Text;
   /**
