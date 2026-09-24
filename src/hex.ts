@@ -911,7 +911,31 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
     this.link(hex, rc, this.metaMap, topo, (hex) => hex.metaLinks)
   }
 
-  /** link hex to/from each extant neighor.
+  /**
+   * return { hex: T, dir: HexDir }[] of all T that are adjacent to (row, col).
+   * @param rc hex ({row, col}) map to interrogate
+   * @param map [this]
+   * @param topo [this.topo] (or map.topo if that makes sense)
+   * @returns \{ hex, dir }[]
+   */
+  adjacentToRowCol(rc: RC, map: T[][] = this, topo = this.topo) {
+    const rv = [] as {hex: T, dir: HexDir}[];
+    topo.linkDirs.forEach(dir => {
+      const { row, col } = this.nextRowCol(rc, dir, topo);
+      const hex =  map[row]?.[col];
+      if (hex) rv.push({ hex, dir });
+    })
+    return rv;
+  }
+  // TODO: maybe replace link() with link2() implementation?
+  link2(hex: T, rc: RC = hex, map: T[][] = this, topo = this.topo, lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
+    this.adjacentToRowCol(rc, map, topo).forEach(({ hex: nHex, dir}) => {
+      lf(hex)[dir] = nHex;
+      lf(nHex)[H.dirRev[dir]] = hex;
+    })
+  }
+
+  /** link hex to/from each extant neighbor.
    *
    * lookup nextRowCol(hex, dir, topo) and cache in LINKS (bi-directional: hex <--> next)
    *
