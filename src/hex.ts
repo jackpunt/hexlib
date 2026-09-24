@@ -912,27 +912,18 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
 
   /**
-   * return { hex: T, dir: HexDir }[] of all T that are adjacent to (row, col).
-   * @param rc hex ({row, col}) map to interrogate
-   * @param map [this]
-   * @param topo [this.topo] (or map.topo if that makes sense)
+   * return { hex: T, dir: HexDir }[] of all T that are adjacent to given RC.
+   * @param rc { row, col } to interrogate (rc can be a hex of this map)
+   * @param topo [this.topo]
    * @returns \{ hex, dir }[]
    */
-  adjacentToRowCol(rc: RC, map: T[][] = this, topo = this.topo) {
-    const rv = [] as {hex: T, dir: HexDir}[];
+  adjacentToRowCol(rc: RC, topo = this.topo) {
+    const rv = [] as { hex: T, dir: HexDir }[];
     topo.linkDirs.forEach(dir => {
-      const { row, col } = this.nextRowCol(rc, dir, topo);
-      const hex =  map[row]?.[col];
+      const hex = this.getHex(this.nextRowCol(rc, dir, topo))
       if (hex) rv.push({ hex, dir });
     })
     return rv;
-  }
-  // TODO: maybe replace link() with link2() implementation?
-  link2(hex: T, rc: RC = hex, map: T[][] = this, topo = this.topo, lf: (hex: T) => LINKS<T> = (hex) => hex.links) {
-    this.adjacentToRowCol(rc, map, topo).forEach(({ hex: nHex, dir}) => {
-      lf(hex)[dir] = nHex;
-      lf(nHex)[H.dirRev[dir]] = hex;
-    })
   }
 
   /** link hex to/from each extant neighbor.
