@@ -342,8 +342,9 @@ export class GameSetup {
     return { Aname: 'defaultScenario', n, ...qParams, turn: 0, };
   }
 
+  /** you may want: return Tile.gamePlay = new GamePlay(...); */
   makeGamePlay(startElt: SetupElt) {
-    return new GamePlay(this, startElt); // you may want: return Tile.gamePlay = new GamePlay(...)
+    return new GamePlay(this, startElt);
   }
 
   /**

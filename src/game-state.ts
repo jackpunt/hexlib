@@ -25,6 +25,7 @@ export class GameState {
     }
     Object.keys(states).forEach(key => this.states[key] = states[key])
     Object.keys(this.states).forEach((key) => this.states[key].Aname = key);
+    this.state = this.states[Object.keys(this.states)[0]];  // set to first defined phase
   }
 
   /**
@@ -102,6 +103,10 @@ export class GameState {
   }
 
   readonly states: { [index: string]: Phase } = {
+    // proforma:
+    Initialize: {
+      start: () => { this.phase(this.startPhase, ...this.startArgs) }
+    },
     BeginTurn: {
       start: () => {
         this.gamePlay.saveGame();
