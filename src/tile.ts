@@ -398,6 +398,10 @@ export class Tile extends Tile0 implements Dragable {
   }
 
   // backward compatible -- new code can specialize
+  /** invokes table.dragger to makeDragable & clickToDrag;
+   *
+   *  override to specialize, advise, or disable
+   */
   makeDragable(table: HasDragger & DragFuncs) {
     // this.on(S.pressmove, dragger.pressmove, this, false, data)
     table.dragger.makeDragable(this, table, table.dragFunc, table.dropFunc);

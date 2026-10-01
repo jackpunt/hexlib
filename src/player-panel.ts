@@ -122,8 +122,14 @@ export class PlayerPanel extends NamedContainer {
   /** popup the confirmContainer, take yes() or cancel() action
    *
    * (while save/hide/restore the visiblilty of the table.doneButton)
+   *
+   * @param msg appears after 'Are you sure?'
+   * @param yes function invoked for 'Yes'
+   * @param cancel function invoked for 'Cancel'
+   * @param afterPopup invoked by stage.drawend after buttons are painted.
+   * @param qtext strings to replace ['Are you sure?/Click to Confirm', 'Yes/Continue', 'Cancel']
    */
-  areYouSure(msg: string, yes: () => void, cancel?: () => void, afterPopup: () => void = () => {}) {
+  areYouSure(msg: string, yes: () => void, cancel?: () => void, afterPopup: () => void = () => {}, qtext?: string[]) {
     const { panel, table } = this.objects;
     // save state of doneButton, then disable it:
     const doneVis = table.doneButton.visible;
@@ -139,10 +145,13 @@ export class PlayerPanel extends NamedContainer {
       table.doneButton.visible = doneVis;
       afterUpdate(conf, func, this);
     }
+    const tQuery  = qtext?.[0] ?? (!!cancel ? 'Are your sure?' : 'Click to Confirm');
+    const tAffirm = qtext?.[1] ?? (!!cancel ? 'Yes' : 'Continue');
+    const tCancel = qtext?.[2] ?? ('Cancel');
+    buttonYes.label_text = tAffirm;
+    buttonCan.label_text = tCancel; // maybe not visible
     buttonCan.visible = !!cancel;
-    buttonYes.label_text = !!cancel ? 'Yes' : 'Continue';
-    const query = !!cancel ? 'Are your sure?' : 'Click to Confirm';
-    const label = `${query}\n${msg}`;
+    const label = tQuery ? `${tQuery}\n${msg}` : msg;
     const { x, y, width: w, height: h } = tir.rectShape.getBounds(); // as extended above
     tir.label_text = label;  // calcBounds: shrink to text+border
     // reset to original-extended rectShape:
@@ -153,7 +162,7 @@ export class PlayerPanel extends NamedContainer {
 
     buttonYes.on(S.click, () => clear(yes), this, true);
     buttonCan.on(S.click, () => clear(cancel ?? yes), this, true);
-    console.log(stime(this, `.areYouSure? [${this.player.Aname}], ${msg}`));
+    console.log(stime(this, `.areYouSure? [${this.player.Aname}], ${msg}`), qtext);
     panel.localToLocal(0, 0, table.overlayCont, conf);
     conf.visible = true;
     afterUpdate(conf, afterPopup, this);

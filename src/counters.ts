@@ -44,7 +44,7 @@ export class NumCounter extends ValueCounter {
     this.dispatchEvent(new ValueEvent('incr', incr));
   }
 
-  /** invoke incValue(value based on click event)
+  /** clickToInc listener: invoke incValue(value based on click event)
    * @param evt has nativeEvent with ctrl & shift state (ctrl negates value)
    * @param shiftVal [10] provide alternate increment value when shift is down
    * @param baseVal [1] basic increment value (when not shift)
