@@ -481,7 +481,7 @@ export class Tile extends Tile0 implements Dragable {
   }
 
   /** state of shiftKey has changed during drag */
-  dragShift(shiftKey: boolean | undefined, ctx: DragContext) { }
+  shiftFunc(shiftKey: boolean | undefined, ctx: DragContext) { }
 
   /**
    * When this Tile starts a drag,

@@ -828,7 +828,7 @@ export class Table extends Dispatcher {
     if (shiftKey !== ctx.lastShift || (hex && ctx.targetHex !== hex)) {
       ctx.lastShift = shiftKey;
       // do shift-down/shift-up actions...
-      this.dragShift(ctx.tile, shiftKey, ctx); // was interesting for hexmarket
+      this.shiftFunc(ctx.tile, shiftKey, ctx); // was interesting for hexmarket
     }
   }
 
@@ -893,9 +893,9 @@ export class Table extends Dispatcher {
     return nLegal;
   }
 
-  /** state of shiftKey has changed during drag. call tile.dragShift(). */
-  dragShift(tile: Tile | undefined, shiftKey: boolean | undefined, ctx: DragContext) {
-    tile?.dragShift(shiftKey, ctx);
+  /** state of shiftKey has changed during drag. call tile.shiftFunc(). */
+  shiftFunc(tile: Tile | undefined, shiftKey: boolean | undefined, ctx: DragContext) {
+    tile?.shiftFunc(shiftKey, ctx);
   }
 
   /** dropFunc for each Dragable/Tile -> tile.dropFunc0(hex, ctx) */
