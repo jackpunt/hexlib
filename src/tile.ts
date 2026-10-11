@@ -524,9 +524,9 @@ export class Tile extends Tile0 implements Dragable {
    * unless recycleHex.isLegal, stopDragging();
    */
   noLegalTarget(ctx: DragContext) {
-    if (!this.gamePlay.recycleHex?.isLegal) {
+    // if (!this.gamePlay.recycleHex?.isLegal) {
       this.gamePlay.table.stopDragging(); // actually, maybe let it drag, so we can see beneath...
-    }
+    // }
     // const cause = this.gamePlay.failToBalance(this) ?? '';
     // const [infR, coinR] = this.gamePlay.getInfR(this);
     // this.gamePlay.logText(`No placement for ${this.andInfStr} ${cause} infR=${infR} coinR=${coinR}`, 'Tile.noLegal')
