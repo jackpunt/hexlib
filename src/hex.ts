@@ -32,7 +32,7 @@ export class LegalMark extends Container {
     this.removeAllChildren();
     this.addChild(new CircleShape(C.legalGreen, this.hex2.radius / 2, '')); // @(0,0)
   }
-  /** position circular LegalMark over hex; hitArea, mouseEnabled */
+  /** position LegalMark over hex; hitArea [hexShape], mouseEnabled */
   setOnHex(hex: IHex2) {
     this.hex2 = hex;
     this.doGraphics();
@@ -316,6 +316,7 @@ export function Hex2Mixin<TBase extends Constructor<Hex1>>(Base: TBase) {
       // then edit-in-place the args array to be compatible for this.constructorCode()
       const [map, row, col, Aname] = args;
       super(map, row, col, Aname);  // invoke the given Base constructor: LocalHex1
+      // TODO: use static constructorCode and (this.constructor as typeof...).constructorCode()
       this.constructorCode(map, row, col, Aname);
       return;         // breakpoint able
     }
@@ -853,6 +854,8 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   visMark?: DisplayObject;  // last visible mark from showMark;
 
   /** make this.mark visible (or not) above the given Hex
+   *
+   * The previous/current mark (aka: this.visMark) is set visible = false
    * @param hex [undefined] if supplied mark.visible = true; else mark.visible = false
    * @param mark [this.mark] can supply alternate mark to be moved and visiblized.
    */

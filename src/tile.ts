@@ -394,7 +394,7 @@ export class Tile extends Tile0 implements Dragable {
    *  override for alternate showMark.
    */
   showTargetMark(hex: IHex2 | undefined, ctx: DragContext) {
-    ctx.targetHex?.map.showMark(ctx.targetHex); // else prev mark still showing
+    ctx.targetHex?.map.showMark(ctx.targetHex); // if no targetHex: leave prev mark still showing
   }
 
   // backward compatible -- new code can specialize
@@ -442,6 +442,9 @@ export class Tile extends Tile0 implements Dragable {
    * entry point from Table.dropFunc;
    *
    * Invoke this.dropFunc() then showMark(undefined);
+   *
+   * @param hex [hexUnderObj() OR as supplied by dragStartAndDrop] ignored!
+   * uses ctx.targetHex = first ? tile.fromHex = tile.hex : hexUnderObj
    */
   dropFunc0(hex: IHex2, ctx: DragContext) {
     this.dropFunc(ctx.targetHex, ctx);

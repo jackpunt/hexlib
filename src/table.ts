@@ -763,6 +763,10 @@ export class Table extends Dispatcher {
     return this.hexMap.hexUnderObj(dragObj, legalOnly);
   }
 
+  /** Set by dragFunc0(tile, info) when !!info.first.
+   *
+   * dropFunc() sets dragContext.tile = undefined
+   */
   dragContext: DragContext;
   /** Direct callback from this.dragger. Invoke this.dragFunc0(tile, info, hexUnderTile) */
   dragFunc(tile: DisplayObject, info?: DragInfo) {
@@ -942,7 +946,7 @@ export class Table extends Dispatcher {
    * @param dragObj a DisplayObject to start dragging with dragTarget
    * @param xy offset from target to mouse pointer
    */
-  dragTarget(dragObj?: DisplayObject, xy: XY = { x: this.sr(30), y: this.sr(30) }) {
+  dragTarget(dragObj?: DisplayObject, xy?: XY) {
     if (this.isDragging) {
       // drop current dragObj on last legal targetHex
       this.stopDragging(this.dragContext.targetHex) // drop and make move
@@ -951,7 +955,7 @@ export class Table extends Dispatcher {
     }
   }
 
-  startDragging(dragObj: DisplayObject, xy: XY = { x: 0, y: 0 }) {
+  startDragging(dragObj: DisplayObject, xy?: XY) {
     this.dragger.dragTarget(dragObj, xy);
   }
 
