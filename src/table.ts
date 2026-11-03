@@ -294,7 +294,7 @@ export class Table extends Dispatcher {
    * @param claz extends Hex2
    * @returns the new Hex2
    */
-  newHex2(row = 0, col = 0, name: string, claz: Constructor<IHex2> = this.hexC) {
+  newHex2<T extends IHex2>(row = 0, col = 0, name: string, claz: Constructor<T> = this.hexC as Constructor<T>) {
     const hex = new claz(this.hexMap, row, col, name);
     hex.distText.text = name;
     this.newHexes.push(hex);
@@ -302,7 +302,7 @@ export class Table extends Dispatcher {
   }
 
   /** if hextowns wants the half-row offset, they can override as follows: */
-  newHex2a(row = 0, col = 0, name: string, claz: Constructor<IHex2> = this.hexC, sy = 0) {
+  newHex2a<T extends IHex2>(row = 0, col = 0, name: string, claz: Constructor<T> = this.hexC as Constructor<T>, sy = 0) {
     const hex = this.newHex2(row, col, name, claz); // super.newHex2(...)
     if (row <= 0) {
       hex.y += (sy + row * .5 - .75) * (this.hexMap.radius);
@@ -563,9 +563,9 @@ export class Table extends Dispatcher {
    *
    * @returns hexC[] with each hex.cont.xy offset to appear over panel
    */
-  hexesOnPanel(panel: Container, row0 = .75, colN = 4, hexC: Constructor<IHex2> = this.hexC, opts?: { vis?: boolean, gap?: number }) {
+  hexesOnPanel<T extends IHex2>(panel: Container, row0 = .75, colN = 4, hexC: Constructor<T> = this.hexC as Constructor<T>, opts?: { vis?: boolean, gap?: number }) {
     const { vis, gap } = { vis: false, gap: 0, ...opts }
-    const rv = [] as IHex2[], map = this.hexMap;
+    const rv = [] as T[], map = this.hexMap;
     const { x: x0, y: y0 } = map.xyFromMap(panel, 0, 0); // offset from hexCont to panel
     const { width: panelw } = panel.getBounds();
     const { x: xn, dydr, dxdc } = this.hexMap.xywh(undefined, 0, colN - 1); // x of last cell
