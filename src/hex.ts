@@ -645,7 +645,7 @@ export interface HexM<T extends Hex> {
   hexC: Constructor<T>
   /**
    * Search mapCont.[markCont, hexCont] for an object under dragObj, using hexUnderPoint()
-   * @param dragObj typically being dragged on table.dragCont
+   * @param dragObj typically being dragged by table.dragCont
    * @param legalOnly restrict to only LegalMark on markCont.
    * @returns the IHex2 associated with LegalMark or Hex2.
    */
@@ -810,13 +810,14 @@ export class HexMap<T extends Hex> extends Array<Array<T>> implements HexM<T> {
   }
 
   /**
-   * Find hexUnderPoint(dragObj.x, dragObj.y)
-   * @param dragObj
+   * Find hexUnderPoint(dragCont.x, dragCont.y)
+   * @param dragObj (dragObj.parent is dragCont; mouse is at dragCont.x/y)
    * @param legalOnly [true] ? search markCont : also search hexCont
-   * @returns Hex | undefined
+   * @returns T | undefined
    */
   hexUnderObj(dragObj: DisplayObject, legalOnly = true) {
-    const pt = dragObj.parent.localToLocal(dragObj.x, dragObj.y, this.mapCont.markCont);
+    const dragCont = dragObj.parent; //= this.gamePlay.table.dragger.dragCont;
+    const pt = dragCont.parent.localToLocal(dragCont.x, dragCont.y, this.mapCont.markCont); // mouse coords on markCont
     return this.hexUnderPoint(pt.x, pt.y, legalOnly);
   }
 
